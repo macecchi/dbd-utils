@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DBD Donation Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #18181b;
+      --bg-alt: #1f1f23;
+      --bg-hover: #26262c;
+      --border: #2f2f35;
+      --text: #efeff1;
+      --text-alt: #adadb8;
+      --text-muted: #71717a;
+      --purple: #9147ff;
+      --purple-hover: #772ce8;
+      --purple-dim: rgba(145, 71, 255, 0.15);
+      --green: #00ff7f;
+      --red: #f84f4f;
+      --blue: #00c8ff;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    /* Top bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-alt);
+      border-radius: 8px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--purple);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .counters {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .counter {
+      text-align: center;
+    }
+
+    .counter-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .counter-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-alt);
+      border-radius: 8px;
+      flex-wrap: wrap;
+    }
+
+    .input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .input-wrap.grow { flex: 1; min-width: 180px; }
+
+    .input-wrap label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    input, select {
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--purple);
+    }
+
+    select { cursor: pointer; }
+
+    .btn {
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--border);
+      color: var(--text-alt);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--purple);
+      color: var(--text);
+    }
+
+    .btn-purple {
+      background: var(--purple);
+      color: white;
+    }
+
+    .btn-purple:hover {
+      background: var(--purple-hover);
+    }
+
+    .btn-purple.live {
+      background: var(--green);
+      color: #000;
+    }
+
+    .divider {
+      width: 1px;
+      height: 32px;
+      background: var(--border);
+      margin: 0 0.5rem;
+    }
+
+    .status {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      min-width: 120px;
+    }
+
+    .status-main {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .live-dot.on {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: glow 2s ease-in-out infinite;
+    }
+
+    .live-dot.pending { background: #fbbf24; }
+    .live-dot.off { background: var(--red); }
+
+    @keyframes glow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .status-api {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    .status-api.ok { color: var(--green); }
+    .status-api.warn { color: #fbbf24; }
+
+    /* Debug */
+    .debug-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      background: var(--bg-alt);
+      border-radius: 8px;
+      border-left: 3px solid var(--purple);
+    }
+
+    .debug-bar span {
+      font-size: 0.7rem;
+      color: var(--purple);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .debug-bar input { flex: 1; }
+
+    .debug-result {
+      font-size: 0.8rem;
+      color: var(--text-alt);
+      min-width: 150px;
+    }
+
+    /* Main grid */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 850px) {
+      .main { grid-template-columns: 1fr; }
+      .topbar { flex-wrap: wrap; justify-content: center; }
+    }
+
+    /* Card */
+    .card {
+      background: var(--bg-alt);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-head {
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title-icon {
+      width: 20px;
+      height: 20px;
+      background: var(--purple-dim);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+    }
+
+    .card-count {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: var(--bg);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .card-body {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 400px;
+    }
+
+    .card-body::-webkit-scrollbar { width: 6px; }
+    .card-body::-webkit-scrollbar-track { background: transparent; }
+    .card-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Empty */
+    .empty-state {
+      padding: 2.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* Donation */
+    .don {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+
+    .don:hover { background: var(--bg-hover); }
+
+    .don-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.35rem;
+    }
+
+    .don-user {
+      font-weight: 600;
+      color: var(--purple);
+    }
+
+    .don-amt {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--green);
+      margin-left: 0.5rem;
+    }
+
+    .don-time {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .don-msg {
+      font-size: 0.85rem;
+      color: var(--text-alt);
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .don-char {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .pill {
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    .pill.survivor { background: var(--blue); color: #000; }
+    .pill.killer { background: var(--red); color: #fff; }
+    .pill.unknown { background: var(--text-muted); color: var(--bg); }
+
+    .char-name { font-weight: 600; font-size: 0.9rem; }
+    .char-name.pending { color: var(--text-muted); font-style: italic; }
+
+    /* Chat */
+    .chat { padding: 0.5rem 0.75rem; }
+
+    .msg {
+      padding: 0.25rem 0.4rem;
+      font-size: 0.8rem;
+      border-radius: 3px;
+      margin-bottom: 0.15rem;
+    }
+
+    .msg.hl {
+      background: var(--purple-dim);
+    }
+
+    .msg-user {
+      font-weight: 600;
+      margin-right: 0.35rem;
+    }
+
+    .msg-user.lp { color: var(--purple); }
+    .msg-user.normal { color: var(--blue); }
+
+    .msg-text { color: var(--text-alt); }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      padding: 0.5rem 0;
+    }
+
+    .footer a { color: var(--purple); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    .footer strong { color: var(--purple); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="logo">
+        <div class="logo-icon">⛧</div>
+        <span>DBD Tracker</span>
+      </div>
+      <div class="counters">
+        <div class="counter">
+          <div class="counter-val" id="totalDonations">0</div>
+          <div class="counter-label">Donations</div>
+        </div>
+        <div class="counter">
+          <div class="counter-val" id="survivorCount">0</div>
+          <div class="counter-label">Survivors</div>
+        </div>
+        <div class="counter">
+          <div class="counter-val" id="killerCount">0</div>
+          <div class="counter-label">Killers</div>
+        </div>
+      </div>
+    </header>
+
+    <section class="controls">
+      <div class="input-wrap grow">
+        <label>Channel</label>
+        <input type="text" id="channelInput" value="mandymess">
+      </div>
+      <div class="input-wrap">
+        <label>LLM</label>
+        <select id="llmProvider" onchange="updateApiStatus()">
+          <option value="gemini">Gemini</option>
+          <option value="anthropic">Anthropic</option>
+        </select>
+      </div>
+      <button class="btn btn-outline" onclick="setApiKey()">API Key</button>
+      <button class="btn btn-purple" id="connectBtn" onclick="toggleConnection()">Go Live</button>
+      <div class="divider"></div>
+      <div class="status">
+        <div class="status-main">
+          <span class="live-dot" id="statusDot"></span>
+          <span id="status">Offline</span>
+        </div>
+        <div class="status-api" id="apiStatus"></div>
+      </div>
+    </section>
+
+    <section class="debug-bar">
+      <span>Debug</span>
+      <input type="text" id="debugInput" placeholder="Test character extraction...">
+      <button class="btn btn-outline" onclick="testExtraction()">Test</button>
+      <div class="debug-result" id="debugResult"></div>
+    </section>
+
+    <main class="main">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="card-title-icon">🎁</span>
+            Requests
+          </div>
+          <span class="card-count" id="count">0</span>
+        </div>
+        <div class="card-body" id="donations">
+          <div class="empty-state">Waiting for donations...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="card-title-icon">💬</span>
+            Chat
+          </div>
+        </div>
+        <div class="card-body chat" id="chatlog">
+          <div class="empty-state">Chat will appear here...</div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div>Watching <strong>livepix</strong> donations</div>
+      <div>Get API key: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a></div>
+    </footer>
+  </div>
+
+  <script>
+    const DBD_CHARACTERS = {
+      survivors: ["Dwight Fairfield", "Meg Thomas", "Claudette Morel", "Jake Park", "Nea Karlsson", "Laurie Strode", "Ace Visconti", "Bill Overbeck", "Feng Min", "David King", "Quentin Smith", "David Tapp", "Kate Denson", "Adam Francis", "Jeff Johansen", "Jane Romero", "Ash Williams", "Nancy Wheeler", "Steve Harrington", "Yui Kimura", "Zarina Kassir", "Cheryl Mason", "Felix Richter", "Élodie Rakoto", "Yun-Jin Lee", "Jill Valentine", "Leon S. Kennedy", "Mikaela Reid", "Jonah Vasquez", "Yoichi Asakawa", "Haddie Kaur", "Ada Wong", "Rebecca Chambers", "Vittorio Toscano", "Thalita Lyra", "Renato Lyra", "Gabriel Soma", "Nicolas Cage", "Ellen Ripley", "Alan Wake", "Sable Ward", "Aestri Yazar", "Lara Croft", "Trevor Belmont", "Sydney Prescott"],
+      killers: ["Trapper", "Wraith", "Hillbilly", "Nurse", "Shape", "Hag", "Doctor", "Huntress", "Cannibal", "Nightmare", "Pig", "Clown", "Spirit", "Legion", "Plague", "Ghost Face", "Demogorgon", "Oni", "Deathslinger", "Pyramid Head", "Blight", "Twins", "Trickster", "Nemesis", "Cenobite", "Artist", "Onryō", "Dredge", "Mastermind", "Knight", "Skull Merchant", "Singularity", "Xenomorph", "Good Guy", "Unknown", "Lich", "Dark Lord", "Houndmaster", "Dracula"]
+    };
+
+    let ws = null, donations = [];
+
+    function getProvider() { return document.getElementById('llmProvider').value; }
+    function getApiKey() { return localStorage.getItem(`${getProvider()}_key`); }
+
+    function setApiKey() {
+      const key = prompt(`Enter ${getProvider()} API key:`);
+      if (key) { localStorage.setItem(`${getProvider()}_key`, key); updateApiStatus(); }
+    }
+
+    function updateApiStatus() {
+      const key = getApiKey();
+      const el = document.getElementById('apiStatus');
+      el.className = key ? 'status-api ok' : 'status-api warn';
+      el.textContent = key ? `✓ ${getProvider()} ready` : `⚠ No API key`;
+    }
+
+    function setStatus(text, state = 'off') {
+      const dot = document.getElementById('statusDot');
+      const btn = document.getElementById('connectBtn');
+      dot.className = 'live-dot';
+      if (state === 'on') { dot.classList.add('on'); btn.classList.add('live'); btn.textContent = 'End'; }
+      else if (state === 'pending') { dot.classList.add('pending'); btn.classList.remove('live'); }
+      else { dot.classList.add('off'); btn.classList.remove('live'); btn.textContent = 'Go Live'; }
+      document.getElementById('status').textContent = text;
+    }
+
+    function toggleConnection() {
+      if (ws) { ws.close(); ws = null; setStatus('Offline', 'off'); }
+      else { connect(); }
+    }
+
+    function connect() {
+      const channel = document.getElementById('channelInput').value.trim().toLowerCase();
+      if (!channel) return;
+      setStatus('Connecting...', 'pending');
+      ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+      ws.onopen = () => {
+        ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+        ws.send('NICK justinfan' + Math.floor(Math.random() * 99999));
+        ws.send(`JOIN #${channel}`);
+      };
+      ws.onmessage = (event) => {
+        for (const line of event.data.split('\r\n')) {
+          if (line.startsWith('PING')) ws.send('PONG :tmi.twitch.tv');
+          else if (line.includes('366')) setStatus(`Live: #${channel}`, 'on');
+          else if (line.includes('PRIVMSG')) handleMessage(line);
+        }
+      };
+      ws.onclose = () => { setStatus('Offline', 'off'); ws = null; };
+      ws.onerror = () => setStatus('Error', 'off');
+    }
+
+    function handleMessage(raw) {
+      const userMatch = raw.match(/display-name=([^;]*)/i);
+      const msgMatch = raw.match(/PRIVMSG #\w+ :(.+)$/);
+      if (!userMatch || !msgMatch) return;
+      const displayName = userMatch[1] || 'unknown';
+      const username = displayName.toLowerCase();
+      const message = msgMatch[1].trim();
+      addToChatLog(displayName, message, username === 'livepix');
+      if (username !== 'livepix') return;
+      const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
+      if (!match) return;
+      const donation = { id: Date.now(), timestamp: new Date(), donor: match[1].trim(), amount: match[2], message: match[3].trim(), character: 'Identifying...', type: 'unknown' };
+      donations.unshift(donation);
+      renderDonations();
+      identifyCharacter(donation);
+    }
+
+    function addToChatLog(user, message, isLivepix) {
+      const chatlog = document.getElementById('chatlog');
+      if (chatlog.querySelector('.empty-state')) chatlog.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = `msg${isLivepix ? ' hl' : ''}`;
+      div.innerHTML = `<span class="msg-user ${isLivepix ? 'lp' : 'normal'}">${user}:</span><span class="msg-text">${message}</span>`;
+      chatlog.appendChild(div);
+      chatlog.scrollTop = chatlog.scrollHeight;
+      while (chatlog.children.length > 100) chatlog.removeChild(chatlog.firstChild);
+    }
+
+    async function callLLM(message) {
+      const provider = getProvider();
+      const apiKey = getApiKey();
+      if (!apiKey) return { character: 'No API key', type: 'unknown' };
+      const systemPrompt = `Identify Dead by Daylight characters from user messages.\nSurvivors: ${DBD_CHARACTERS.survivors.join(', ')}\nKillers: ${DBD_CHARACTERS.killers.join(', ')}\nReply ONLY with JSON: {"character":"Name","type":"survivor"|"killer"|"unknown"}\nIf no character mentioned or unclear, use {"character":"unknown","type":"unknown"}`;
+      const userPrompt = `Identify the character from: "${message}"`;
+      try {
+        let text = '';
+        if (provider === 'gemini') {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }], generationConfig: { maxOutputTokens: 100 } })
+          });
+          if (!response.ok) return { character: 'API error', type: 'unknown' };
+          const data = await response.json();
+          text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+          const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+            body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 100, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] })
+          });
+          if (!response.ok) return { character: 'API error', type: 'unknown' };
+          const data = await response.json();
+          text = data.content?.[0]?.text || '';
+        }
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      } catch (e) { return { character: 'Error', type: 'unknown' }; }
+      return { character: 'Unknown', type: 'unknown' };
+    }
+
+    async function identifyCharacter(donation) {
+      const result = await callLLM(donation.message);
+      donation.character = result.character || 'Unknown';
+      donation.type = result.type || 'unknown';
+      renderDonations();
+    }
+
+    async function testExtraction() {
+      const input = document.getElementById('debugInput').value.trim();
+      const resultDiv = document.getElementById('debugResult');
+      if (!input) return;
+      resultDiv.textContent = 'Processing...';
+      const result = await callLLM(input);
+      const color = result.type === 'survivor' ? 'var(--blue)' : result.type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
+      resultDiv.innerHTML = `<span style="color:${color}">${result.type}</span>: ${result.character}`;
+    }
+
+    function updateStats() {
+      document.getElementById('totalDonations').textContent = donations.length;
+      document.getElementById('survivorCount').textContent = donations.filter(d => d.type === 'survivor').length;
+      document.getElementById('killerCount').textContent = donations.filter(d => d.type === 'killer').length;
+    }
+
+    function renderDonations() {
+      const container = document.getElementById('donations');
+      document.getElementById('count').textContent = donations.length;
+      updateStats();
+      if (donations.length === 0) { container.innerHTML = '<div class="empty-state">Waiting for donations...</div>'; return; }
+      container.innerHTML = donations.map(d => `
+        <div class="don">
+          <div class="don-row">
+            <span><span class="don-user">${d.donor}</span><span class="don-amt">${d.amount}</span></span>
+            <span class="don-time">${d.timestamp.toLocaleTimeString()}</span>
+          </div>
+          <p class="don-msg">${d.message}</p>
+          <div class="don-char">
+            <span class="pill ${d.type}">${d.type}</span>
+            <span class="char-name ${d.character === 'Identifying...' ? 'pending' : ''}">${d.character}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    updateApiStatus();
+  </script>
+</body>
+</html>

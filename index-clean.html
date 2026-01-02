@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DBD Tracker - Doações</title>
+  <title>DBD Donation Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -132,7 +132,7 @@
       font-weight: 500;
     }
 
-    input, select, textarea {
+    input, select {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.85rem;
       padding: 0.6rem 0.9rem;
@@ -144,21 +144,13 @@
       transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-    input:focus, select:focus, textarea:focus {
+    input:focus, select:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-dim);
     }
 
-    input[type="number"] { width: 100px; }
-
     select { cursor: pointer; }
     select option { background: var(--bg); }
-
-    textarea {
-      resize: vertical;
-      min-height: 80px;
-      line-height: 1.4;
-    }
 
     .btn {
       font-family: 'DM Sans', sans-serif;
@@ -180,11 +172,6 @@
     .btn-ghost:hover {
       background: var(--bg-card);
       color: var(--text);
-    }
-
-    .btn-small {
-      font-size: 0.75rem;
-      padding: 0.4rem 0.75rem;
     }
 
     .btn-primary {
@@ -238,78 +225,6 @@
 
     .api-status.set { color: var(--green); }
     .api-status.missing { color: var(--yellow); }
-
-    /* Settings */
-    .settings {
-      padding: 1rem 1.25rem;
-      background: var(--bg-elevated);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-    }
-
-    .settings-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .settings-title {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .settings-toggle {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      transition: transform 0.2s;
-    }
-
-    .settings.open .settings-toggle {
-      transform: rotate(180deg);
-    }
-
-    .settings-body {
-      display: none;
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--border);
-    }
-
-    .settings.open .settings-body {
-      display: block;
-    }
-
-    .settings-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    @media (max-width: 700px) {
-      .settings-grid { grid-template-columns: 1fr; }
-    }
-
-    .settings-col h3 {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      margin-bottom: 0.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .char-count {
-      font-weight: 400;
-      color: var(--text-muted);
-    }
 
     /* Debug */
     .debug {
@@ -423,10 +338,6 @@
 
     .donation:hover { background: var(--bg-card); }
 
-    .donation.below-threshold {
-      opacity: 0.5;
-    }
-
     .donation-top {
       display: flex;
       justify-content: space-between;
@@ -452,11 +363,6 @@
       padding: 0.15rem 0.4rem;
       background: rgba(34, 197, 94, 0.1);
       border-radius: 4px;
-    }
-
-    .amount.below {
-      color: var(--text-muted);
-      background: rgba(102, 102, 102, 0.1);
     }
 
     .time {
@@ -489,7 +395,6 @@
     .badge.survivor { background: var(--blue); color: white; }
     .badge.killer { background: var(--red); color: white; }
     .badge.unknown { background: var(--text-muted); color: var(--bg); }
-    .badge.skipped { background: var(--border); color: var(--text-muted); }
 
     .char-name { font-weight: 600; }
     .char-name.identifying { color: var(--text-muted); font-style: italic; }
@@ -542,81 +447,52 @@
     <header class="header">
       <div class="brand">
         <div class="brand-icon">⛧</div>
-        <h1>DBD Tracker<span>Pedidos de Personagem</span></h1>
+        <h1>DBD Tracker<span>Character Requests</span></h1>
       </div>
       <div class="stats">
         <div class="stat">
           <div class="stat-value" id="totalDonations">0</div>
-          <div class="stat-label">Doações</div>
+          <div class="stat-label">Donations</div>
         </div>
         <div class="stat">
           <div class="stat-value" id="survivorCount">0</div>
-          <div class="stat-label">Sobreviventes</div>
+          <div class="stat-label">Survivors</div>
         </div>
         <div class="stat">
           <div class="stat-value" id="killerCount">0</div>
-          <div class="stat-label">Assassinos</div>
+          <div class="stat-label">Killers</div>
         </div>
       </div>
     </header>
 
     <section class="controls">
       <div class="field grow">
-        <label>Canal Twitch</label>
-        <input type="text" id="channelInput" value="mandymess" placeholder="canal" onchange="saveChannel()">
+        <label>Twitch Channel</label>
+        <input type="text" id="channelInput" value="mandymess" placeholder="channel">
       </div>
       <div class="field">
-        <label>Doação Mín.</label>
-        <input type="number" id="minDonation" value="10" min="0" step="1" onchange="saveMinDonation()">
-      </div>
-      <div class="field">
-        <label>Provedor LLM</label>
-        <select id="llmProvider" onchange="saveProvider(); updateApiStatus()">
+        <label>LLM Provider</label>
+        <select id="llmProvider" onchange="updateApiStatus()">
           <option value="gemini">Gemini</option>
           <option value="anthropic">Anthropic</option>
         </select>
       </div>
       <button class="btn btn-ghost" onclick="setApiKey()">API Key</button>
-      <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">Conectar</button>
+      <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">Connect</button>
       <div class="status-block">
         <div class="status-row">
           <span class="status-dot" id="statusDot"></span>
-          <span id="status">Desconectado</span>
+          <span id="status">Disconnected</span>
         </div>
         <div class="api-status" id="apiStatus"></div>
       </div>
     </section>
 
-    <section class="settings" id="settingsPanel">
-      <div class="settings-header" onclick="toggleSettings()">
-        <span class="settings-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          Lista de Personagens
-        </span>
-        <span class="settings-toggle">▼</span>
-      </div>
-      <div class="settings-body">
-        <div class="settings-grid">
-          <div class="settings-col">
-            <h3>Sobreviventes <span class="char-count" id="survivorListCount">0</span></h3>
-            <textarea id="survivorList" rows="8" onchange="saveCharacters()"></textarea>
-          </div>
-          <div class="settings-col">
-            <h3>Assassinos <span class="char-count" id="killerListCount">0</span></h3>
-            <textarea id="killerList" rows="8" onchange="saveCharacters()"></textarea>
-          </div>
-        </div>
-        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-          <button class="btn btn-ghost btn-small" onclick="resetCharacters()">Restaurar Padrão</button>
-        </div>
-      </div>
-    </section>
-
     <section class="debug">
-      <div class="debug-label">Testar LLM</div>
+      <div class="debug-label">Debug LLM</div>
       <div class="debug-row">
-        <input type="text" id="debugInput" placeholder="Testar extração de personagem...">
-        <button class="btn btn-ghost" onclick="testExtraction()">Testar</button>
+        <input type="text" id="debugInput" placeholder="Test character extraction...">
+        <button class="btn btn-ghost" onclick="testExtraction()">Test</button>
       </div>
       <div class="debug-result" id="debugResult"></div>
     </section>
@@ -626,15 +502,12 @@
         <div class="panel-header">
           <div class="panel-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h6"/><path d="M12 12l9-9M15 3h6v6"/></svg>
-            Pedidos de Personagem
+            Character Requests
           </div>
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <button class="btn btn-ghost btn-small" onclick="clearDonations()">Limpar</button>
-            <span class="panel-count" id="count">0</span>
-          </div>
+          <span class="panel-count" id="count">0</span>
         </div>
         <div class="panel-body" id="donations">
-          <div class="empty">Aguardando doações...</div>
+          <div class="empty">Waiting for donations...</div>
         </div>
       </div>
 
@@ -642,23 +515,23 @@
         <div class="panel-header">
           <div class="panel-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-            Chat ao Vivo
+            Live Chat
           </div>
         </div>
         <div class="panel-body chat-body" id="chatlog">
-          <div class="empty">Mensagens do chat aparecerão aqui...</div>
+          <div class="empty">Chat messages will appear here...</div>
         </div>
       </div>
     </main>
 
     <footer class="footer">
-      <div>Monitorando doações do <strong style="color: var(--accent)">livepix</strong></div>
+      <div>Watching <strong style="color: var(--accent)">livepix</strong> donations</div>
       <div>API: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></div>
     </footer>
   </div>
 
   <script>
-    const DEFAULT_CHARACTERS = {
+    const DBD_CHARACTERS = {
       survivors: ["Dwight Fairfield", "Meg Thomas", "Claudette Morel", "Jake Park", "Nea Karlsson", "Laurie Strode", "Ace Visconti", "Bill Overbeck", "Feng Min", "David King", "Quentin Smith", "David Tapp", "Kate Denson", "Adam Francis", "Jeff Johansen", "Jane Romero", "Ash Williams", "Nancy Wheeler", "Steve Harrington", "Yui Kimura", "Zarina Kassir", "Cheryl Mason", "Felix Richter", "Élodie Rakoto", "Yun-Jin Lee", "Jill Valentine", "Leon S. Kennedy", "Mikaela Reid", "Jonah Vasquez", "Yoichi Asakawa", "Haddie Kaur", "Ada Wong", "Rebecca Chambers", "Vittorio Toscano", "Thalita Lyra", "Renato Lyra", "Gabriel Soma", "Nicolas Cage", "Ellen Ripley", "Alan Wake", "Sable Ward", "Aestri Yazar", "Lara Croft", "Trevor Belmont", "Sydney Prescott"],
       killers: ["Trapper", "Wraith", "Hillbilly", "Nurse", "Shape", "Hag", "Doctor", "Huntress", "Cannibal", "Nightmare", "Pig", "Clown", "Spirit", "Legion", "Plague", "Ghost Face", "Demogorgon", "Oni", "Deathslinger", "Pyramid Head", "Blight", "Twins", "Trickster", "Nemesis", "Cenobite", "Artist", "Onryō", "Dredge", "Mastermind", "Knight", "Skull Merchant", "Singularity", "Xenomorph", "Good Guy", "Unknown", "Lich", "Dark Lord", "Houndmaster", "Dracula"]
     };
@@ -666,106 +539,12 @@
     let ws = null;
     let donations = [];
 
-    // Character list functions
-    function getCharacters() {
-      const survivors = document.getElementById('survivorList').value.split('\n').map(s => s.trim()).filter(Boolean);
-      const killers = document.getElementById('killerList').value.split('\n').map(s => s.trim()).filter(Boolean);
-      return { survivors, killers };
-    }
-
-    function loadCharacters() {
-      const saved = localStorage.getItem('dbd_characters');
-      const chars = saved ? JSON.parse(saved) : DEFAULT_CHARACTERS;
-      document.getElementById('survivorList').value = chars.survivors.join('\n');
-      document.getElementById('killerList').value = chars.killers.join('\n');
-      updateCharacterCounts();
-    }
-
-    function saveCharacters() {
-      const chars = getCharacters();
-      localStorage.setItem('dbd_characters', JSON.stringify(chars));
-      updateCharacterCounts();
-    }
-
-    function resetCharacters() {
-      localStorage.removeItem('dbd_characters');
-      loadCharacters();
-    }
-
-    function updateCharacterCounts() {
-      const chars = getCharacters();
-      document.getElementById('survivorListCount').textContent = chars.survivors.length;
-      document.getElementById('killerListCount').textContent = chars.killers.length;
-    }
-
-    // Settings persistence
-    function getMinDonation() {
-      return parseFloat(localStorage.getItem('dbd_min_donation') || '10');
-    }
-
-    function loadMinDonation() {
-      document.getElementById('minDonation').value = getMinDonation();
-    }
-
-    function saveMinDonation() {
-      const val = parseFloat(document.getElementById('minDonation').value) || 0;
-      localStorage.setItem('dbd_min_donation', val.toString());
-    }
-
-    function loadChannel() {
-      const saved = localStorage.getItem('dbd_channel');
-      if (saved) document.getElementById('channelInput').value = saved;
-    }
-
-    function saveChannel() {
-      localStorage.setItem('dbd_channel', document.getElementById('channelInput').value.trim());
-    }
-
-    function loadProvider() {
-      const saved = localStorage.getItem('dbd_provider');
-      if (saved) document.getElementById('llmProvider').value = saved;
-    }
-
-    function saveProvider() {
-      localStorage.setItem('dbd_provider', document.getElementById('llmProvider').value);
-    }
-
-    // Donations persistence
-    function loadDonations() {
-      const saved = localStorage.getItem('dbd_donations');
-      if (saved) {
-        donations = JSON.parse(saved).map(d => ({ ...d, timestamp: new Date(d.timestamp) }));
-        renderDonations();
-      }
-    }
-
-    function saveDonations() {
-      localStorage.setItem('dbd_donations', JSON.stringify(donations));
-    }
-
-    function clearDonations() {
-      donations = [];
-      saveDonations();
-      renderDonations();
-    }
-
-    function parseAmount(amountStr) {
-      const match = amountStr.match(/[\d,\.]+/);
-      if (!match) return 0;
-      return parseFloat(match[0].replace(',', '.'));
-    }
-
-    function toggleSettings() {
-      document.getElementById('settingsPanel').classList.toggle('open');
-    }
-
-    // API key functions
     function getProvider() { return document.getElementById('llmProvider').value; }
     function getApiKey() { return localStorage.getItem(`${getProvider()}_key`); }
 
     function setApiKey() {
       const provider = getProvider();
-      const key = prompt(`Digite sua API key do ${provider === 'gemini' ? 'Gemini' : 'Anthropic'}:`);
+      const key = prompt(`Enter your ${provider === 'gemini' ? 'Gemini' : 'Anthropic'} API key:`);
       if (key) { localStorage.setItem(`${provider}_key`, key); updateApiStatus(); }
     }
 
@@ -773,10 +552,9 @@
       const key = getApiKey();
       const el = document.getElementById('apiStatus');
       el.className = key ? 'api-status set' : 'api-status missing';
-      el.textContent = key ? `✓ ${getProvider()} configurado` : `⚠ Sem API key`;
+      el.textContent = key ? `✓ ${getProvider()} configured` : `⚠ No API key`;
     }
 
-    // Connection functions
     function setStatus(text, state = 'disconnected') {
       const dot = document.getElementById('statusDot');
       const btn = document.getElementById('connectBtn');
@@ -786,15 +564,15 @@
     }
 
     function toggleConnection() {
-      if (ws) { ws.close(); ws = null; document.getElementById('connectBtn').textContent = 'Conectar'; setStatus('Desconectado'); }
+      if (ws) { ws.close(); ws = null; document.getElementById('connectBtn').textContent = 'Connect'; setStatus('Disconnected'); }
       else { connect(); }
     }
 
     function connect() {
       const channel = document.getElementById('channelInput').value.trim().toLowerCase();
       if (!channel) return;
-      setStatus('Conectando...', 'connecting');
-      document.getElementById('connectBtn').textContent = 'Desconectar';
+      setStatus('Connecting...', 'connecting');
+      document.getElementById('connectBtn').textContent = 'Disconnect';
       ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
       ws.onopen = () => {
         ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
@@ -808,8 +586,8 @@
           else if (line.includes('PRIVMSG')) handleMessage(line);
         }
       };
-      ws.onclose = () => { setStatus('Desconectado', 'error'); document.getElementById('connectBtn').textContent = 'Conectar'; ws = null; };
-      ws.onerror = () => setStatus('Erro', 'error');
+      ws.onclose = () => { setStatus('Disconnected', 'error'); document.getElementById('connectBtn').textContent = 'Connect'; ws = null; };
+      ws.onerror = () => setStatus('Error', 'error');
     }
 
     function handleMessage(raw) {
@@ -823,30 +601,10 @@
       if (username !== 'livepix') return;
       const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
       if (!match) return;
-
-      const amountVal = parseAmount(match[2]);
-      const minDonation = getMinDonation();
-      const belowThreshold = amountVal < minDonation;
-
-      const donation = {
-        id: Date.now(),
-        timestamp: new Date(),
-        donor: match[1].trim(),
-        amount: match[2],
-        amountVal,
-        message: match[3].trim(),
-        character: belowThreshold ? 'Ignorado' : 'Identificando...',
-        type: belowThreshold ? 'skipped' : 'unknown',
-        belowThreshold
-      };
-
+      const donation = { id: Date.now(), timestamp: new Date(), donor: match[1].trim(), amount: match[2], message: match[3].trim(), character: 'Identifying...', type: 'unknown' };
       donations.unshift(donation);
-      saveDonations();
       renderDonations();
-
-      if (!belowThreshold) {
-        identifyCharacter(donation);
-      }
+      identifyCharacter(donation);
     }
 
     function addToChatLog(user, message, isLivepix) {
@@ -863,12 +621,9 @@
     async function callLLM(message) {
       const provider = getProvider();
       const apiKey = getApiKey();
-      if (!apiKey) return { character: 'Sem API key', type: 'unknown' };
-
-      const chars = getCharacters();
-      const systemPrompt = `Identify Dead by Daylight characters from user messages.\nSurvivors: ${chars.survivors.join(', ')}\nKillers: ${chars.killers.join(', ')}\nReply ONLY with JSON: {"character":"Name","type":"survivor"|"killer"|"unknown"}\nIf no character mentioned or unclear, use {"character":"unknown","type":"unknown"}`;
+      if (!apiKey) return { character: 'No API key', type: 'unknown' };
+      const systemPrompt = `Identify Dead by Daylight characters from user messages.\nSurvivors: ${DBD_CHARACTERS.survivors.join(', ')}\nKillers: ${DBD_CHARACTERS.killers.join(', ')}\nReply ONLY with JSON: {"character":"Name","type":"survivor"|"killer"|"unknown"}\nIf no character mentioned or unclear, use {"character":"unknown","type":"unknown"}`;
       const userPrompt = `Identify the character from: "${message}"`;
-
       try {
         let text = '';
         if (provider === 'gemini') {
@@ -876,7 +631,7 @@
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }], generationConfig: { maxOutputTokens: 100 } })
           });
-          if (!response.ok) return { character: 'Erro na API', type: 'unknown' };
+          if (!response.ok) return { character: `API error`, type: 'unknown' };
           const data = await response.json();
           text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         } else {
@@ -885,21 +640,20 @@
             headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
             body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 100, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] })
           });
-          if (!response.ok) return { character: 'Erro na API', type: 'unknown' };
+          if (!response.ok) return { character: `API error`, type: 'unknown' };
           const data = await response.json();
           text = data.content?.[0]?.text || '';
         }
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) return JSON.parse(jsonMatch[0]);
-      } catch (e) { return { character: 'Erro', type: 'unknown' }; }
-      return { character: 'Desconhecido', type: 'unknown' };
+      } catch (e) { return { character: 'Error', type: 'unknown' }; }
+      return { character: 'Unknown', type: 'unknown' };
     }
 
     async function identifyCharacter(donation) {
       const result = await callLLM(donation.message);
-      donation.character = result.character || 'Desconhecido';
+      donation.character = result.character || 'Unknown';
       donation.type = result.type || 'unknown';
-      saveDonations();
       renderDonations();
     }
 
@@ -907,50 +661,39 @@
       const input = document.getElementById('debugInput').value.trim();
       const resultDiv = document.getElementById('debugResult');
       if (!input) return;
-      resultDiv.innerHTML = 'Identificando...';
+      resultDiv.innerHTML = 'Identifying...';
       const result = await callLLM(input);
       const color = result.type === 'survivor' ? 'var(--blue)' : result.type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
       resultDiv.innerHTML = `<span style="color:${color}">${result.type}</span> → <strong>${result.character}</strong>`;
     }
 
     function updateStats() {
-      const validDonations = donations.filter(d => !d.belowThreshold);
-      document.getElementById('totalDonations').textContent = validDonations.length;
-      document.getElementById('survivorCount').textContent = validDonations.filter(d => d.type === 'survivor').length;
-      document.getElementById('killerCount').textContent = validDonations.filter(d => d.type === 'killer').length;
+      document.getElementById('totalDonations').textContent = donations.length;
+      document.getElementById('survivorCount').textContent = donations.filter(d => d.type === 'survivor').length;
+      document.getElementById('killerCount').textContent = donations.filter(d => d.type === 'killer').length;
     }
 
     function renderDonations() {
       const container = document.getElementById('donations');
-      const validDonations = donations.filter(d => !d.belowThreshold);
-      document.getElementById('count').textContent = validDonations.length;
+      document.getElementById('count').textContent = donations.length;
       updateStats();
-      if (donations.length === 0) { container.innerHTML = '<div class="empty">Aguardando doações...</div>'; return; }
+      if (donations.length === 0) { container.innerHTML = '<div class="empty">Waiting for donations...</div>'; return; }
       container.innerHTML = donations.map(d => `
-        <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}">
+        <div class="donation">
           <div class="donation-top">
-            <div class="donor"><span class="donor-name">${d.donor}</span><span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
-            <span class="time">${new Date(d.timestamp).toLocaleTimeString()}</span>
+            <div class="donor"><span class="donor-name">${d.donor}</span><span class="amount">${d.amount}</span></div>
+            <span class="time">${d.timestamp.toLocaleTimeString()}</span>
           </div>
           <p class="message">${d.message}</p>
           <div class="character">
-            <span class="badge ${d.type}">${d.type === 'survivor' ? 'sobrevivente' : d.type === 'killer' ? 'assassino' : d.type === 'skipped' ? 'ignorado' : 'desconhecido'}</span>
-            <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''}">${d.character}</span>
+            <span class="badge ${d.type}">${d.type}</span>
+            <span class="char-name ${d.character === 'Identifying...' ? 'identifying' : ''}">${d.character}</span>
           </div>
         </div>
       `).join('');
     }
 
-    // Init
-    loadCharacters();
-    loadMinDonation();
-    loadChannel();
-    loadProvider();
-    loadDonations();
     updateApiStatus();
-
-    // Auto-connect
-    setTimeout(() => connect(), 500);
   </script>
 </body>
 </html>
