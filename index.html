@@ -606,8 +606,10 @@
             <textarea id="killerList" rows="8" onchange="saveCharacters()"></textarea>
           </div>
         </div>
-        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <button class="btn btn-ghost btn-small" onclick="resetCharacters()">Restaurar Padrão</button>
+          <button class="btn btn-ghost btn-small" onclick="syncFromWiki()" id="syncBtn">Sincronizar Wiki</button>
+          <span id="syncStatus" style="font-size: 0.7rem; color: var(--text-muted);"></span>
         </div>
       </div>
     </section>
@@ -658,9 +660,115 @@
   </div>
 
   <script>
+    // Wiki data with aliases, nicknames, real names, and pt-BR variations
+    const WIKI_DATA = {
+      survivors: [
+        { name: "Dwight Fairfield", aliases: ["Dwight", "Pizza Dwight"] },
+        { name: "Meg Thomas", aliases: ["Meg"] },
+        { name: "Claudette Morel", aliases: ["Claudette", "Claud"] },
+        { name: "Jake Park", aliases: ["Jake"] },
+        { name: "Nea Karlsson", aliases: ["Nea"] },
+        { name: "Laurie Strode", aliases: ["Laurie"] },
+        { name: "Ace Visconti", aliases: ["Ace"] },
+        { name: "Bill Overbeck", aliases: ["Bill"] },
+        { name: "Feng Min", aliases: ["Feng"] },
+        { name: "David King", aliases: ["David"] },
+        { name: "Quentin Smith", aliases: ["Quentin"] },
+        { name: "David Tapp", aliases: ["Tapp", "Detective Tapp"] },
+        { name: "Kate Denson", aliases: ["Kate"] },
+        { name: "Adam Francis", aliases: ["Adam"] },
+        { name: "Jeff Johansen", aliases: ["Jeff"] },
+        { name: "Jane Romero", aliases: ["Jane"] },
+        { name: "Ash Williams", aliases: ["Ash"] },
+        { name: "Nancy Wheeler", aliases: ["Nancy"] },
+        { name: "Steve Harrington", aliases: ["Steve"] },
+        { name: "Yui Kimura", aliases: ["Yui"] },
+        { name: "Zarina Kassir", aliases: ["Zarina"] },
+        { name: "Cheryl Mason", aliases: ["Cheryl", "Heather", "Heather Mason"] },
+        { name: "Felix Richter", aliases: ["Felix"] },
+        { name: "Élodie Rakoto", aliases: ["Elodie", "Élodie"] },
+        { name: "Yun-Jin Lee", aliases: ["Yun-Jin", "Yunjin"] },
+        { name: "Jill Valentine", aliases: ["Jill"] },
+        { name: "Leon S. Kennedy", aliases: ["Leon", "Leon Kennedy", "Leon Scott Kennedy"] },
+        { name: "Mikaela Reid", aliases: ["Mikaela"] },
+        { name: "Jonah Vasquez", aliases: ["Jonah"] },
+        { name: "Yoichi Asakawa", aliases: ["Yoichi"] },
+        { name: "Haddie Kaur", aliases: ["Haddie"] },
+        { name: "Ada Wong", aliases: ["Ada"] },
+        { name: "Rebecca Chambers", aliases: ["Rebecca"] },
+        { name: "Vittorio Toscano", aliases: ["Vittorio"] },
+        { name: "Thalita Lyra", aliases: ["Thalita"] },
+        { name: "Renato Lyra", aliases: ["Renato"] },
+        { name: "Gabriel Soma", aliases: ["Gabriel", "Soma"] },
+        { name: "Nicolas Cage", aliases: ["Cage", "Nic Cage"] },
+        { name: "Ellen Ripley", aliases: ["Ripley", "Ellen"] },
+        { name: "Alan Wake", aliases: ["Alan"] },
+        { name: "Sable Ward", aliases: ["Sable"] },
+        { name: "Aestri Yazar", aliases: ["Aestri", "Baermar Uraz", "Baermar"] },
+        { name: "Lara Croft", aliases: ["Lara", "Tomb Raider"] },
+        { name: "Trevor Belmont", aliases: ["Trevor", "Belmont"] },
+        { name: "Taurie Cain", aliases: ["Taurie"] },
+        { name: "Sydney Prescott", aliases: ["Sydney", "Sidney", "Sidney Prescott"] },
+        { name: "Rick Grimes", aliases: ["Rick"] },
+        { name: "Michonne Grimes", aliases: ["Michonne"] },
+        { name: "Vee Boonyasak", aliases: ["Vee"] }
+      ],
+      killers: [
+        { name: "Trapper", aliases: ["Evan MacMillan", "Evan", "Armadilheiro", "Trapaceiro"] },
+        { name: "Wraith", aliases: ["Philip Ojomo", "Philip", "Assombração", "Fantasma", "Bing Bong"] },
+        { name: "Hillbilly", aliases: ["Max Thompson Jr", "Max", "Billy", "Caipira"] },
+        { name: "Nurse", aliases: ["Sally Smithson", "Sally", "Enfermeira"] },
+        { name: "Shape", aliases: ["Michael Myers", "Michael", "Myers", "Boogeyman", "Stalker", "Forma"] },
+        { name: "Hag", aliases: ["Lisa Sherwood", "Lisa", "Bruxa"] },
+        { name: "Doctor", aliases: ["Herman Carter", "Herman", "Doutor", "Doc"] },
+        { name: "Huntress", aliases: ["Anna", "Caçadora", "Mama Huntress"] },
+        { name: "Cannibal", aliases: ["Bubba Sawyer", "Bubba", "Leatherface", "Cara de Couro", "Canibal", "LF"] },
+        { name: "Nightmare", aliases: ["Freddy Krueger", "Freddy", "Pesadelo", "Sandman"] },
+        { name: "Pig", aliases: ["Amanda Young", "Amanda", "Porco", "Porca", "Jigsaw", "Piggy"] },
+        { name: "Clown", aliases: ["Jeffrey Hawk", "Kenneth Chase", "Palhaço"] },
+        { name: "Spirit", aliases: ["Rin Yamaoka", "Rin", "Espírito"] },
+        { name: "Legion", aliases: ["Frank Morrison", "Frank", "Julie Kostenko", "Julie", "Susie Lavoie", "Susie", "Joey", "Legião"] },
+        { name: "Plague", aliases: ["Adiris", "Praga", "Vommy Mommy"] },
+        { name: "Ghost Face", aliases: ["Danny Johnson", "Danny", "Ghostface", "GF", "Cara Fantasma"] },
+        { name: "Demogorgon", aliases: ["Demo", "Demogorgão", "Monster", "Beast", "Stranger Things"] },
+        { name: "Oni", aliases: ["Kazan Yamaoka", "Kazan"] },
+        { name: "Deathslinger", aliases: ["Caleb Quinn", "Caleb", "Slinger", "Cowboy", "Pistoleiro"] },
+        { name: "Pyramid Head", aliases: ["Executioner", "PH", "Cabeça de Pirâmide", "Red Pyramid Thing", "Piramide", "Carrasco"] },
+        { name: "Blight", aliases: ["Talbot Grimes", "Talbot", "Ferrugem", "Praga"] },
+        { name: "Twins", aliases: ["Charlotte Deshayes", "Charlotte", "Victor Deshayes", "Victor", "Gêmeos", "Gêmeas"] },
+        { name: "Trickster", aliases: ["Ji-Woon Hak", "Ji-Woon", "Jiwoon", "Trapaceiro", "Kpop"] },
+        { name: "Nemesis", aliases: ["Nemesis T-Type", "Nêmesis", "Tyrant", "Pursuer", "RE3"] },
+        { name: "Cenobite", aliases: ["Elliot Spencer", "Pinhead", "Hell Priest", "Lead Cenobite", "Cenobita", "Hellraiser"] },
+        { name: "Artist", aliases: ["Carmina Mora", "Carmina", "Artista", "Crow Lady"] },
+        { name: "Onryō", aliases: ["Sadako Yamamura", "Sadako", "Samara", "Ring Girl", "The Ring", "Onryo"] },
+        { name: "Dredge", aliases: ["Draga", "Monster", "Otto Stamper"] },
+        { name: "Mastermind", aliases: ["Albert Wesker", "Wesker", "Mentor", "RE5"] },
+        { name: "Knight", aliases: ["Tarhos Kovács", "Tarhos", "Cavaleiro", "Guards"] },
+        { name: "Skull Merchant", aliases: ["Adriana Imai", "Adriana", "Caveira", "Mercadora de Crânios", "SM", "Drone Lady"] },
+        { name: "Singularity", aliases: ["HUX-A7-13", "Hux", "Singularidade", "Robot", "Robô"] },
+        { name: "Xenomorph", aliases: ["Alien", "Xeno", "Xenomorfo", "Big Chap", "Perfect Organism"] },
+        { name: "Good Guy", aliases: ["Chucky", "Charles Lee Ray", "Charles", "Boneco", "Doll", "Child's Play", "Lakeshore Strangler"] },
+        { name: "Unknown", aliases: ["Desconhecido", "Hallowed Blight"] },
+        { name: "Lich", aliases: ["Vecna", "D&D", "Dungeons Dragons"] },
+        { name: "Dark Lord", aliases: ["Dracula", "Conde Drácula", "Lord Drácula", "Castlevania", "Vampire", "Vampiro"] },
+        { name: "Houndmaster", aliases: ["Portia Maye", "Portia", "Dog", "Hound", "Cachorro", "Caçador de Cães"] },
+        { name: "Ghoul", aliases: ["Diana Pierce", "Diana"] },
+        { name: "Animatronic", aliases: ["Fazbear", "Freddy Fazbear", "FNAF", "Five Nights at Freddys", "Animatrônico"] },
+        { name: "Krasue", aliases: ["Flying Head", "Thai Ghost", "Cabeça Voadora"] }
+      ]
+    };
+
+    // Generate flat character list with all aliases for LLM prompt
+    function generateCharacterListWithAliases(type) {
+      return WIKI_DATA[type].map(c => {
+        const allNames = [c.name, ...c.aliases];
+        return allNames.join('/');
+      });
+    }
+
     const DEFAULT_CHARACTERS = {
-      survivors: ["Dwight Fairfield", "Meg Thomas", "Claudette Morel", "Jake Park", "Nea Karlsson", "Laurie Strode", "Ace Visconti", "Bill Overbeck", "Feng Min", "David King", "Quentin Smith", "David Tapp", "Kate Denson", "Adam Francis", "Jeff Johansen", "Jane Romero", "Ash Williams", "Nancy Wheeler", "Steve Harrington", "Yui Kimura", "Zarina Kassir", "Cheryl Mason", "Felix Richter", "Élodie Rakoto", "Yun-Jin Lee", "Jill Valentine", "Leon S. Kennedy", "Mikaela Reid", "Jonah Vasquez", "Yoichi Asakawa", "Haddie Kaur", "Ada Wong", "Rebecca Chambers", "Vittorio Toscano", "Thalita Lyra", "Renato Lyra", "Gabriel Soma", "Nicolas Cage", "Ellen Ripley", "Alan Wake", "Sable Ward", "Aestri Yazar", "Lara Croft", "Trevor Belmont", "Sydney Prescott"],
-      killers: ["Trapper", "Wraith", "Hillbilly", "Nurse", "Shape", "Hag", "Doctor", "Huntress", "Cannibal", "Nightmare", "Pig", "Clown", "Spirit", "Legion", "Plague", "Ghost Face", "Demogorgon", "Oni", "Deathslinger", "Pyramid Head", "Blight", "Twins", "Trickster", "Nemesis", "Cenobite", "Artist", "Onryō", "Dredge", "Mastermind", "Knight", "Skull Merchant", "Singularity", "Xenomorph", "Good Guy", "Unknown", "Lich", "Dark Lord", "Houndmaster", "Dracula"]
+      survivors: generateCharacterListWithAliases('survivors'),
+      killers: generateCharacterListWithAliases('killers')
     };
 
     let ws = null;
@@ -690,6 +798,32 @@
     function resetCharacters() {
       localStorage.removeItem('dbd_characters');
       loadCharacters();
+    }
+
+    function syncFromWiki() {
+      const btn = document.getElementById('syncBtn');
+      const status = document.getElementById('syncStatus');
+      btn.disabled = true;
+      status.textContent = 'Sincronizando...';
+
+      setTimeout(() => {
+        document.getElementById('survivorList').value = generateCharacterListWithAliases('survivors').join('\n');
+        document.getElementById('killerList').value = generateCharacterListWithAliases('killers').join('\n');
+        saveCharacters();
+        updateCharacterCounts();
+
+        const now = new Date().toLocaleString('pt-BR');
+        localStorage.setItem('dbd_wiki_sync', now);
+        status.textContent = `Atualizado: ${now}`;
+        btn.disabled = false;
+      }, 300);
+    }
+
+    function loadWikiSyncStatus() {
+      const lastSync = localStorage.getItem('dbd_wiki_sync');
+      if (lastSync) {
+        document.getElementById('syncStatus').textContent = `Último: ${lastSync}`;
+      }
     }
 
     function updateCharacterCounts() {
@@ -947,6 +1081,7 @@
     loadChannel();
     loadProvider();
     loadDonations();
+    loadWikiSyncStatus();
     updateApiStatus();
 
     // Auto-connect
