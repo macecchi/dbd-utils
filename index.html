@@ -158,6 +158,12 @@
       resize: vertical;
       min-height: 80px;
       line-height: 1.4;
+      width: 100%;
+    }
+
+    .settings-col textarea {
+      min-height: 200px;
+      max-height: 400px;
     }
 
     .btn {
@@ -607,7 +613,6 @@
           </div>
         </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-ghost btn-small" onclick="resetCharacters()">Restaurar Padrão</button>
           <button class="btn btn-ghost btn-small" onclick="syncFromWiki()" id="syncBtn">Sincronizar Wiki</button>
           <span id="syncStatus" style="font-size: 0.7rem; color: var(--text-muted);"></span>
         </div>
@@ -618,6 +623,9 @@
       <div class="debug-label">Testar LLM</div>
       <div class="debug-row">
         <input type="text" id="debugInput" placeholder="Testar extração de personagem...">
+        <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap;">
+          <input type="checkbox" id="addToQueue"> Adicionar à fila
+        </label>
         <button class="btn btn-ghost" onclick="testExtraction()">Testar</button>
       </div>
       <div class="debug-result" id="debugResult"></div>
@@ -773,6 +781,7 @@
 
     let ws = null;
     let donations = [];
+    let chatMessages = [];
 
     // Character list functions
     function getCharacters() {
@@ -795,78 +804,89 @@
       updateCharacterCounts();
     }
 
-    function resetCharacters() {
-      localStorage.removeItem('dbd_characters');
-      loadCharacters();
-    }
-
     async function syncFromWiki() {
       const btn = document.getElementById('syncBtn');
       const status = document.getElementById('syncStatus');
+      const apiKey = localStorage.getItem('gemini_key');
+
+      if (!apiKey) {
+        status.textContent = 'Precisa API key Gemini';
+        return;
+      }
+
       btn.disabled = true;
-      status.textContent = 'Buscando wiki...';
 
       try {
-        const response = await fetch('https://deadbydaylight.wiki.gg/wiki/Characters');
-        if (!response.ok) throw new Error('Fetch failed');
-        const html = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
+        status.textContent = 'Buscando wiki...';
 
-        const survivors = [];
-        const killers = [];
+        // Fetch from MediaWiki API via CORS proxy (using category members)
+        const proxy = 'https://api.allorigins.win/raw?url=';
+        const killersUrl = 'https://deadbydaylight.wiki.gg/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Killers&cmlimit=500';
+        const survivorsUrl = 'https://deadbydaylight.wiki.gg/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Survivors&cmlimit=500';
 
-        // Parse survivor tables
-        doc.querySelectorAll('table').forEach(table => {
-          const headerRow = table.querySelector('tr');
-          if (!headerRow) return;
-          const headerText = headerRow.textContent.toLowerCase();
+        const [killersRes, survivorsRes] = await Promise.all([
+          fetch(proxy + encodeURIComponent(killersUrl)),
+          fetch(proxy + encodeURIComponent(survivorsUrl))
+        ]);
 
-          const isSurvivor = headerText.includes('survivor') || headerText.includes('sobrevivente');
-          const isKiller = headerText.includes('killer') || headerText.includes('assassino');
+        if (!killersRes.ok || !survivorsRes.ok) throw new Error('Failed to fetch wiki');
 
-          if (!isSurvivor && !isKiller) return;
+        const killersData = await killersRes.json();
+        const survivorsData = await survivorsRes.json();
 
-          table.querySelectorAll('tr').forEach(row => {
-            const link = row.querySelector('td a[href*="/wiki/"]');
-            if (!link) return;
-            const name = link.textContent.trim();
-            if (!name || name.length < 2) return;
+        const killerNames = killersData.query.categorymembers.map(c => c.title);
+        const survivorNames = survivorsData.query.categorymembers.map(c => c.title);
 
-            // Find aliases from WIKI_DATA
-            const wikiEntry = WIKI_DATA[isSurvivor ? 'survivors' : 'killers'].find(
-              c => c.name.toLowerCase() === name.toLowerCase()
-            );
+        status.textContent = 'Processando com LLM...';
 
-            if (wikiEntry) {
-              const allNames = [wikiEntry.name, ...wikiEntry.aliases];
-              (isSurvivor ? survivors : killers).push(allNames.join('/'));
-            } else {
-              (isSurvivor ? survivors : killers).push(name);
-            }
-          });
+        const prompt = `Here are Dead by Daylight character names from the wiki.
+
+For each character, add common nicknames, real names, and Portuguese translations:
+- Killers: include real name (e.g. Shape -> Michael Myers), common nicknames (Good Guy -> Chucky), pt-BR (Trapper -> Armadilheiro, Nurse -> Enfermeira)
+- Survivors: include nicknames if known
+
+Return ONLY valid JSON:
+{
+  "survivors": ["Dwight Fairfield/Dwight", "Meg Thomas/Meg", ...],
+  "killers": ["Trapper/Evan MacMillan/Armadilheiro", "Shape/Michael Myers/Myers", "Good Guy/Chucky/Charles Lee Ray", ...]
+}
+
+KILLERS: ${killerNames.join(', ')}
+
+SURVIVORS: ${survivorNames.join(', ')}`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 8000 }
+          })
         });
 
-        if (survivors.length === 0 && killers.length === 0) {
-          throw new Error('No characters found');
+        if (!response.ok) throw new Error('API error');
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('No JSON in response');
+
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (!parsed.survivors?.length || !parsed.killers?.length) {
+          throw new Error('Invalid response');
         }
 
-        document.getElementById('survivorList').value = survivors.join('\n');
-        document.getElementById('killerList').value = killers.join('\n');
+        document.getElementById('survivorList').value = parsed.survivors.join('\n');
+        document.getElementById('killerList').value = parsed.killers.join('\n');
         saveCharacters();
         updateCharacterCounts();
 
         const now = new Date().toLocaleString('pt-BR');
         localStorage.setItem('dbd_wiki_sync', now);
-        status.textContent = `${survivors.length} sobrev. + ${killers.length} killers`;
+        status.textContent = `${parsed.survivors.length} sobrev. + ${parsed.killers.length} killers`;
       } catch (e) {
         console.error('Wiki sync error:', e);
-        status.textContent = 'Erro - usando cache';
-        // Fallback to WIKI_DATA
-        document.getElementById('survivorList').value = generateCharacterListWithAliases('survivors').join('\n');
-        document.getElementById('killerList').value = generateCharacterListWithAliases('killers').join('\n');
-        saveCharacters();
-        updateCharacterCounts();
+        status.textContent = 'Erro: ' + e.message;
       } finally {
         btn.disabled = false;
       }
@@ -932,8 +952,37 @@
 
     function clearDonations() {
       donations = [];
+      chatMessages = [];
       saveDonations();
+      saveChatMessages();
       renderDonations();
+      renderChatMessages();
+    }
+
+    // Chat persistence
+    function loadChatMessages() {
+      const saved = localStorage.getItem('dbd_chat');
+      if (saved) {
+        chatMessages = JSON.parse(saved);
+        renderChatMessages();
+      }
+    }
+
+    function saveChatMessages() {
+      localStorage.setItem('dbd_chat', JSON.stringify(chatMessages.slice(-100)));
+    }
+
+    function renderChatMessages() {
+      const chatlog = document.getElementById('chatlog');
+      if (chatMessages.length === 0) {
+        chatlog.innerHTML = '<div class="empty">Mensagens do chat aparecerão aqui...</div>';
+        return;
+      }
+      chatlog.innerHTML = chatMessages.map(m => {
+        const userStyle = m.isLivepix ? '' : (m.color ? `style="color:${m.color}"` : '');
+        return `<div class="chat-msg${m.isLivepix ? ' livepix' : ''}"><span class="chat-user ${m.isLivepix ? 'livepix' : ''}" ${userStyle}>${m.user}:</span><span class="chat-text">${m.message}</span></div>`;
+      }).join('');
+      chatlog.scrollTop = chatlog.scrollHeight;
     }
 
     function parseAmount(amountStr) {
@@ -1002,11 +1051,13 @@
     function handleMessage(raw) {
       const userMatch = raw.match(/display-name=([^;]*)/i);
       const msgMatch = raw.match(/PRIVMSG #\w+ :(.+)$/);
+      const colorMatch = raw.match(/color=(#[0-9A-Fa-f]{6})/i);
       if (!userMatch || !msgMatch) return;
       const displayName = userMatch[1] || 'unknown';
       const username = displayName.toLowerCase();
       const message = msgMatch[1].trim();
-      addToChatLog(displayName, message, username === 'livepix');
+      const color = colorMatch ? colorMatch[1] : null;
+      addToChatLog(displayName, message, username === 'livepix', color);
       if (username !== 'livepix') return;
       const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
       if (!match) return;
@@ -1036,12 +1087,17 @@
       }
     }
 
-    function addToChatLog(user, message, isLivepix) {
+    function addToChatLog(user, message, isLivepix, color) {
+      chatMessages.push({ user, message, isLivepix, color });
+      if (chatMessages.length > 100) chatMessages.shift();
+      saveChatMessages();
+
       const chatlog = document.getElementById('chatlog');
       if (chatlog.querySelector('.empty')) chatlog.innerHTML = '';
       const div = document.createElement('div');
       div.className = `chat-msg${isLivepix ? ' livepix' : ''}`;
-      div.innerHTML = `<span class="chat-user ${isLivepix ? 'livepix' : 'regular'}">${user}:</span><span class="chat-text">${message}</span>`;
+      const userStyle = isLivepix ? '' : (color ? `style="color:${color}"` : '');
+      div.innerHTML = `<span class="chat-user ${isLivepix ? 'livepix' : ''}" ${userStyle}>${user}:</span><span class="chat-text">${message}</span>`;
       chatlog.appendChild(div);
       chatlog.scrollTop = chatlog.scrollHeight;
       while (chatlog.children.length > 100) chatlog.removeChild(chatlog.firstChild);
@@ -1093,11 +1149,30 @@
     async function testExtraction() {
       const input = document.getElementById('debugInput').value.trim();
       const resultDiv = document.getElementById('debugResult');
+      const addToQueue = document.getElementById('addToQueue').checked;
       if (!input) return;
       resultDiv.innerHTML = 'Identificando...';
       const result = await callLLM(input);
       const color = result.type === 'survivor' ? 'var(--blue)' : result.type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
       resultDiv.innerHTML = `<span style="color:${color}">${result.type}</span> → <strong>${result.character}</strong>`;
+
+      if (addToQueue && result.type !== 'unknown') {
+        const donation = {
+          id: Date.now(),
+          timestamp: new Date(),
+          donor: 'Teste',
+          amount: 'R$ 0,00',
+          amountVal: 0,
+          message: input,
+          character: result.character,
+          type: result.type,
+          belowThreshold: false
+        };
+        donations.unshift(donation);
+        saveDonations();
+        renderDonations();
+        document.getElementById('debugInput').value = '';
+      }
     }
 
     function updateStats() {
@@ -1134,6 +1209,7 @@
     loadChannel();
     loadProvider();
     loadDonations();
+    loadChatMessages();
     loadWikiSyncStatus();
     updateApiStatus();
 
