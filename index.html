@@ -318,21 +318,6 @@
     }
 
     /* Debug */
-    .debug {
-      padding: 1rem 1.25rem;
-      background: var(--bg-elevated);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-    }
-
-    .debug-label {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.6rem;
-    }
-
     .debug-row {
       display: flex;
       gap: 0.75rem;
@@ -593,44 +578,6 @@
       </div>
     </section>
 
-    <section class="settings" id="settingsPanel">
-      <div class="settings-header" onclick="toggleSettings()">
-        <span class="settings-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          Lista de Personagens
-        </span>
-        <span class="settings-toggle">▼</span>
-      </div>
-      <div class="settings-body">
-        <div class="settings-grid">
-          <div class="settings-col">
-            <h3>Sobreviventes <span class="char-count" id="survivorListCount">0</span></h3>
-            <textarea id="survivorList" rows="8" onchange="saveCharacters()"></textarea>
-          </div>
-          <div class="settings-col">
-            <h3>Assassinos <span class="char-count" id="killerListCount">0</span></h3>
-            <textarea id="killerList" rows="8" onchange="saveCharacters()"></textarea>
-          </div>
-        </div>
-        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-ghost btn-small" onclick="syncFromWiki()" id="syncBtn">Sincronizar Wiki</button>
-          <span id="syncStatus" style="font-size: 0.7rem; color: var(--text-muted);"></span>
-        </div>
-      </div>
-    </section>
-
-    <section class="debug">
-      <div class="debug-label">Testar LLM</div>
-      <div class="debug-row">
-        <input type="text" id="debugInput" placeholder="Testar extração de personagem...">
-        <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap;">
-          <input type="checkbox" id="addToQueue"> Adicionar à fila
-        </label>
-        <button class="btn btn-ghost" onclick="testExtraction()">Testar</button>
-      </div>
-      <div class="debug-result" id="debugResult"></div>
-    </section>
-
     <main class="grid">
       <div class="panel">
         <div class="panel-header">
@@ -660,6 +607,52 @@
         </div>
       </div>
     </main>
+
+    <section class="settings" id="settingsPanel">
+      <div class="settings-header" onclick="toggleSettings()">
+        <span class="settings-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          Lista de Personagens
+        </span>
+        <span class="settings-toggle">▼</span>
+      </div>
+      <div class="settings-body">
+        <div class="settings-grid">
+          <div class="settings-col">
+            <h3>Sobreviventes <span class="char-count" id="survivorListCount">0</span></h3>
+            <textarea id="survivorList" rows="8" onchange="saveCharacters()"></textarea>
+          </div>
+          <div class="settings-col">
+            <h3>Assassinos <span class="char-count" id="killerListCount">0</span></h3>
+            <textarea id="killerList" rows="8" onchange="saveCharacters()"></textarea>
+          </div>
+        </div>
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-ghost btn-small" onclick="syncFromWiki()" id="syncBtn">Sincronizar Wiki</button>
+          <span id="syncStatus" style="font-size: 0.7rem; color: var(--text-muted);"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings" id="debugPanel">
+      <div class="settings-header" onclick="toggleDebug()">
+        <span class="settings-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Testar LLM
+        </span>
+        <span class="settings-toggle">▼</span>
+      </div>
+      <div class="settings-body">
+        <div class="debug-row">
+          <input type="text" id="debugInput" placeholder="Testar extração de personagem...">
+          <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap;">
+            <input type="checkbox" id="addToQueue"> Adicionar à fila
+          </label>
+          <button class="btn btn-ghost" onclick="testExtraction()">Testar</button>
+        </div>
+        <div class="debug-result" id="debugResult"></div>
+      </div>
+    </section>
 
     <footer class="footer">
       <div>Monitorando doações do <strong style="color: var(--accent)">livepix</strong></div>
@@ -993,6 +986,10 @@ SURVIVORS: ${survivorNames.join(', ')}`;
 
     function toggleSettings() {
       document.getElementById('settingsPanel').classList.toggle('open');
+    }
+
+    function toggleDebug() {
+      document.getElementById('debugPanel').classList.toggle('open');
     }
 
     // API key functions
