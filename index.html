@@ -526,6 +526,153 @@
     }
 
     .footer a:hover { text-decoration: underline; }
+
+    /* Icon Button */
+    .btn-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      background: var(--bg-card);
+      color: var(--text);
+      border-color: var(--border-light);
+    }
+
+    .btn-icon:hover svg {
+      transform: rotate(45deg);
+    }
+
+    .btn-icon svg {
+      transition: transform 0.3s ease;
+    }
+
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 400px;
+      transform: scale(0.95) translateY(10px);
+      transition: transform 0.2s ease;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-overlay.open .modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-title svg {
+      color: var(--accent);
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+
+    .modal-close:hover {
+      background: var(--bg-card);
+      color: var(--text);
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .modal-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .modal-field label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .modal-field select,
+    .modal-field input {
+      width: 100%;
+    }
+
+    .api-key-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .api-key-row input {
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+    }
   </style>
 </head>
 <body>
@@ -560,21 +707,21 @@
         <label>Doação Mín.</label>
         <input type="number" id="minDonation" value="10" min="0" step="1" onchange="saveMinDonation()">
       </div>
-      <div class="field">
-        <label>Provedor LLM</label>
-        <select id="llmProvider" onchange="saveProvider(); updateApiStatus()">
-          <option value="gemini">Gemini</option>
-          <option value="anthropic">Anthropic</option>
-        </select>
-      </div>
-      <button class="btn btn-ghost" onclick="setApiKey()">API Key</button>
+      <button class="btn btn-icon" onclick="openSettingsModal()" title="Configurações LLM">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
       <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">Conectar</button>
       <div class="status-block">
         <div class="status-row">
           <span class="status-dot" id="statusDot"></span>
           <span id="status">Desconectado</span>
         </div>
-        <div class="api-status" id="apiStatus"></div>
+        <div class="status-row">
+          <span class="status-dot" id="llmStatusDot"></span>
+          <span id="llmStatusText">LLM</span>
+        </div>
       </div>
     </section>
 
@@ -629,6 +776,7 @@
         </div>
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <button class="btn btn-ghost btn-small" onclick="syncFromWiki()" id="syncBtn">Sincronizar Wiki</button>
+          <button class="btn btn-ghost btn-small" onclick="syncWithSearch()" id="searchSyncBtn">Buscar com Google</button>
           <span id="syncStatus" style="font-size: 0.7rem; color: var(--text-muted);"></span>
         </div>
       </div>
@@ -655,9 +803,56 @@
     </section>
 
     <footer class="footer">
-      <div>Monitorando doações do <strong style="color: var(--accent)">livepix</strong></div>
-      <div>API: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></div>
+      <div>Monitorando doações via <strong style="color: var(--accent)" id="footerBotName">livepix</strong></div>
     </footer>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" onclick="closeSettingsModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+          Configurações LLM
+        </div>
+        <button class="modal-close" onclick="closeSettingsModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label>Gemini API Key <a href="https://aistudio.google.com/apikey" target="_blank" style="color: var(--accent); font-weight: 400;">(obter)</a></label>
+          <div class="api-key-row">
+            <input type="password" id="apiKeyInput" placeholder="Cole sua API key aqui" onchange="saveApiKeyFromInput()">
+            <button class="btn btn-ghost" onclick="toggleApiKeyVisibility()" title="Mostrar/ocultar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eyeIcon">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="api-status" id="apiStatus" style="margin-top: 0.5rem;"></div>
+        </div>
+        <div class="modal-field">
+          <label>Modelo</label>
+          <input type="text" id="geminiModelInput" placeholder="gemini-2.5-flash" onchange="saveGeminiModel()">
+        </div>
+        <div class="modal-field">
+          <label>Bot de doações</label>
+          <input type="text" id="botNameInput" placeholder="livepix" onchange="saveBotName()">
+        </div>
+        <div class="modal-field">
+          <label>Wiki URL</label>
+          <input type="text" id="wikiUrlInput" placeholder="https://deadbydaylight.wiki.gg" onchange="saveWikiUrl()">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeSettingsModal()">Feito</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -814,8 +1009,9 @@
 
         // Fetch from MediaWiki API via CORS proxy (using category members)
         const proxy = 'https://api.allorigins.win/raw?url=';
-        const killersUrl = 'https://deadbydaylight.wiki.gg/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Killers&cmlimit=500';
-        const survivorsUrl = 'https://deadbydaylight.wiki.gg/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Survivors&cmlimit=500';
+        const wikiBase = getWikiUrl();
+        const killersUrl = `${wikiBase}/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Killers&cmlimit=500`;
+        const survivorsUrl = `${wikiBase}/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Survivors&cmlimit=500`;
 
         const [killersRes, survivorsRes] = await Promise.all([
           fetch(proxy + encodeURIComponent(killersUrl)),
@@ -848,7 +1044,7 @@ KILLERS: ${killerNames.join(', ')}
 
 SURVIVORS: ${survivorNames.join(', ')}`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -879,6 +1075,61 @@ SURVIVORS: ${survivorNames.join(', ')}`;
         status.textContent = `${parsed.survivors.length} sobrev. + ${parsed.killers.length} killers`;
       } catch (e) {
         console.error('Wiki sync error:', e);
+        status.textContent = 'Erro: ' + e.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function syncWithSearch() {
+      const btn = document.getElementById('searchSyncBtn');
+      const status = document.getElementById('syncStatus');
+      const apiKey = getApiKey();
+
+      if (!apiKey) {
+        status.textContent = 'Precisa API key Gemini';
+        return;
+      }
+
+      btn.disabled = true;
+      status.textContent = 'Buscando no Google...';
+
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `List all playable Dead by Daylight characters (survivors and killers) currently in the game.
+For each character include: official name, common nicknames, real name (if applicable), and Portuguese translations.
+
+Return ONLY valid JSON in this exact format:
+{"survivors":["Name/Alias1/Alias2",...], "killers":["Name/Alias1/Alias2",...]}` }] }],
+            tools: [{ googleSearch: {} }],
+            generationConfig: { maxOutputTokens: 8000 }
+          })
+        });
+
+        if (!response.ok) throw new Error('API error');
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('No JSON in response');
+
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (!parsed.survivors?.length || !parsed.killers?.length) {
+          throw new Error('Invalid response');
+        }
+
+        document.getElementById('survivorList').value = parsed.survivors.join('\n');
+        document.getElementById('killerList').value = parsed.killers.join('\n');
+        saveCharacters();
+        updateCharacterCounts();
+
+        const now = new Date().toLocaleString('pt-BR');
+        localStorage.setItem('dbd_wiki_sync', now);
+        status.textContent = `${parsed.survivors.length} sobrev. + ${parsed.killers.length} killers`;
+      } catch (e) {
+        console.error('Search sync error:', e);
         status.textContent = 'Erro: ' + e.message;
       } finally {
         btn.disabled = false;
@@ -919,15 +1170,6 @@ SURVIVORS: ${survivorNames.join(', ')}`;
 
     function saveChannel() {
       localStorage.setItem('dbd_channel', document.getElementById('channelInput').value.trim());
-    }
-
-    function loadProvider() {
-      const saved = localStorage.getItem('dbd_provider');
-      if (saved) document.getElementById('llmProvider').value = saved;
-    }
-
-    function saveProvider() {
-      localStorage.setItem('dbd_provider', document.getElementById('llmProvider').value);
     }
 
     // Donations persistence
@@ -993,21 +1235,134 @@ SURVIVORS: ${survivorNames.join(', ')}`;
     }
 
     // API key functions
-    function getProvider() { return document.getElementById('llmProvider').value; }
-    function getApiKey() { return localStorage.getItem(`${getProvider()}_key`); }
-
-    function setApiKey() {
-      const provider = getProvider();
-      const key = prompt(`Digite sua API key do ${provider === 'gemini' ? 'Gemini' : 'Anthropic'}:`);
-      if (key) { localStorage.setItem(`${provider}_key`, key); updateApiStatus(); }
-    }
+    function getApiKey() { return localStorage.getItem('gemini_key'); }
+    function getGeminiModel() { return localStorage.getItem('gemini_model') || 'gemini-2.5-flash'; }
 
     function updateApiStatus() {
       const key = getApiKey();
       const el = document.getElementById('apiStatus');
       el.className = key ? 'api-status set' : 'api-status missing';
-      el.textContent = key ? `✓ ${getProvider()} configurado` : `⚠ Sem API key`;
+      el.textContent = key ? '✓ Configurado' : '⚠ Sem API key';
     }
+
+    function updateApiKeyDisplay() {
+      document.getElementById('apiKeyInput').value = getApiKey() || '';
+    }
+
+    function saveApiKeyFromInput() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (key) {
+        localStorage.setItem('gemini_key', key);
+      } else {
+        localStorage.removeItem('gemini_key');
+      }
+      updateApiStatus();
+      checkLLMConnection();
+    }
+
+    function saveGeminiModel() {
+      const model = document.getElementById('geminiModelInput').value.trim() || 'gemini-2.5-flash';
+      localStorage.setItem('gemini_model', model);
+    }
+
+    function loadGeminiModel() {
+      document.getElementById('geminiModelInput').value = getGeminiModel();
+    }
+
+    function toggleApiKeyVisibility() {
+      const input = document.getElementById('apiKeyInput');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    // Bot name settings
+    function getBotName() {
+      return (localStorage.getItem('dbd_bot_name') || 'livepix').toLowerCase();
+    }
+
+    function saveBotName() {
+      const name = document.getElementById('botNameInput').value.trim() || 'livepix';
+      localStorage.setItem('dbd_bot_name', name);
+      document.getElementById('footerBotName').textContent = name;
+    }
+
+    function loadBotName() {
+      const name = localStorage.getItem('dbd_bot_name') || 'livepix';
+      document.getElementById('botNameInput').value = name;
+      document.getElementById('footerBotName').textContent = name;
+    }
+
+    // Wiki URL settings
+    function getWikiUrl() {
+      return localStorage.getItem('dbd_wiki_url') || 'https://deadbydaylight.wiki.gg';
+    }
+
+    function saveWikiUrl() {
+      const url = document.getElementById('wikiUrlInput').value.trim() || 'https://deadbydaylight.wiki.gg';
+      localStorage.setItem('dbd_wiki_url', url.replace(/\/$/, ''));
+    }
+
+    function loadWikiUrl() {
+      document.getElementById('wikiUrlInput').value = getWikiUrl();
+    }
+
+    // LLM connection status
+    function setLLMStatus(state, text) {
+      const dot = document.getElementById('llmStatusDot');
+      const label = document.getElementById('llmStatusText');
+      dot.className = 'status-dot ' + state;
+      label.textContent = text;
+    }
+
+    async function checkLLMConnection() {
+      const apiKey = getApiKey();
+      const model = getGeminiModel();
+
+      if (!apiKey) {
+        setLLMStatus('', 'Sem API key');
+        return;
+      }
+
+      setLLMStatus('connecting', 'Verificando...');
+
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Reply with just "ok"' }] }],
+            generationConfig: { maxOutputTokens: 5 }
+          })
+        });
+        if (response.ok) {
+          setLLMStatus('connected', model.split('-').slice(0, 2).join('-'));
+        } else {
+          setLLMStatus('error', 'Erro API');
+        }
+      } catch (e) {
+        setLLMStatus('error', 'Erro rede');
+      }
+    }
+
+    // Modal functions
+    function openSettingsModal() {
+      updateApiKeyDisplay();
+      loadGeminiModel();
+      loadBotName();
+      loadWikiUrl();
+      document.getElementById('settingsModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSettingsModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('settingsModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeSettingsModal();
+    });
 
     // Connection functions
     function setStatus(text, state = 'disconnected') {
@@ -1054,8 +1409,9 @@ SURVIVORS: ${survivorNames.join(', ')}`;
       const username = displayName.toLowerCase();
       const message = msgMatch[1].trim();
       const color = colorMatch ? colorMatch[1] : null;
-      addToChatLog(displayName, message, username === 'livepix', color);
-      if (username !== 'livepix') return;
+      const botName = getBotName();
+      addToChatLog(displayName, message, username === botName, color);
+      if (username !== botName) return;
       const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
       if (!match) return;
 
@@ -1101,44 +1457,54 @@ SURVIVORS: ${survivorNames.join(', ')}`;
     }
 
     async function callLLM(message) {
-      const provider = getProvider();
       const apiKey = getApiKey();
+      const model = getGeminiModel();
       if (!apiKey) return { character: 'Sem API key', type: 'unknown' };
 
       const chars = getCharacters();
-      const systemPrompt = `Identify Dead by Daylight characters from user messages.\nSurvivors: ${chars.survivors.join(', ')}\nKillers: ${chars.killers.join(', ')}\nReply ONLY with JSON: {"character":"Name","type":"survivor"|"killer"|"unknown"}\nIf no character mentioned or unclear, use {"character":"unknown","type":"unknown"}`;
-      const userPrompt = `Identify the character from: "${message}"`;
+      const prompt = `Identify Dead by Daylight character from this donation message.
+Survivors: ${chars.survivors.join(', ')}
+Killers: ${chars.killers.join(', ')}
+
+Message: "${message}"
+
+Return the official character name, type, confidence, and the exact text the user wrote.`;
 
       try {
-        let text = '';
-        if (provider === 'gemini') {
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }], generationConfig: { maxOutputTokens: 100 } })
-          });
-          if (!response.ok) return { character: 'Erro na API', type: 'unknown' };
-          const data = await response.json();
-          text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        } else {
-          const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-            body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 100, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] })
-          });
-          if (!response.ok) return { character: 'Erro na API', type: 'unknown' };
-          const data = await response.json();
-          text = data.content?.[0]?.text || '';
-        }
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) return JSON.parse(jsonMatch[0]);
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              maxOutputTokens: 100,
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'object',
+                properties: {
+                  character: { type: 'string', description: 'Official character name or "?" if unknown' },
+                  type: { type: 'string', enum: ['survivor', 'killer', 'none'] },
+                  confident: { type: 'boolean', description: 'True if exact match, false if guessing' },
+                  mention: { type: 'string', description: 'Exact text user wrote to refer to character' }
+                },
+                required: ['character', 'type', 'confident', 'mention']
+              }
+            }
+          })
+        });
+        if (!response.ok) return { character: 'Erro na API', type: 'unknown' };
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+        return JSON.parse(text);
       } catch (e) { return { character: 'Erro', type: 'unknown' }; }
-      return { character: 'Desconhecido', type: 'unknown' };
     }
 
     async function identifyCharacter(donation) {
       const result = await callLLM(donation.message);
-      donation.character = result.character || 'Desconhecido';
-      donation.type = result.type || 'unknown';
+      donation.character = result.character || '?';
+      donation.type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
+      donation.confident = result.confident ?? false;
+      donation.mention = result.mention || '';
       saveDonations();
       renderDonations();
     }
@@ -1150,10 +1516,12 @@ SURVIVORS: ${survivorNames.join(', ')}`;
       if (!input) return;
       resultDiv.innerHTML = 'Identificando...';
       const result = await callLLM(input);
-      const color = result.type === 'survivor' ? 'var(--blue)' : result.type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
-      resultDiv.innerHTML = `<span style="color:${color}">${result.type}</span> → <strong>${result.character}</strong>`;
+      const type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
+      const color = type === 'survivor' ? 'var(--blue)' : type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
+      const display = result.confident ? (result.character || '?') : `"${result.mention || '?'}"`;
+      resultDiv.innerHTML = `<span style="color:${color}">${type}</span> → <strong>${display}</strong>`;
 
-      if (addToQueue && result.type !== 'unknown') {
+      if (addToQueue && type !== 'unknown') {
         const donation = {
           id: Date.now(),
           timestamp: new Date(),
@@ -1162,7 +1530,9 @@ SURVIVORS: ${survivorNames.join(', ')}`;
           amountVal: 0,
           message: input,
           character: result.character,
-          type: result.type,
+          type: type,
+          confident: result.confident ?? false,
+          mention: result.mention || '',
           belowThreshold: false
         };
         donations.unshift(donation);
@@ -1193,8 +1563,8 @@ SURVIVORS: ${survivorNames.join(', ')}`;
           </div>
           <p class="message">${d.message}</p>
           <div class="character">
-            <span class="badge ${d.type}">${d.type === 'survivor' ? 'sobrevivente' : d.type === 'killer' ? 'assassino' : d.type === 'skipped' ? 'ignorado' : 'desconhecido'}</span>
-            <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''}">${d.character}</span>
+            <span class="badge ${d.type}">${d.type === 'survivor' ? 'sobrevivente' : d.type === 'killer' ? 'assassino' : d.type === 'skipped' ? 'ignorado' : '?'}</span>
+            <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''}">${d.character === 'Identificando...' ? d.character : (d.confident !== false ? d.character : `"${d.mention || '?'}"`)}</span>
           </div>
         </div>
       `).join('');
@@ -1204,11 +1574,14 @@ SURVIVORS: ${survivorNames.join(', ')}`;
     loadCharacters();
     loadMinDonation();
     loadChannel();
-    loadProvider();
+    loadGeminiModel();
+    loadBotName();
+    loadWikiUrl();
     loadDonations();
     loadChatMessages();
     loadWikiSyncStatus();
     updateApiStatus();
+    checkLLMConnection();
 
     // Auto-connect
     setTimeout(() => connect(), 500);
