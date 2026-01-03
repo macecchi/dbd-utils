@@ -774,11 +774,6 @@
             <textarea id="killerList" rows="8" onchange="saveCharacters()"></textarea>
           </div>
         </div>
-        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-ghost btn-small" onclick="syncFromWiki()" id="syncBtn">Sincronizar Wiki</button>
-          <button class="btn btn-ghost btn-small" onclick="syncWithSearch()" id="searchSyncBtn">Buscar com Google</button>
-          <span id="syncStatus" style="font-size: 0.7rem; color: var(--text-muted);"></span>
-        </div>
       </div>
     </section>
 
@@ -844,10 +839,6 @@
           <label>Bot de doações</label>
           <input type="text" id="botNameInput" placeholder="livepix" onchange="saveBotName()">
         </div>
-        <div class="modal-field">
-          <label>Wiki URL</label>
-          <input type="text" id="wikiUrlInput" placeholder="https://deadbydaylight.wiki.gg" onchange="saveWikiUrl()">
-        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" onclick="closeSettingsModal()">Feito</button>
@@ -856,7 +847,7 @@
   </div>
 
   <script>
-    // Wiki data with aliases, nicknames, real names, and pt-BR variations
+    // Character data with aliases, nicknames, real names, and pt-BR variations
     const WIKI_DATA = {
       survivors: [
         { name: "Dwight Fairfield", aliases: ["Dwight", "Pizza Dwight"] },
@@ -866,16 +857,16 @@
         { name: "Nea Karlsson", aliases: ["Nea"] },
         { name: "Laurie Strode", aliases: ["Laurie"] },
         { name: "Ace Visconti", aliases: ["Ace"] },
-        { name: "Bill Overbeck", aliases: ["Bill"] },
+        { name: "Bill Overbeck", aliases: ["Bill", "William Overbeck"] },
         { name: "Feng Min", aliases: ["Feng"] },
         { name: "David King", aliases: ["David"] },
         { name: "Quentin Smith", aliases: ["Quentin"] },
         { name: "David Tapp", aliases: ["Tapp", "Detective Tapp"] },
         { name: "Kate Denson", aliases: ["Kate"] },
         { name: "Adam Francis", aliases: ["Adam"] },
-        { name: "Jeff Johansen", aliases: ["Jeff"] },
+        { name: "Jeff Johansen", aliases: ["Jeff", "Jeffrey Johansen"] },
         { name: "Jane Romero", aliases: ["Jane"] },
-        { name: "Ash Williams", aliases: ["Ash"] },
+        { name: "Ash Williams", aliases: ["Ash", "Ashley Williams"] },
         { name: "Nancy Wheeler", aliases: ["Nancy"] },
         { name: "Steve Harrington", aliases: ["Steve"] },
         { name: "Yui Kimura", aliases: ["Yui"] },
@@ -896,11 +887,11 @@
         { name: "Thalita Lyra", aliases: ["Thalita"] },
         { name: "Renato Lyra", aliases: ["Renato"] },
         { name: "Gabriel Soma", aliases: ["Gabriel", "Soma"] },
-        { name: "Nicolas Cage", aliases: ["Cage", "Nic Cage"] },
+        { name: "Nicolas Cage", aliases: ["Cage", "Nic Cage", "Nick Cage"] },
         { name: "Ellen Ripley", aliases: ["Ripley", "Ellen"] },
         { name: "Alan Wake", aliases: ["Alan"] },
         { name: "Sable Ward", aliases: ["Sable"] },
-        { name: "Aestri Yazar", aliases: ["Aestri", "Baermar Uraz", "Baermar"] },
+        { name: "Aestri Yazar", aliases: ["Aestri", "Baermar Uraz", "Baermar", "The Troupe"] },
         { name: "Lara Croft", aliases: ["Lara", "Tomb Raider"] },
         { name: "Trevor Belmont", aliases: ["Trevor", "Belmont"] },
         { name: "Taurie Cain", aliases: ["Taurie"] },
@@ -910,47 +901,47 @@
         { name: "Vee Boonyasak", aliases: ["Vee"] }
       ],
       killers: [
-        { name: "Trapper", aliases: ["Evan MacMillan", "Evan", "Armadilheiro", "Trapaceiro"] },
-        { name: "Wraith", aliases: ["Philip Ojomo", "Philip", "Assombração", "Fantasma", "Bing Bong"] },
-        { name: "Hillbilly", aliases: ["Max Thompson Jr", "Max", "Billy", "Caipira"] },
-        { name: "Nurse", aliases: ["Sally Smithson", "Sally", "Enfermeira"] },
-        { name: "Shape", aliases: ["Michael Myers", "Michael", "Myers", "Boogeyman", "Stalker", "Forma"] },
-        { name: "Hag", aliases: ["Lisa Sherwood", "Lisa", "Bruxa"] },
-        { name: "Doctor", aliases: ["Herman Carter", "Herman", "Doutor", "Doc"] },
-        { name: "Huntress", aliases: ["Anna", "Caçadora", "Mama Huntress"] },
-        { name: "Cannibal", aliases: ["Bubba Sawyer", "Bubba", "Leatherface", "Cara de Couro", "Canibal", "LF"] },
-        { name: "Nightmare", aliases: ["Freddy Krueger", "Freddy", "Pesadelo", "Sandman"] },
-        { name: "Pig", aliases: ["Amanda Young", "Amanda", "Porco", "Porca", "Jigsaw", "Piggy"] },
-        { name: "Clown", aliases: ["Jeffrey Hawk", "Kenneth Chase", "Palhaço"] },
-        { name: "Spirit", aliases: ["Rin Yamaoka", "Rin", "Espírito"] },
-        { name: "Legion", aliases: ["Frank Morrison", "Frank", "Julie Kostenko", "Julie", "Susie Lavoie", "Susie", "Joey", "Legião"] },
-        { name: "Plague", aliases: ["Adiris", "Praga", "Vommy Mommy"] },
+        { name: "Trapper", aliases: ["Evan MacMillan", "Evan", "O Caçador", "Armadilheiro"] },
+        { name: "Wraith", aliases: ["Philip Ojomo", "Philip", "O Espectro", "Fantasma", "Bing Bong", "Ding Dong"] },
+        { name: "Hillbilly", aliases: ["Max Thompson Jr", "Max", "Billy", "O Caipira"] },
+        { name: "Nurse", aliases: ["Sally Smithson", "Sally", "A Enfermeira"] },
+        { name: "Shape", aliases: ["Michael Myers", "Michael", "Myers", "Boogeyman", "A Forma", "Daddy Myers"] },
+        { name: "Hag", aliases: ["Lisa Sherwood", "Lisa", "A Bruxa"] },
+        { name: "Doctor", aliases: ["Herman Carter", "Herman", "O Médico", "O Doutor", "Doc"] },
+        { name: "Huntress", aliases: ["Anna", "A Caçadora", "Mama Huntress"] },
+        { name: "Cannibal", aliases: ["Bubba Sawyer", "Bubba", "Leatherface", "Cara de Couro", "O Canibal", "LF"] },
+        { name: "Nightmare", aliases: ["Freddy Krueger", "Freddy", "O Pesadelo"] },
+        { name: "Pig", aliases: ["Amanda Young", "Amanda", "A Porca", "Jigsaw", "Piggy"] },
+        { name: "Clown", aliases: ["Jeffrey Hawk", "Kenneth Chase", "O Palhaço"] },
+        { name: "Spirit", aliases: ["Rin Yamaoka", "Rin", "O Espírito"] },
+        { name: "Legion", aliases: ["Frank Morrison", "Frank", "Julie Kostenko", "Julie", "Susie Lamothe", "Susie", "Joey", "A Legião"] },
+        { name: "Plague", aliases: ["Adiris", "A Praga", "Vommy Mommy"] },
         { name: "Ghost Face", aliases: ["Danny Johnson", "Danny", "Ghostface", "GF", "Cara Fantasma"] },
-        { name: "Demogorgon", aliases: ["Demo", "Demogorgão", "Monster", "Beast", "Stranger Things"] },
-        { name: "Oni", aliases: ["Kazan Yamaoka", "Kazan"] },
-        { name: "Deathslinger", aliases: ["Caleb Quinn", "Caleb", "Slinger", "Cowboy", "Pistoleiro"] },
-        { name: "Pyramid Head", aliases: ["Executioner", "PH", "Cabeça de Pirâmide", "Red Pyramid Thing", "Piramide", "Carrasco"] },
-        { name: "Blight", aliases: ["Talbot Grimes", "Talbot", "Ferrugem", "Praga"] },
-        { name: "Twins", aliases: ["Charlotte Deshayes", "Charlotte", "Victor Deshayes", "Victor", "Gêmeos", "Gêmeas"] },
-        { name: "Trickster", aliases: ["Ji-Woon Hak", "Ji-Woon", "Jiwoon", "Trapaceiro", "Kpop"] },
-        { name: "Nemesis", aliases: ["Nemesis T-Type", "Nêmesis", "Tyrant", "Pursuer", "RE3"] },
-        { name: "Cenobite", aliases: ["Elliot Spencer", "Pinhead", "Hell Priest", "Lead Cenobite", "Cenobita", "Hellraiser"] },
-        { name: "Artist", aliases: ["Carmina Mora", "Carmina", "Artista", "Crow Lady"] },
-        { name: "Onryō", aliases: ["Sadako Yamamura", "Sadako", "Samara", "Ring Girl", "The Ring", "Onryo"] },
-        { name: "Dredge", aliases: ["Draga", "Monster", "Otto Stamper"] },
-        { name: "Mastermind", aliases: ["Albert Wesker", "Wesker", "Mentor", "RE5"] },
-        { name: "Knight", aliases: ["Tarhos Kovács", "Tarhos", "Cavaleiro", "Guards"] },
-        { name: "Skull Merchant", aliases: ["Adriana Imai", "Adriana", "Caveira", "Mercadora de Crânios", "SM", "Drone Lady"] },
-        { name: "Singularity", aliases: ["HUX-A7-13", "Hux", "Singularidade", "Robot", "Robô"] },
-        { name: "Xenomorph", aliases: ["Alien", "Xeno", "Xenomorfo", "Big Chap", "Perfect Organism"] },
-        { name: "Good Guy", aliases: ["Chucky", "Charles Lee Ray", "Charles", "Boneco", "Doll", "Child's Play", "Lakeshore Strangler"] },
-        { name: "Unknown", aliases: ["Desconhecido", "Hallowed Blight"] },
-        { name: "Lich", aliases: ["Vecna", "D&D", "Dungeons Dragons"] },
-        { name: "Dark Lord", aliases: ["Dracula", "Conde Drácula", "Lord Drácula", "Castlevania", "Vampire", "Vampiro"] },
-        { name: "Houndmaster", aliases: ["Portia Maye", "Portia", "Dog", "Hound", "Cachorro", "Caçador de Cães"] },
-        { name: "Ghoul", aliases: ["Diana Pierce", "Diana"] },
-        { name: "Animatronic", aliases: ["Fazbear", "Freddy Fazbear", "FNAF", "Five Nights at Freddys", "Animatrônico"] },
-        { name: "Krasue", aliases: ["Flying Head", "Thai Ghost", "Cabeça Voadora"] }
+        { name: "Demogorgon", aliases: ["Demo", "O Demogorgon", "Demogorgão"] },
+        { name: "Oni", aliases: ["Kazan Yamaoka", "Kazan", "O Oni"] },
+        { name: "Deathslinger", aliases: ["Caleb Quinn", "Caleb", "Slinger", "O Pistoleiro"] },
+        { name: "Pyramid Head", aliases: ["Executioner", "PH", "Cabeça de Pirâmide", "O Carrasco", "Dorito Head"] },
+        { name: "Blight", aliases: ["Talbot Grimes", "Talbot", "A Ferrugem"] },
+        { name: "Twins", aliases: ["Charlotte Deshayes", "Charlotte", "Victor Deshayes", "Victor", "Os Gêmeos"] },
+        { name: "Trickster", aliases: ["Ji-Woon Hak", "Ji-Woon", "Jiwoon", "O Trapaceiro", "Kpop"] },
+        { name: "Nemesis", aliases: ["Nemesis T-Type", "Nêmesis", "Nemmy", "O Nêmesis"] },
+        { name: "Cenobite", aliases: ["Elliot Spencer", "Pinhead", "Hell Priest", "O Cenobita"] },
+        { name: "Artist", aliases: ["Carmina Mora", "Carmina", "A Artista"] },
+        { name: "Onryō", aliases: ["Sadako Yamamura", "Sadako", "Samara", "Ring Girl", "A Onryō", "Onryo"] },
+        { name: "Dredge", aliases: ["O Dredge", "A Draga", "Otto Stamper"] },
+        { name: "Mastermind", aliases: ["Albert Wesker", "Wesker", "O Mentor"] },
+        { name: "Knight", aliases: ["Tarhos Kovács", "Tarhos", "O Cavaleiro"] },
+        { name: "Skull Merchant", aliases: ["Adriana Imai", "Adriana", "A Mercadora de Crânios", "SM"] },
+        { name: "Singularity", aliases: ["HUX-A7-13", "Hux", "A Singularidade"] },
+        { name: "Xenomorph", aliases: ["Alien", "Xeno", "O Xenomorfo"] },
+        { name: "Good Guy", aliases: ["Chucky", "Charles Lee Ray", "Charles", "O Boneco"] },
+        { name: "Unknown", aliases: ["O Desconhecido"] },
+        { name: "Lich", aliases: ["Vecna", "O Lich"] },
+        { name: "Dark Lord", aliases: ["Dracula", "Drácula", "O Lorde das Trevas", "Vampiro"] },
+        { name: "Houndmaster", aliases: ["Portia Maye", "Portia", "A Mestra dos Cães"] },
+        { name: "Ghoul", aliases: ["Diana Pierce", "Diana", "A Carniçal"] },
+        { name: "Animatronic", aliases: ["Freddy Fazbear", "FNAF", "O Animatrônico", "William Afton"] },
+        { name: "Krasue", aliases: ["Burong Sukapatt", "A Krasue", "Cabeça Voadora"] }
       ]
     };
 
@@ -992,156 +983,6 @@
       updateCharacterCounts();
     }
 
-    async function syncFromWiki() {
-      const btn = document.getElementById('syncBtn');
-      const status = document.getElementById('syncStatus');
-      const apiKey = localStorage.getItem('gemini_key');
-
-      if (!apiKey) {
-        status.textContent = 'Precisa API key Gemini';
-        return;
-      }
-
-      btn.disabled = true;
-
-      try {
-        status.textContent = 'Buscando wiki...';
-
-        // Fetch from MediaWiki API via CORS proxy (using category members)
-        const proxy = 'https://api.allorigins.win/raw?url=';
-        const wikiBase = getWikiUrl();
-        const killersUrl = `${wikiBase}/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Killers&cmlimit=500`;
-        const survivorsUrl = `${wikiBase}/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Survivors&cmlimit=500`;
-
-        const [killersRes, survivorsRes] = await Promise.all([
-          fetch(proxy + encodeURIComponent(killersUrl)),
-          fetch(proxy + encodeURIComponent(survivorsUrl))
-        ]);
-
-        if (!killersRes.ok || !survivorsRes.ok) throw new Error('Failed to fetch wiki');
-
-        const killersData = await killersRes.json();
-        const survivorsData = await survivorsRes.json();
-
-        const killerNames = killersData.query.categorymembers.map(c => c.title);
-        const survivorNames = survivorsData.query.categorymembers.map(c => c.title);
-
-        status.textContent = 'Processando com LLM...';
-
-        const prompt = `Here are Dead by Daylight character names from the wiki.
-
-For each character, add common nicknames, real names, and Portuguese translations:
-- Killers: include real name (e.g. Shape -> Michael Myers), common nicknames (Good Guy -> Chucky), pt-BR (Trapper -> Armadilheiro, Nurse -> Enfermeira)
-- Survivors: include nicknames if known
-
-Return ONLY valid JSON:
-{
-  "survivors": ["Dwight Fairfield/Dwight", "Meg Thomas/Meg", ...],
-  "killers": ["Trapper/Evan MacMillan/Armadilheiro", "Shape/Michael Myers/Myers", "Good Guy/Chucky/Charles Lee Ray", ...]
-}
-
-KILLERS: ${killerNames.join(', ')}
-
-SURVIVORS: ${survivorNames.join(', ')}`;
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 8000 }
-          })
-        });
-
-        if (!response.ok) throw new Error('API error');
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('No JSON in response');
-
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (!parsed.survivors?.length || !parsed.killers?.length) {
-          throw new Error('Invalid response');
-        }
-
-        document.getElementById('survivorList').value = parsed.survivors.join('\n');
-        document.getElementById('killerList').value = parsed.killers.join('\n');
-        saveCharacters();
-        updateCharacterCounts();
-
-        const now = new Date().toLocaleString('pt-BR');
-        localStorage.setItem('dbd_wiki_sync', now);
-        status.textContent = `${parsed.survivors.length} sobrev. + ${parsed.killers.length} killers`;
-      } catch (e) {
-        console.error('Wiki sync error:', e);
-        status.textContent = 'Erro: ' + e.message;
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    async function syncWithSearch() {
-      const btn = document.getElementById('searchSyncBtn');
-      const status = document.getElementById('syncStatus');
-      const apiKey = getApiKey();
-
-      if (!apiKey) {
-        status.textContent = 'Precisa API key Gemini';
-        return;
-      }
-
-      btn.disabled = true;
-      status.textContent = 'Buscando no Google...';
-
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `List all playable Dead by Daylight characters (survivors and killers) currently in the game.
-For each character include: official name, common nicknames, real name (if applicable), and Portuguese translations.
-
-Return ONLY valid JSON in this exact format:
-{"survivors":["Name/Alias1/Alias2",...], "killers":["Name/Alias1/Alias2",...]}` }] }],
-            tools: [{ googleSearch: {} }],
-            generationConfig: { maxOutputTokens: 8000 }
-          })
-        });
-
-        if (!response.ok) throw new Error('API error');
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('No JSON in response');
-
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (!parsed.survivors?.length || !parsed.killers?.length) {
-          throw new Error('Invalid response');
-        }
-
-        document.getElementById('survivorList').value = parsed.survivors.join('\n');
-        document.getElementById('killerList').value = parsed.killers.join('\n');
-        saveCharacters();
-        updateCharacterCounts();
-
-        const now = new Date().toLocaleString('pt-BR');
-        localStorage.setItem('dbd_wiki_sync', now);
-        status.textContent = `${parsed.survivors.length} sobrev. + ${parsed.killers.length} killers`;
-      } catch (e) {
-        console.error('Search sync error:', e);
-        status.textContent = 'Erro: ' + e.message;
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    function loadWikiSyncStatus() {
-      const lastSync = localStorage.getItem('dbd_wiki_sync');
-      if (lastSync) {
-        document.getElementById('syncStatus').textContent = `Último: ${lastSync}`;
-      }
-    }
 
     function updateCharacterCounts() {
       const chars = getCharacters();
@@ -1291,20 +1132,6 @@ Return ONLY valid JSON in this exact format:
       document.getElementById('footerBotName').textContent = name;
     }
 
-    // Wiki URL settings
-    function getWikiUrl() {
-      return localStorage.getItem('dbd_wiki_url') || 'https://deadbydaylight.wiki.gg';
-    }
-
-    function saveWikiUrl() {
-      const url = document.getElementById('wikiUrlInput').value.trim() || 'https://deadbydaylight.wiki.gg';
-      localStorage.setItem('dbd_wiki_url', url.replace(/\/$/, ''));
-    }
-
-    function loadWikiUrl() {
-      document.getElementById('wikiUrlInput').value = getWikiUrl();
-    }
-
     // LLM connection status
     function setLLMStatus(state, text) {
       const dot = document.getElementById('llmStatusDot');
@@ -1325,9 +1152,9 @@ Return ONLY valid JSON in this exact format:
       setLLMStatus('connecting', 'Verificando...');
 
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify({
             contents: [{ parts: [{ text: 'Reply with just "ok"' }] }],
             generationConfig: { maxOutputTokens: 5 }
@@ -1348,7 +1175,6 @@ Return ONLY valid JSON in this exact format:
       updateApiKeyDisplay();
       loadGeminiModel();
       loadBotName();
-      loadWikiUrl();
       document.getElementById('settingsModal').classList.add('open');
       document.body.style.overflow = 'hidden';
     }
@@ -1471,9 +1297,9 @@ Message: "${message}"
 Return the official character name, type, confidence, and the exact text the user wrote.`;
 
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
@@ -1576,10 +1402,8 @@ Return the official character name, type, confidence, and the exact text the use
     loadChannel();
     loadGeminiModel();
     loadBotName();
-    loadWikiUrl();
     loadDonations();
     loadChatMessages();
-    loadWikiSyncStatus();
     updateApiStatus();
     checkLLMConnection();
 
