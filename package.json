@@ -1,5 +1,5 @@
 {
-  "name": "mandy-utils",
+  "name": "dbd-utils",
   "type": "module",
   "scripts": {
     "dev": "vite"

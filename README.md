@@ -1,4 +1,4 @@
-# mandy-utils
+# dbd-utils
 
 Single-file web app that tracks Dead by Daylight character requests from Twitch donations.
 
