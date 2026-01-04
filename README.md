@@ -5,8 +5,8 @@ Single-file web app that tracks Dead by Daylight character requests from Twitch 
 ## Features
 
 - Connects to Twitch IRC via WebSocket
-- Parses livepix donation messages
-- Uses LLMs (Gemini or Anthropic) to identify DBD characters
+- Parses donation messages: `{donor} doou {amount}: {message}`
+- Uses LLM to identify DBD characters
 
 ## Usage
 
