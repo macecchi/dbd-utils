@@ -486,6 +486,21 @@
       opacity: 0.5;
     }
 
+    .donation.done {
+      opacity: 0.4;
+    }
+
+    .donation.done .message {
+      text-decoration: line-through;
+    }
+
+    .done-check {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
     .donation-top {
       display: flex;
       justify-content: space-between;
@@ -1158,6 +1173,15 @@
       renderChatMessages();
     }
 
+    function toggleDone(id) {
+      const donation = donations.find(d => d.id === id);
+      if (donation) {
+        donation.done = !donation.done;
+        saveDonations();
+        renderDonations();
+      }
+    }
+
     // Chat persistence
     function loadChatMessages() {
       const saved = localStorage.getItem('dbd_chat');
@@ -1511,10 +1535,14 @@ Return the official character name, type, confidence, and the exact text the use
             <span class="badge ${d.type}">${d.type === 'survivor' ? 'sobrevivente' : d.type === 'killer' ? 'assassino' : d.type === 'skipped' ? 'ignorado' : '?'}</span>
             <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''}">${d.character === 'Identificando...' ? d.character : (d.confident !== false ? d.character : `"${d.mention || '?'}"`)}</span>
           </div>` : '';
+        const doneClass = d.done ? ' done' : '';
         return `
-        <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}">
+        <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}${doneClass}">
           <div class="donation-top">
-            <div class="donor"><span class="donor-name">${d.donor}</span><span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
+            <div class="donor">
+              <input type="checkbox" class="done-check" ${d.done ? 'checked' : ''} onchange="toggleDone(${d.id})" title="Marcar como feito">
+              <span class="donor-name">${d.donor}</span><span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span>
+            </div>
             <span class="time">${new Date(d.timestamp).toLocaleTimeString()}</span>
           </div>
           <p class="message">${d.message}</p>${charHtml}
