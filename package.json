@@ -1,0 +1,11 @@
+{
+  "name": "mandy-utils",
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "vite": "^7.3.0"
+  }
+}
