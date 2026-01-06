@@ -1,5 +1,5 @@
 function generateCharacterListWithAliases(type) {
-  return WIKI_DATA[type].map(c => {
+  return CHARACTERS[type].map(c => {
     const allNames = [c.name, ...c.aliases];
     return allNames.join('/');
   });
@@ -8,7 +8,7 @@ function generateCharacterListWithAliases(type) {
 function getKillerPortrait(charName) {
   if (!charName) return null;
   const lower = charName.toLowerCase();
-  const killer = WIKI_DATA.killers.find(k =>
+  const killer = CHARACTERS.killers.find(k =>
     k.name.toLowerCase() === lower ||
     k.aliases.some(a => a.toLowerCase() === lower)
   );
@@ -97,8 +97,8 @@ function updateDonationElement(id) {
   const isCollapsed = donation.done || donation.belowThreshold;
   el.classList.toggle('collapsed', isCollapsed);
 
-  const showChar = donation.type === 'survivor' || donation.type === 'killer' || donation.type === 'skipped' || donation.character === 'Identificando...';
-  const charName = donation.character === 'Identificando...' ? donation.character : (donation.confident !== false ? donation.character : `"${donation.mention || '?'}"`);
+  const showChar = donation.type === 'survivor' || donation.type === 'killer' || donation.character === 'Identificando...';
+  const charDisplay = donation.character || donation.type;
 
   const donorEl = el.querySelector('.donor');
   let charInline = donorEl.querySelector('.char-name-inline');
@@ -108,7 +108,7 @@ function updateDonationElement(id) {
     if (!charInline && showChar) {
       charInline = document.createElement('span');
       charInline.className = 'char-name-inline';
-      charInline.textContent = charName;
+      charInline.textContent = charDisplay;
       donorEl.insertBefore(charInline, donorEl.querySelector('.amount'));
     }
     if (!msgPreview) {
@@ -439,13 +439,20 @@ async function callLLM(message, attempt = 0, modelIdx = currentModelIndex, start
   if (!apiKey) return { character: 'Sem API key', type: 'unknown' };
 
   const chars = getCharacters();
-  const prompt = `Identify Dead by Daylight character from this donation message.
-Survivors: ${chars.survivors.join(', ')}
-Killers: ${chars.killers.join(', ')}
+  const prompt = `Identify the Dead by Daylight character from the user message.
+<survivors>
+${chars.survivors.join('\n')}
+</survivors>
 
-Message: "${message}"
+<killers>
+${chars.killers.join('\n')}
+</killers>
 
-Return the official character name, type, confidence, and the exact text the user wrote.`;
+<user_message>
+${message}
+</user_message>
+
+Return ONLY the JSON with the character name and type. If you can identify the exact character, return its name. If you can only tell if it's a survivor or killer but not which one, return empty character. If no character is mentioned, return type "none".`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -459,12 +466,10 @@ Return the official character name, type, confidence, and the exact text the use
           responseSchema: {
             type: 'object',
             properties: {
-              character: { type: 'string', description: 'Official character name or "?" if unknown' },
-              type: { type: 'string', enum: ['survivor', 'killer', 'none'] },
-              confident: { type: 'boolean', description: 'True if exact match, false if guessing' },
-              mention: { type: 'string', description: 'Exact text user wrote to refer to character' }
+              character: { type: 'string', description: 'Exact character name or empty if unknown' },
+              type: { type: 'string', enum: ['survivor', 'killer', 'none'] }
             },
-            required: ['character', 'type', 'confident', 'mention']
+            required: ['character', 'type']
           }
         }
       })
@@ -510,10 +515,8 @@ Return the official character name, type, confidence, and the exact text the use
 
 async function identifyCharacter(donation) {
   const result = await callLLM(donation.message);
-  donation.character = result.character || '?';
+  donation.character = result.character || '';
   donation.type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
-  donation.confident = result.confident ?? false;
-  donation.mention = result.mention || '';
   saveDonations();
   renderDonations();
 }
@@ -528,7 +531,7 @@ async function testExtraction() {
   const result = await callLLM(input);
   const type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
   const color = type === 'survivor' ? 'var(--blue)' : type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
-  const display = result.confident ? (result.character || '?') : `"${result.mention || '?'}"`;
+  const display = result.character || type;
   resultDiv.innerHTML = `<span style="color:${color}">${type}</span> → <strong>${display}</strong>`;
 
   if (addToQueue && type !== 'unknown') {
@@ -539,10 +542,8 @@ async function testExtraction() {
       amount: 'R$ 0,00',
       amountVal: 0,
       message: input,
-      character: result.character,
+      character: result.character || '',
       type: type,
-      confident: result.confident ?? false,
-      mention: result.mention || '',
       belowThreshold: false
     };
     donations.unshift(donation);
@@ -566,18 +567,18 @@ function renderDonations() {
   updateStats();
   if (donations.length === 0) { container.innerHTML = '<div class="empty">Aguardando doações...</div>'; return; }
   container.innerHTML = donations.map(d => {
-    const showChar = d.type === 'survivor' || d.type === 'killer' || d.type === 'skipped' || d.character === 'Identificando...';
-    const portrait = d.type === 'killer' && d.confident !== false ? getKillerPortrait(d.character) : null;
+    const showChar = d.type === 'survivor' || d.type === 'killer' || d.character === 'Identificando...';
+    const portrait = d.type === 'killer' && d.character && getKillerPortrait(d.character);
     const portraitHtml = portrait ? `<div class="char-portrait-wrapper"><div class="char-portrait-bg killer"></div><img src="${portrait}" alt="" class="char-portrait"></div>` : '';
-    const charName = d.character === 'Identificando...' ? d.character : (d.confident !== false ? d.character : `"${d.mention || '?'}"`);
+    const charDisplay = d.character || d.type;
     const charHtml = showChar ? `
       <div class="character">
         ${portraitHtml}
-        <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''}">${charName}</span>
+        <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''} ${!d.character && d.type !== 'unknown' ? 'type-only' : ''}">${charDisplay}</span>
       </div>` : '';
     const isCollapsed = d.done || d.belowThreshold;
     const collapsedClass = isCollapsed ? ' collapsed' : '';
-    const collapsedCharHtml = isCollapsed && showChar ? `<span class="char-name-inline">${charName}</span>` : '';
+    const collapsedCharHtml = isCollapsed && showChar ? `<span class="char-name-inline">${charDisplay}</span>` : '';
     const msgPreview = isCollapsed ? `<span class="msg-preview">${d.message.slice(0, 40)}${d.message.length > 40 ? '…' : ''}</span>` : '';
     const actionBtns = `<div class="row-actions">
       <button class="row-btn ${d.done ? 'active' : ''}" onclick="event.stopPropagation(); toggleDone(${d.id})" title="${d.done ? 'Desmarcar' : 'Marcar feito'}">

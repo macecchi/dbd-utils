@@ -172,7 +172,6 @@ textarea {
   width: 100%;
 }
 
-
 .btn {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.85rem;
@@ -400,6 +399,12 @@ textarea {
   gap: 0.5rem;
 }
 
+.panel-title svg {
+  width: 18px;
+  height: 18px;
+  color: #fff;
+}
+
 .panel-title img {
   width: 30px;
 }
@@ -612,6 +617,11 @@ textarea {
 .char-name.identifying {
   color: var(--text-muted);
   font-style: italic;
+}
+
+.char-name.type-only {
+  color: var(--text-secondary);
+  text-transform: capitalize;
 }
 
 .char-portrait-wrapper {
