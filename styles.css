@@ -358,6 +358,14 @@ textarea {
   display: none;
 }
 
+.chat-hidden-only {
+  display: none;
+}
+
+.grid.chat-hidden .chat-hidden-only {
+  display: inline-flex;
+}
+
 @media (max-width: 800px) {
   .grid {
     grid-template-columns: 1fr;
@@ -487,6 +495,7 @@ textarea {
 .char-name-inline {
   font-size: 0.8rem;
   color: var(--text-secondary);
+  text-transform: capitalize;
 }
 
 .msg-preview {
@@ -503,6 +512,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .row-actions {
@@ -555,12 +565,16 @@ textarea {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.4rem;
+  gap: 0.5rem;
 }
 
 .donor {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .donor-name {
@@ -575,6 +589,7 @@ textarea {
   padding: 0.15rem 0.4rem;
   background: rgba(34, 197, 94, 0.1);
   border-radius: 4px;
+  white-space: nowrap;
 }
 
 .amount.below {
@@ -586,6 +601,7 @@ textarea {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.7rem;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .message {

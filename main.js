@@ -594,7 +594,7 @@ function renderDonations() {
         <div class="donor"><span class="donor-name">${d.donor}</span>${collapsedCharHtml}${msgPreview}<span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
         <div class="time-actions">
           ${actionBtns}
-          <span class="time">${new Date(d.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${new Date(d.timestamp).toLocaleTimeString()}</span>
+          <span class="time">${new Date(d.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${new Date(d.timestamp).toLocaleTimeString('pt-BR')}</span>
         </div>
       </div>
       <p class="message">${d.message}</p>${charHtml}
@@ -758,9 +758,7 @@ updateLLMStatus();
 
 function toggleChat() {
   const grid = document.querySelector('.grid');
-  const btn = document.getElementById('toggleChatBtn');
   const hidden = grid.classList.toggle('chat-hidden');
-  btn.textContent = hidden ? 'Mostrar chat' : 'Esconder chat';
   localStorage.setItem('dbd_chat_hidden', hidden);
 }
 
@@ -768,7 +766,6 @@ function loadChatVisibility() {
   const hidden = localStorage.getItem('dbd_chat_hidden') !== 'false';
   if (hidden) {
     document.querySelector('.grid').classList.add('chat-hidden');
-    document.getElementById('toggleChatBtn').textContent = 'Mostrar chat';
   }
 }
 
