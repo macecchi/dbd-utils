@@ -171,10 +171,6 @@ textarea {
   width: 100%;
 }
 
-.settings-col textarea {
-  min-height: 200px;
-  max-height: 400px;
-}
 
 .btn {
   font-family: 'DM Sans', sans-serif;
@@ -323,32 +319,6 @@ textarea {
   display: block;
 }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-@media (max-width: 700px) {
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.settings-col h3 {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.char-count {
-  font-weight: 400;
-  color: var(--text-muted);
-}
 
 /* Debug */
 .debug-row {
@@ -373,6 +343,14 @@ textarea {
   display: grid;
   grid-template-columns: 3fr 2fr;
   gap: 1.5rem;
+}
+
+.grid.chat-hidden {
+  grid-template-columns: 1fr;
+}
+
+.grid.chat-hidden .panel:last-child {
+  display: none;
 }
 
 @media (max-width: 800px) {
@@ -476,10 +454,21 @@ textarea {
 
 .donation.done {
   opacity: 0.4;
+  padding: 0.5rem 1.25rem;
 }
 
-.donation.done .message {
-  text-decoration: line-through;
+.donation.done .donation-top {
+  margin-bottom: 0;
+}
+
+.donation.done .message,
+.donation.done .character {
+  display: none;
+}
+
+.char-name-inline {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
 

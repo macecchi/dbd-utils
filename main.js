@@ -25,30 +25,7 @@ let donations = [];
 let chatMessages = [];
 
 function getCharacters() {
-  const survivors = document.getElementById('survivorList').value.split('\n').map(s => s.trim()).filter(Boolean);
-  const killers = document.getElementById('killerList').value.split('\n').map(s => s.trim()).filter(Boolean);
-  return { survivors, killers };
-}
-
-function loadCharacters() {
-  const saved = localStorage.getItem('dbd_characters');
-  const chars = saved ? JSON.parse(saved) : DEFAULT_CHARACTERS;
-  document.getElementById('survivorList').value = chars.survivors.join('\n');
-  document.getElementById('killerList').value = chars.killers.join('\n');
-  updateCharacterCounts();
-}
-
-function saveCharacters() {
-  const chars = getCharacters();
-  localStorage.setItem('dbd_characters', JSON.stringify(chars));
-  updateCharacterCounts();
-}
-
-
-function updateCharacterCounts() {
-  const chars = getCharacters();
-  document.getElementById('survivorListCount').textContent = chars.survivors.length;
-  document.getElementById('killerListCount').textContent = chars.killers.length;
+  return DEFAULT_CHARACTERS;
 }
 
 function getMinDonation() {
@@ -85,7 +62,13 @@ function saveDonations() {
   localStorage.setItem('dbd_donations', JSON.stringify(donations));
 }
 
-function clearDonations() {
+function clearDoneDonations() {
+  donations = donations.filter(d => !d.done);
+  saveDonations();
+  renderDonations();
+}
+
+function clearAllDonations() {
   donations = [];
   chatMessages = [];
   saveDonations();
@@ -110,6 +93,8 @@ function showContextMenu(e, id) {
   e.preventDefault();
   e.stopPropagation();
   contextMenuTarget = id;
+  const donation = donations.find(d => d.id === id);
+  document.getElementById('contextMenuDoneText').textContent = donation?.done ? 'Marcar como não feito' : 'Marcar como feito';
   contextMenu.style.left = e.clientX + 'px';
   contextMenu.style.top = e.clientY + 'px';
   contextMenu.classList.add('show');
@@ -540,17 +525,19 @@ function renderDonations() {
     const showChar = d.type === 'survivor' || d.type === 'killer' || d.type === 'skipped' || d.character === 'Identificando...';
     const portrait = d.type === 'killer' && d.confident !== false ? getKillerPortrait(d.character) : null;
     const portraitHtml = portrait ? `<div class="char-portrait-wrapper"><div class="char-portrait-bg killer"></div><img src="${portrait}" alt="" class="char-portrait"></div>` : '';
+    const charName = d.character === 'Identificando...' ? d.character : (d.confident !== false ? d.character : `"${d.mention || '?'}"`);
     const charHtml = showChar ? `
       <div class="character">
         ${portraitHtml}
-        <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''}">${d.character === 'Identificando...' ? d.character : (d.confident !== false ? d.character : `"${d.mention || '?'}"`)}</span>
+        <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''}">${charName}</span>
       </div>` : '';
     const doneClass = d.done ? ' done' : '';
+    const doneCharHtml = d.done && showChar ? `<span class="char-name-inline">${charName}</span>` : '';
     return `
     <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}${doneClass}" onclick="toggleDone(${d.id})" oncontextmenu="showContextMenu(event, ${d.id})">
       <div class="donation-top">
-        <div class="donor"><span class="donor-name">${d.donor}</span><span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
-        <span class="time">${new Date(d.timestamp).toLocaleTimeString()}</span>
+        <div class="donor"><span class="donor-name">${d.donor}</span>${doneCharHtml}<span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
+        <span class="time">${new Date(d.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${new Date(d.timestamp).toLocaleTimeString()}</span>
       </div>
       <p class="message">${d.message}</p>${charHtml}
     </div>`;
@@ -702,7 +689,6 @@ async function loadAndReplayVOD() {
 }
 
 // Init
-loadCharacters();
 loadMinDonation();
 loadChannel();
 loadGeminiModels();
@@ -712,4 +698,21 @@ loadChatMessages();
 updateApiStatus();
 updateLLMStatus();
 
+function toggleChat() {
+  const grid = document.querySelector('.grid');
+  const btn = document.getElementById('toggleChatBtn');
+  const hidden = grid.classList.toggle('chat-hidden');
+  btn.textContent = hidden ? 'Mostrar chat' : 'Esconder chat';
+  localStorage.setItem('dbd_chat_hidden', hidden);
+}
+
+function loadChatVisibility() {
+  const hidden = localStorage.getItem('dbd_chat_hidden') !== 'false';
+  if (hidden) {
+    document.querySelector('.grid').classList.add('chat-hidden');
+    document.getElementById('toggleChatBtn').textContent = 'Mostrar chat';
+  }
+}
+
+loadChatVisibility();
 setTimeout(() => connect(), 500);

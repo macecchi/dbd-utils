@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DBD Tracker - Doações</title>
+  <title>DBD Tracker - Fila de pedidos</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -73,7 +73,8 @@
             Fila de pedidos
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <button class="btn btn-ghost btn-small" onclick="clearDonations()">Limpar</button>
+            <button class="btn btn-ghost btn-small" onclick="clearDoneDonations()">Limpar feitos</button>
+            <button class="btn btn-ghost btn-small" onclick="toggleChat()" id="toggleChatBtn">Esconder chat</button>
             <span class="panel-count" id="count">0</span>
           </div>
         </div>
@@ -96,32 +97,6 @@
         </div>
       </div>
     </main>
-
-    <section class="settings" id="settingsPanel">
-      <div class="settings-header" onclick="toggleSettings()">
-        <span class="settings-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3" />
-            <path
-              d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-          </svg>
-          Lista de Personagens
-        </span>
-        <span class="settings-toggle">▼</span>
-      </div>
-      <div class="settings-body">
-        <div class="settings-grid">
-          <div class="settings-col">
-            <h3>Survs <span class="char-count" id="survivorListCount">0</span></h3>
-            <textarea id="survivorList" rows="8" onchange="saveCharacters()"></textarea>
-          </div>
-          <div class="settings-col">
-            <h3>Killers <span class="char-count" id="killerListCount">0</span></h3>
-            <textarea id="killerList" rows="8" onchange="saveCharacters()"></textarea>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <section class="settings" id="debugPanel">
       <div class="settings-header" onclick="toggleDebug()">
@@ -146,6 +121,7 @@
         <div class="debug-result" id="debugResult"></div>
         <button class="btn btn-ghost" onclick="reidentifyAll()" style="margin-top: 0.5rem;">Re-identificar
           todos</button>
+        <button class="btn btn-ghost" onclick="clearAllDonations()" style="margin-top: 0.5rem;">Limpar tudo</button>
         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
           <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Replay VOD Chat</div>
           <div class="debug-row">
@@ -211,7 +187,7 @@
             style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;"></textarea>
         </div>
         <div class="modal-field">
-          <label>Bot de doações</label>
+          <label>Bot de donates</label>
           <input type="text" id="botNameInput" placeholder="livepix" onchange="saveBotName()">
         </div>
       </div>
@@ -224,11 +200,11 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <div class="context-menu" id="contextMenu">
-    <div class="context-menu-item" onclick="contextMenuAction('done')">
+    <div class="context-menu-item" id="contextMenuDone" onclick="contextMenuAction('done')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
-      Marcar como feito
+      <span id="contextMenuDoneText">Marcar como feito</span>
     </div>
     <div class="context-menu-item" onclick="contextMenuAction('rerun')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
