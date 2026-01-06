@@ -395,10 +395,8 @@ textarea {
   gap: 0.5rem;
 }
 
-.panel-title svg {
-  width: 18px;
-  height: 18px;
-  color: var(--accent);
+.panel-title img {
+  width: 30px;
 }
 
 .panel-count {
