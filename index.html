@@ -384,7 +384,7 @@
     /* Grid */
     .grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 3fr 2fr;
       gap: 1.5rem;
     }
 
@@ -447,7 +447,7 @@
     .panel-body {
       flex: 1;
       overflow-y: auto;
-      max-height: 420px;
+      max-height: 560px;
     }
 
     .panel-body::-webkit-scrollbar {
@@ -898,16 +898,16 @@
     <header class="header">
       <div class="brand">
         <div class="brand-icon">⛧</div>
-        <h1>DBD Tracker<span>Pedidos de Personagem</span></h1>
+        <h1>DBD Tracker<span>Fila de pedidos</span></h1>
       </div>
       <div class="stats">
         <div class="stat">
           <div class="stat-value" id="survivorCount">0</div>
-          <div class="stat-label">Sobreviventes</div>
+          <div class="stat-label">Survs</div>
         </div>
         <div class="stat">
           <div class="stat-value" id="killerCount">0</div>
-          <div class="stat-label">Assassinos</div>
+          <div class="stat-label">Killers</div>
         </div>
       </div>
     </header>
@@ -918,10 +918,10 @@
         <input type="text" id="channelInput" value="mandymess" placeholder="canal" onchange="saveChannel()">
       </div>
       <div class="field">
-        <label>Doação Mínima (R$)</label>
+        <label>Donate Mínimo (R$)</label>
         <input type="number" id="minDonation" value="10" min="0" step="1" onchange="saveMinDonation()">
       </div>
-      <button class="btn btn-icon" onclick="openSettingsModal()" title="Configurações LLM">
+      <button class="btn btn-icon" onclick="openSettingsModal()" title="Configurações IA">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3" />
@@ -950,7 +950,7 @@
               <path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h6" />
               <path d="M12 12l9-9M15 3h6v6" />
             </svg>
-            Pedidos de Personagem
+            Fila de pedidos
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <button class="btn btn-ghost btn-small" onclick="clearDonations()">Limpar</button>
@@ -992,11 +992,11 @@
       <div class="settings-body">
         <div class="settings-grid">
           <div class="settings-col">
-            <h3>Sobreviventes <span class="char-count" id="survivorListCount">0</span></h3>
+            <h3>Survs <span class="char-count" id="survivorListCount">0</span></h3>
             <textarea id="survivorList" rows="8" onchange="saveCharacters()"></textarea>
           </div>
           <div class="settings-col">
-            <h3>Assassinos <span class="char-count" id="killerListCount">0</span></h3>
+            <h3>Killers <span class="char-count" id="killerListCount">0</span></h3>
             <textarea id="killerList" rows="8" onchange="saveCharacters()"></textarea>
           </div>
         </div>
@@ -1010,7 +1010,7 @@
             <path d="M12 20h9" />
             <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
           </svg>
-          Testar LLM
+          Debug
         </span>
         <span class="settings-toggle">▼</span>
       </div>
@@ -1026,6 +1026,20 @@
         <div class="debug-result" id="debugResult"></div>
         <button class="btn btn-ghost" onclick="reidentifyAll()" style="margin-top: 0.5rem;">Re-identificar
           todos</button>
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Replay VOD Chat</div>
+          <div class="debug-row">
+            <input type="text" id="vodIdInput" placeholder="VOD ID (ex: 2345678901)">
+            <select id="replaySpeed" style="width: 100px;">
+              <option value="0">Instant</option>
+              <option value="100">10x</option>
+              <option value="200">5x</option>
+              <option value="1000">1x</option>
+            </select>
+            <button class="btn btn-ghost" onclick="loadAndReplayVOD()" id="vodReplayBtn">Replay</button>
+          </div>
+          <div class="debug-result" id="vodReplayStatus"></div>
+        </div>
       </div>
     </section>
 
@@ -1769,6 +1783,152 @@ Return the official character name, type, confidence, and the exact text the use
           <p class="message">${d.message}</p>${charHtml}
         </div>`;
       }).join('');
+    }
+
+    // VOD Chat Replay
+    const TWITCH_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
+    let vodReplayAbort = null;
+
+    async function fetchVODChat(vodId, offsetSeconds = 0) {
+      const gqlQuery = `query VideoCommentsByOffsetOrCursor($videoID: ID!, $contentOffsetSeconds: Int) {
+        video(id: $videoID) {
+          id
+          comments(contentOffsetSeconds: $contentOffsetSeconds, first: 100) {
+            edges {
+              node {
+                id
+                contentOffsetSeconds
+                commenter { id login displayName }
+                message { fragments { text } }
+              }
+            }
+          }
+        }
+      }`;
+      const query = {
+        query: gqlQuery,
+        variables: { videoID: vodId, contentOffsetSeconds: offsetSeconds }
+      };
+
+      const tryFetch = async (url, opts) => {
+        const res = await fetch(url, opts);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      };
+
+      const opts = {
+        method: 'POST',
+        headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' },
+        body: JSON.stringify(query)
+      };
+
+      try {
+        return await tryFetch('https://gql.twitch.tv/gql', opts);
+      } catch (e) {
+        // CORS fallback
+        const proxyOpts = { ...opts, headers: { 'Content-Type': 'application/json' } };
+        return await tryFetch('https://corsproxy.io/?url=' + encodeURIComponent('https://gql.twitch.tv/gql'), proxyOpts);
+      }
+    }
+
+    async function loadAndReplayVOD() {
+      const vodId = document.getElementById('vodIdInput').value.trim();
+      const speed = parseInt(document.getElementById('replaySpeed').value);
+      const statusEl = document.getElementById('vodReplayStatus');
+      const btn = document.getElementById('vodReplayBtn');
+
+      if (!vodId) return;
+
+      if (vodReplayAbort) {
+        vodReplayAbort = true;
+        btn.textContent = 'Replay';
+        statusEl.textContent = 'Cancelled';
+        return;
+      }
+
+      vodReplayAbort = false;
+      btn.textContent = 'Stop';
+      statusEl.textContent = 'Fetching...';
+
+      try {
+        const botName = getBotName();
+        let offsetSeconds = 0;
+        let totalMessages = 0;
+        let donateMessages = 0;
+        const seenIds = new Set();
+
+        while (!vodReplayAbort) {
+          const data = await fetchVODChat(vodId, offsetSeconds);
+          const comments = data?.data?.video?.comments;
+          if (!comments) {
+            statusEl.textContent = 'No chat found for this VOD';
+            break;
+          }
+
+          const edges = comments.edges || [];
+          if (edges.length === 0) break;
+
+          let newMessages = 0;
+          let lastOffset = offsetSeconds;
+
+          for (const edge of edges) {
+            if (vodReplayAbort) break;
+
+            const node = edge.node;
+            if (seenIds.has(node.id)) continue;
+            seenIds.add(node.id);
+            newMessages++;
+
+            const username = node.commenter?.login?.toLowerCase() || '';
+            const displayName = node.commenter?.displayName || username;
+            const message = node.message?.fragments?.map(f => f.text).join('') || '';
+            lastOffset = node.contentOffsetSeconds || lastOffset;
+
+            totalMessages++;
+            const isDonate = username === botName;
+            if (isDonate) donateMessages++;
+
+            addToChatLog(displayName, message, isDonate, null);
+
+            if (isDonate) {
+              const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
+              if (match) {
+                const amountVal = parseAmount(match[2]);
+                const minDonation = getMinDonation();
+                const belowThreshold = amountVal < minDonation;
+                const donation = {
+                  id: Date.now() + Math.random(),
+                  timestamp: new Date(),
+                  donor: match[1].trim(),
+                  amount: match[2],
+                  amountVal,
+                  message: match[3].trim(),
+                  character: belowThreshold ? 'Ignorado' : 'Identificando...',
+                  type: belowThreshold ? 'skipped' : 'unknown',
+                  belowThreshold
+                };
+                donations.unshift(donation);
+                saveDonations();
+                renderDonations();
+                if (!belowThreshold) await identifyCharacter(donation);
+              }
+            }
+
+            statusEl.textContent = `${totalMessages} msgs, ${donateMessages} donates`;
+            if (speed > 0) await new Promise(r => setTimeout(r, speed));
+          }
+
+          if (newMessages === 0) break;
+          offsetSeconds = lastOffset + 1;
+        }
+
+        if (!vodReplayAbort) statusEl.textContent = `Done: ${totalMessages} msgs, ${donateMessages} donates`;
+      } catch (e) {
+        statusEl.textContent = `Error: ${e.message}`;
+      }
+
+      vodReplayAbort = null;
+      btn.textContent = 'Replay';
     }
 
     // Init
