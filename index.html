@@ -110,7 +110,7 @@
       </div>
       <div class="settings-body">
         <div class="debug-row">
-          <input type="text" id="debugInput" placeholder="Testar extração de personagem...">
+          <input type="text" id="debugInput" placeholder="Digite uma mensagem para testar extração de personagem">
           <label
             style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap;">
             <input type="checkbox" id="addToQueue"> Adicionar à fila
@@ -118,9 +118,11 @@
           <button class="btn btn-ghost" onclick="testExtraction()">Testar</button>
         </div>
         <div class="debug-result" id="debugResult"></div>
-        <button class="btn btn-ghost" onclick="reidentifyAll()" style="margin-top: 0.5rem;">Re-identificar
-          todos</button>
-        <button class="btn btn-ghost" onclick="clearAllDonations()" style="margin-top: 0.5rem;">Limpar tudo</button>
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+          <button class="btn btn-ghost" onclick="reidentifyAll()" style="margin-top: 0.5rem;">Re-identificar
+            todos</button>
+          <button class="btn btn-ghost" onclick="clearAllDonations()" style="margin-top: 0.5rem;">Limpar tudo</button>
+        </div>
         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
           <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Replay VOD Chat</div>
           <div class="debug-row">

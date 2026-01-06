@@ -82,7 +82,50 @@ function toggleDone(id) {
   if (donation) {
     donation.done = !donation.done;
     saveDonations();
-    renderDonations();
+    updateDonationElement(id);
+    updateStats();
+    document.getElementById('count').textContent = donations.filter(d => !d.belowThreshold && !d.done).length;
+  }
+}
+
+function updateDonationElement(id) {
+  const donation = donations.find(d => d.id === id);
+  if (!donation) return;
+  const el = document.querySelector(`.donation[onclick*="${id}"]`);
+  if (!el) return;
+
+  const isCollapsed = donation.done || donation.belowThreshold;
+  el.classList.toggle('collapsed', isCollapsed);
+
+  const showChar = donation.type === 'survivor' || donation.type === 'killer' || donation.type === 'skipped' || donation.character === 'Identificando...';
+  const charName = donation.character === 'Identificando...' ? donation.character : (donation.confident !== false ? donation.character : `"${donation.mention || '?'}"`);
+
+  const donorEl = el.querySelector('.donor');
+  let charInline = donorEl.querySelector('.char-name-inline');
+  let msgPreview = donorEl.querySelector('.msg-preview');
+
+  if (isCollapsed) {
+    if (!charInline && showChar) {
+      charInline = document.createElement('span');
+      charInline.className = 'char-name-inline';
+      charInline.textContent = charName;
+      donorEl.insertBefore(charInline, donorEl.querySelector('.amount'));
+    }
+    if (!msgPreview) {
+      msgPreview = document.createElement('span');
+      msgPreview.className = 'msg-preview';
+      msgPreview.textContent = donation.message.slice(0, 40) + (donation.message.length > 40 ? '…' : '');
+      donorEl.insertBefore(msgPreview, donorEl.querySelector('.amount'));
+    }
+  } else {
+    charInline?.remove();
+    msgPreview?.remove();
+  }
+
+  const checkBtn = el.querySelector('.row-btn:not(.danger)');
+  if (checkBtn) {
+    checkBtn.classList.toggle('active', donation.done);
+    checkBtn.title = donation.done ? 'Desmarcar' : 'Marcar feito';
   }
 }
 
@@ -389,7 +432,7 @@ const RETRIABLE_CODES = [429, 500, 502, 503, 504];
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [2000, 4000, 8000];
 
-async function callLLM(message, attempt = 0, modelIdx = currentModelIndex) {
+async function callLLM(message, attempt = 0, modelIdx = currentModelIndex, startModelIdx = currentModelIndex) {
   const apiKey = getApiKey();
   const models = getGeminiModels();
   const model = models[modelIdx];
@@ -431,16 +474,16 @@ Return the official character name, type, confidence, and the exact text the use
       const msg = err.error?.message || `HTTP ${response.status}`;
       if (RETRIABLE_CODES.includes(response.status)) {
         const nextModelIdx = (modelIdx + 1) % models.length;
-        if (nextModelIdx !== currentModelIndex) {
+        if (nextModelIdx !== startModelIdx) {
           console.log(`Switching to model: ${models[nextModelIdx]} (${msg})`);
           currentModelIndex = nextModelIdx;
-          return callLLM(message, 0, nextModelIdx);
+          return callLLM(message, 0, nextModelIdx, startModelIdx);
         }
         if (attempt < MAX_RETRIES) {
           const delay = RETRY_DELAYS[attempt];
           console.log(`LLM retry ${attempt + 1}/${MAX_RETRIES} in ${delay}ms: ${msg}`);
           await new Promise(r => setTimeout(r, delay));
-          return callLLM(message, attempt + 1, modelIdx);
+          return callLLM(message, attempt + 1, modelIdx, startModelIdx);
         }
       }
       showToast(msg);
@@ -457,7 +500,7 @@ Return the official character name, type, confidence, and the exact text the use
       const delay = RETRY_DELAYS[attempt];
       console.log(`LLM retry ${attempt + 1}/${MAX_RETRIES} in ${delay}ms: ${e.message}`);
       await new Promise(r => setTimeout(r, delay));
-      return callLLM(message, attempt + 1, modelIdx);
+      return callLLM(message, attempt + 1, modelIdx, startModelIdx);
     }
     showToast(e.message || 'Erro desconhecido');
     setLLMStatus('error', `${model} ✗`);
@@ -480,6 +523,7 @@ async function testExtraction() {
   const resultDiv = document.getElementById('debugResult');
   const addToQueue = document.getElementById('addToQueue').checked;
   if (!input) return;
+  resultDiv.classList.add('show');
   resultDiv.innerHTML = 'Identificando...';
   const result = await callLLM(input);
   const type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
@@ -531,13 +575,26 @@ function renderDonations() {
         ${portraitHtml}
         <span class="char-name ${d.character === 'Identificando...' ? 'identifying' : ''}">${charName}</span>
       </div>` : '';
-    const doneClass = d.done ? ' done' : '';
-    const doneCharHtml = d.done && showChar ? `<span class="char-name-inline">${charName}</span>` : '';
+    const isCollapsed = d.done || d.belowThreshold;
+    const collapsedClass = isCollapsed ? ' collapsed' : '';
+    const collapsedCharHtml = isCollapsed && showChar ? `<span class="char-name-inline">${charName}</span>` : '';
+    const msgPreview = isCollapsed ? `<span class="msg-preview">${d.message.slice(0, 40)}${d.message.length > 40 ? '…' : ''}</span>` : '';
+    const actionBtns = `<div class="row-actions">
+      <button class="row-btn ${d.done ? 'active' : ''}" onclick="event.stopPropagation(); toggleDone(${d.id})" title="${d.done ? 'Desmarcar' : 'Marcar feito'}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </button>
+      <button class="row-btn danger" onclick="event.stopPropagation(); deleteDonation(${d.id})" title="Excluir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+      </button>
+    </div>`;
     return `
-    <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}${doneClass}" onclick="toggleDone(${d.id})" oncontextmenu="showContextMenu(event, ${d.id})">
+    <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}${collapsedClass}" onclick="toggleDone(${d.id})" oncontextmenu="showContextMenu(event, ${d.id})">
       <div class="donation-top">
-        <div class="donor"><span class="donor-name">${d.donor}</span>${doneCharHtml}<span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
-        <span class="time">${new Date(d.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${new Date(d.timestamp).toLocaleTimeString()}</span>
+        <div class="donor"><span class="donor-name">${d.donor}</span>${collapsedCharHtml}${msgPreview}<span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
+        <div class="time-actions">
+          ${actionBtns}
+          <span class="time">${new Date(d.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${new Date(d.timestamp).toLocaleTimeString()}</span>
+        </div>
       </div>
       <p class="message">${d.message}</p>${charHtml}
     </div>`;
@@ -660,7 +717,7 @@ async function loadAndReplayVOD() {
               amount: match[2],
               amountVal,
               message: match[3].trim(),
-              character: belowThreshold ? 'Ignorado' : 'Identificando...',
+              character: belowThreshold ? '' : 'Identificando...',
               type: belowThreshold ? 'skipped' : 'unknown',
               belowThreshold
             };

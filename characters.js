@@ -91,6 +91,7 @@ const WIKI_DATA = {
     { name: "Houndmaster", aliases: ["Mestra dos Cães"], portrait: "https://deadbydaylight.wiki.gg/images/K38_TheHoundmaster_Portrait.png" },
     { name: "Ghoul", aliases: ["Kaneki", "Carniçal"], portrait: "https://deadbydaylight.wiki.gg/images/K39_TheGhoul_Portrait.png" },
     { name: "Animatronic", aliases: ["Freddy Fazbear", "FNAF", "Animatrônico"], portrait: "https://deadbydaylight.wiki.gg/images/K40_TheAnimatronic_Portrait.png" },
-    { name: "Krasue", aliases: ["Senhora Linguiça"], portrait: "https://deadbydaylight.wiki.gg/images/K41_TheKrasue_Portrait.png" }
+    { name: "Krasue", aliases: ["Senhora Linguiça"], portrait: "https://deadbydaylight.wiki.gg/images/K41_TheKrasue_Portrait.png" },
+    { name: "The First", aliases: ["First", "Vecna", "One", "Número Um", "Henry Creel"], portrait: "https://deadbydaylight.wiki.gg/images/K42_TheFirst_Portrait.png" },
   ]
 };
