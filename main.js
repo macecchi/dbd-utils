@@ -63,9 +63,14 @@ function saveDonations() {
 }
 
 function clearDoneDonations() {
+  const done = donations.filter(d => d.done);
+  if (done.length === 0) return;
+  lastDeletedDonations = done;
+  lastDeletedDonation = null;
   donations = donations.filter(d => !d.done);
   saveDonations();
   renderDonations();
+  showUndoToast(done.length);
 }
 
 function clearAllDonations() {
@@ -131,6 +136,8 @@ function updateDonationElement(id) {
 
 let contextMenuTarget = null;
 const contextMenu = document.getElementById('contextMenu');
+let lastDeletedDonation = null;
+let lastDeletedDonations = null;
 
 function showContextMenu(e, id) {
   e.preventDefault();
@@ -154,10 +161,68 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 function deleteDonation(id) {
-  donations = donations.filter(d => d.id !== id);
+  const el = document.querySelector(`.donation[onclick*="${id}"]`);
+  const donation = donations.find(d => d.id === id);
+  const doDelete = () => {
+    lastDeletedDonation = donation;
+    lastDeletedDonations = null;
+    donations = donations.filter(d => d.id !== id);
+    saveDonations();
+    renderDonations();
+    showUndoToast();
+  };
+  if (el) {
+    el.classList.add('deleting');
+    el.addEventListener('animationend', doDelete, { once: true });
+  } else {
+    doDelete();
+  }
+}
+
+function undoDelete() {
+  if (lastDeletedDonations) {
+    donations.push(...lastDeletedDonations);
+    lastDeletedDonations = null;
+  } else if (lastDeletedDonation) {
+    donations.push(lastDeletedDonation);
+    lastDeletedDonation = null;
+  } else {
+    return;
+  }
   saveDonations();
   renderDonations();
+  hideUndoToast();
 }
+
+function showUndoToast(count = 1) {
+  hideUndoToast();
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast undo-toast';
+  toast.id = 'undoToast';
+  const isMac = navigator.platform.includes('Mac');
+  const shortcut = isMac ? '⌘Z' : 'Ctrl+Z';
+  const msg = count > 1 ? `${count} excluídos` : 'Excluído';
+  toast.innerHTML = `<div class="undo-toast-content"><span>${msg}</span><button class="undo-btn" onclick="undoDelete()">Desfazer</button><span class="undo-hint">${shortcut}</span></div>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    if (document.getElementById('undoToast')) {
+      hideUndoToast();
+    }
+  }, 5000);
+}
+
+function hideUndoToast() {
+  const toast = document.getElementById('undoToast');
+  if (toast) toast.remove();
+}
+
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && (lastDeletedDonation || lastDeletedDonations)) {
+    e.preventDefault();
+    undoDelete();
+  }
+});
 
 async function rerunExtraction(id) {
   const donation = donations.find(d => d.id === id);
@@ -403,7 +468,7 @@ function handleMessage(raw) {
     belowThreshold
   };
 
-  donations.unshift(donation);
+  donations.push(donation);
   saveDonations();
   renderDonations();
 
@@ -546,11 +611,21 @@ async function testExtraction() {
       type: type,
       belowThreshold: false
     };
-    donations.unshift(donation);
+    donations.push(donation);
     saveDonations();
     renderDonations();
     document.getElementById('debugInput').value = '';
   }
+}
+
+const rtf = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' });
+
+function formatRelativeTime(date) {
+  const diff = (new Date(date) - new Date()) / 1000;
+  if (Math.abs(diff) < 60) return rtf.format(Math.round(diff), 'second');
+  if (Math.abs(diff) < 3600) return rtf.format(Math.round(diff / 60), 'minute');
+  if (Math.abs(diff) < 86400) return rtf.format(Math.round(diff / 3600), 'hour');
+  return rtf.format(Math.round(diff / 86400), 'day');
 }
 
 function updateStats() {
@@ -566,7 +641,8 @@ function renderDonations() {
   document.getElementById('count').textContent = pendingDonations.length;
   updateStats();
   if (donations.length === 0) { container.innerHTML = '<div class="empty">Aguardando doações...</div>'; return; }
-  container.innerHTML = donations.map(d => {
+  const sortedDonations = [...donations].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  container.innerHTML = sortedDonations.map(d => {
     const showChar = d.type === 'survivor' || d.type === 'killer' || d.character === 'Identificando...';
     const portrait = d.type === 'killer' && d.character && getKillerPortrait(d.character);
     const portraitHtml = portrait ? `<div class="char-portrait-wrapper"><div class="char-portrait-bg killer"></div><img src="${portrait}" alt="" class="char-portrait"></div>` : '';
@@ -578,12 +654,10 @@ function renderDonations() {
       </div>` : '';
     const isCollapsed = d.done || d.belowThreshold;
     const collapsedClass = isCollapsed ? ' collapsed' : '';
+    const checkmarkHtml = d.done ? `<span class="done-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></span>` : '';
     const collapsedCharHtml = isCollapsed && showChar ? `<span class="char-name-inline">${charDisplay}</span>` : '';
     const msgPreview = isCollapsed ? `<span class="msg-preview">${d.message.slice(0, 40)}${d.message.length > 40 ? '…' : ''}</span>` : '';
     const actionBtns = `<div class="row-actions">
-      <button class="row-btn ${d.done ? 'active' : ''}" onclick="event.stopPropagation(); toggleDone(${d.id})" title="${d.done ? 'Desmarcar' : 'Marcar feito'}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-      </button>
       <button class="row-btn danger" onclick="event.stopPropagation(); deleteDonation(${d.id})" title="Excluir">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
       </button>
@@ -591,10 +665,10 @@ function renderDonations() {
     return `
     <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}${collapsedClass}" onclick="toggleDone(${d.id})" oncontextmenu="showContextMenu(event, ${d.id})">
       <div class="donation-top">
-        <div class="donor"><span class="donor-name">${d.donor}</span>${collapsedCharHtml}${msgPreview}<span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
+        <div class="donor">${checkmarkHtml}<span class="donor-name">${d.donor}</span>${collapsedCharHtml}${msgPreview}<span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
         <div class="time-actions">
           ${actionBtns}
-          <span class="time">${new Date(d.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${new Date(d.timestamp).toLocaleTimeString('pt-BR')}</span>
+          <span class="time">${formatRelativeTime(d.timestamp)}</span>
         </div>
       </div>
       <p class="message">${d.message}</p>${charHtml}
@@ -722,7 +796,7 @@ async function loadAndReplayVOD() {
               type: belowThreshold ? 'skipped' : 'unknown',
               belowThreshold
             };
-            donations.unshift(donation);
+            donations.push(donation);
             saveDonations();
             renderDonations();
             if (!belowThreshold) await identifyCharacter(donation);

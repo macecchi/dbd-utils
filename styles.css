@@ -461,6 +461,22 @@ textarea {
   cursor: pointer;
 }
 
+.donation.deleting {
+  animation: deleteSlide 0.3s ease forwards;
+}
+
+@keyframes deleteSlide {
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
 .donation:hover {
   background: var(--bg-card);
 }
@@ -550,7 +566,7 @@ textarea {
   color: var(--green);
 }
 
-.row-btn.danger {
+.row-btn.danger:hover {
   color: var(--red);
 }
 
@@ -575,6 +591,17 @@ textarea {
   flex: 1;
   min-width: 0;
   flex-wrap: wrap;
+}
+
+.done-check {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.done-check svg {
+  width: 14px;
+  height: 14px;
 }
 
 .donor-name {
@@ -628,16 +655,12 @@ textarea {
 
 .char-name {
   font-weight: 600;
+  text-transform: capitalize;
 }
 
 .char-name.identifying {
   color: var(--text-muted);
   font-style: italic;
-}
-
-.char-name.type-only {
-  color: var(--text-secondary);
-  text-transform: capitalize;
 }
 
 .char-portrait-wrapper {
@@ -775,6 +798,38 @@ textarea {
   font-size: 0.8rem;
   color: var(--text-secondary);
   word-break: break-word;
+}
+
+.undo-toast {
+  border-color: var(--border);
+}
+
+.undo-toast-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.undo-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.3rem 0.6rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.undo-btn:hover {
+  filter: brightness(1.1);
+}
+
+.undo-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 
 /* Chat */
