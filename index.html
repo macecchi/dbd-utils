@@ -112,14 +112,14 @@
         <span class="settings-toggle">▼</span>
       </div>
       <div class="settings-body">
-        <div class="debug-row">
+        <form class="debug-row" onsubmit="event.preventDefault(); testExtraction()">
           <input type="text" id="debugInput" placeholder="Digite uma mensagem para testar extração de personagem">
           <label
             style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap;">
             <input type="checkbox" id="addToQueue"> Adicionar à fila
           </label>
-          <button class="btn btn-ghost" onclick="testExtraction()">Testar</button>
-        </div>
+          <button class="btn btn-ghost" type="submit">Testar</button>
+        </form>
         <div class="debug-result" id="debugResult"></div>
         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
           <button class="btn btn-ghost" onclick="reidentifyAll()" style="margin-top: 0.5rem;">Re-identificar

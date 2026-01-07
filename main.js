@@ -578,7 +578,38 @@ Return ONLY the JSON with the character name and type. If you can identify the e
   }
 }
 
+function tryLocalMatch(message) {
+  const lower = message.toLowerCase();
+  for (const type of ['killers', 'survivors']) {
+    for (const char of CHARACTERS[type]) {
+      const names = [char.name, ...char.aliases];
+      for (const name of names) {
+        const pattern = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        if (pattern.test(lower)) {
+          return { character: char.name, type: type === 'killers' ? 'killer' : 'survivor' };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 async function identifyCharacter(donation) {
+  const local = tryLocalMatch(donation.message);
+  if (local) {
+    donation.character = local.character;
+    donation.type = local.type;
+    saveDonations();
+    renderDonations();
+    return;
+  }
+  if (!getApiKey()) {
+    donation.character = '';
+    donation.type = 'unknown';
+    saveDonations();
+    renderDonations();
+    return;
+  }
   const result = await callLLM(donation.message);
   donation.character = result.character || '';
   donation.type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
@@ -592,12 +623,23 @@ async function testExtraction() {
   const addToQueue = document.getElementById('addToQueue').checked;
   if (!input) return;
   resultDiv.classList.add('show');
-  resultDiv.innerHTML = 'Identificando...';
-  const result = await callLLM(input);
-  const type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
+
+  let result = tryLocalMatch(input);
+  var prefix;
+  if (result) {
+    prefix = '[local]';
+    resultDiv.innerHTML = `<span style="color:var(--text-muted)">${prefix}</span>`;
+  } else {
+    prefix = '[IA]';
+    resultDiv.innerHTML = `<span style="color:var(--text-muted)">${prefix}</span> Identificando...`;
+    result = await callLLM(input);
+    result = { character: result.character || '', type: result.type === 'none' ? 'unknown' : (result.type || 'unknown') };
+  }
+
+  const type = result.type;
   const color = type === 'survivor' ? 'var(--blue)' : type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
   const display = result.character || type;
-  resultDiv.innerHTML = `<span style="color:${color}">${type}</span> → <strong>${display}</strong>`;
+  resultDiv.innerHTML = `<span style="color:var(--text-muted)">${prefix}</span> <span style="color:${color}">${type}</span> → <strong>${display}</strong>`;
 
   if (addToQueue && type !== 'unknown') {
     const donation = {
