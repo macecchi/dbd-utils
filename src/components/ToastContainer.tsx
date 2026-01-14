@@ -1,0 +1,70 @@
+import { useState, useEffect } from 'react';
+import { useToasts } from '../hooks/useToasts';
+import { toastStore, Toast } from '../store/toasts';
+
+function ToastItem({ toast }: { toast: Toast }) {
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    if (toast.duration > 0) {
+      const fadeTimer = setTimeout(() => setFading(true), toast.duration - 200);
+      return () => clearTimeout(fadeTimer);
+    }
+  }, [toast.duration]);
+
+  const handleRemove = () => {
+    setFading(true);
+    setTimeout(() => toastStore.remove(toast.id), 200);
+  };
+
+  const handleUndo = () => {
+    toast.undoCallback?.();
+    toastStore.remove(toast.id);
+  };
+
+  const className = [
+    'toast',
+    toast.type === 'info' && 'info-toast',
+    toast.type === 'undo' && 'undo-toast',
+    fading && 'fade-out'
+  ].filter(Boolean).join(' ');
+
+  const style = toast.color ? { borderColor: `var(--${toast.color})` } : undefined;
+
+  if (toast.type === 'undo') {
+    return (
+      <div className={className}>
+        <div className="undo-toast-content">
+          <span>{toast.message}</span>
+          <button className="undo-btn" onClick={handleUndo}>Desfazer</button>
+          <span className="undo-hint">{toast.undoHint}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={className} style={style}>
+      {toast.title && (
+        <div
+          className="toast-title"
+          style={toast.color ? { color: `var(--${toast.color})` } : undefined}
+        >
+          {toast.title}
+        </div>
+      )}
+      <div className="toast-msg">{toast.message}</div>
+    </div>
+  );
+}
+
+export function ToastContainer() {
+  const toasts = useToasts();
+  return (
+    <>
+      {toasts.map(toast => (
+        <ToastItem key={toast.id} toast={toast} />
+      ))}
+    </>
+  );
+}

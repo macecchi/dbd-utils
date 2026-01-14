@@ -21,8 +21,270 @@ const DEFAULT_CHARACTERS = {
 };
 
 let ws = null;
-let donations = [];
-let chatMessages = [];
+let sessionRequests = {};
+
+function getDonations() {
+  return window.donationStore?.get() || [];
+}
+
+function setDonations(arr) {
+  window.donationStore?.set(arr);
+}
+
+const DEFAULT_SOURCES_ENABLED = { donation: true, resub: true, chat: true, manual: true };
+const DEFAULT_CHAT_COMMAND = '!request';
+const DEFAULT_CHAT_TIERS = [1, 2, 3];
+const DEFAULT_SOURCE_PRIORITY = ['donation', 'resub', 'chat', 'manual'];
+
+const SOURCE_ICONS = {
+  donation: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+  resub: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
+  manual: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>'
+};
+
+function getSourcesEnabled() {
+  const saved = localStorage.getItem('dbd_sources_enabled');
+  return saved ? JSON.parse(saved) : DEFAULT_SOURCES_ENABLED;
+}
+
+function saveSourcesEnabled(sources) {
+  localStorage.setItem('dbd_sources_enabled', JSON.stringify(sources));
+}
+
+function getChatCommand() {
+  return localStorage.getItem('dbd_chat_command') || DEFAULT_CHAT_COMMAND;
+}
+
+function saveChatCommand(cmd) {
+  localStorage.setItem('dbd_chat_command', cmd);
+}
+
+function getChatTiers() {
+  const saved = localStorage.getItem('dbd_chat_tiers');
+  return saved ? JSON.parse(saved) : DEFAULT_CHAT_TIERS;
+}
+
+function saveChatTiers(tiers) {
+  localStorage.setItem('dbd_chat_tiers', JSON.stringify(tiers));
+}
+
+function getSourcePriority() {
+  const saved = localStorage.getItem('dbd_source_priority');
+  return saved ? JSON.parse(saved) : DEFAULT_SOURCE_PRIORITY;
+}
+
+function saveSourcePriority(priority) {
+  localStorage.setItem('dbd_source_priority', JSON.stringify(priority));
+}
+
+function loadSessionRequests() {
+  const saved = localStorage.getItem('dbd_session_requests');
+  sessionRequests = saved ? JSON.parse(saved) : {};
+}
+
+function saveSessionRequests() {
+  localStorage.setItem('dbd_session_requests', JSON.stringify(sessionRequests));
+}
+
+function resetSession() {
+  sessionRequests = {};
+  saveSessionRequests();
+  showToastInfo('Sessão reiniciada');
+}
+
+
+function getAllCharacterNames() {
+  const names = [];
+  for (const type of ['killers', 'survivors']) {
+    for (const char of CHARACTERS[type]) {
+      names.push({ name: char.name, type: type === 'killers' ? 'killer' : 'survivor' });
+    }
+  }
+  return names;
+}
+
+function addManualRequest(charName, charType) {
+  if (!getSourcesEnabled().manual) return;
+  if (!charName) return;
+
+  const request = {
+    id: Date.now() + Math.random(),
+    timestamp: new Date(),
+    donor: 'Manual',
+    amount: '',
+    amountVal: 0,
+    message: charName,
+    character: charName,
+    type: charType || 'unknown',
+    belowThreshold: false,
+    source: 'manual'
+  };
+
+  window.donationStore.add(request);
+  renderDonations();
+}
+
+let autocompleteChars = [];
+let autocompleteIndex = -1;
+
+function setupManualAutocomplete() {
+  const input = document.getElementById('manualCharInput');
+  const dropdown = document.getElementById('manualAutocomplete');
+  if (!input || !dropdown) return;
+
+  autocompleteChars = getAllCharacterNames();
+
+  input.addEventListener('input', () => {
+    const val = input.value.toLowerCase().trim();
+    dropdown.innerHTML = '';
+    autocompleteIndex = -1;
+    if (!val) { dropdown.classList.remove('show'); return; }
+
+    const matches = autocompleteChars.filter(c => c.name.toLowerCase().includes(val)).slice(0, 8);
+    if (matches.length === 0) { dropdown.classList.remove('show'); return; }
+
+    matches.forEach((m, i) => {
+      const div = document.createElement('div');
+      div.className = `autocomplete-item ${m.type}`;
+      div.textContent = m.name;
+      div.onclick = () => selectAutocomplete(m);
+      dropdown.appendChild(div);
+    });
+    dropdown.classList.add('show');
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+    if (!items.length) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      autocompleteIndex = Math.min(autocompleteIndex + 1, items.length - 1);
+      updateAutocompleteHighlight(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      autocompleteIndex = Math.max(autocompleteIndex - 1, 0);
+      updateAutocompleteHighlight(items);
+    } else if (e.key === 'Enter' && autocompleteIndex >= 0) {
+      e.preventDefault();
+      const match = autocompleteChars.filter(c => c.name.toLowerCase().includes(input.value.toLowerCase().trim())).slice(0, 8)[autocompleteIndex];
+      if (match) selectAutocomplete(match);
+    } else if (e.key === 'Escape') {
+      dropdown.classList.remove('show');
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.remove('show'), 150);
+  });
+}
+
+function updateAutocompleteHighlight(items) {
+  items.forEach((item, i) => item.classList.toggle('active', i === autocompleteIndex));
+}
+
+function selectAutocomplete(match) {
+  const input = document.getElementById('manualCharInput');
+  const dropdown = document.getElementById('manualAutocomplete');
+  addManualRequest(match.name, match.type);
+  input.value = '';
+  dropdown.classList.remove('show');
+}
+
+function toggleSourcesPanel() {
+  document.getElementById('sourcesPanel').classList.toggle('open');
+}
+
+function loadSourcesPanel() {
+  const sources = getSourcesEnabled();
+  document.getElementById('srcDonation').checked = sources.donation;
+  document.getElementById('srcResub').checked = sources.resub;
+  document.getElementById('srcChat').checked = sources.chat;
+  document.getElementById('srcManual').checked = sources.manual;
+
+  document.getElementById('chatCommandInput').value = getChatCommand();
+
+  const tiers = getChatTiers();
+  document.getElementById('tierT1').checked = tiers.includes(1);
+  document.getElementById('tierT2').checked = tiers.includes(2);
+  document.getElementById('tierT3').checked = tiers.includes(3);
+
+  renderPriorityList();
+}
+
+function saveSourceToggle(source, el) {
+  const sources = getSourcesEnabled();
+  sources[source] = el.checked;
+  saveSourcesEnabled(sources);
+}
+
+function saveChatCommandInput() {
+  const cmd = document.getElementById('chatCommandInput').value.trim() || '!request';
+  saveChatCommand(cmd);
+}
+
+function saveTierCheckboxes() {
+  const tiers = [];
+  if (document.getElementById('tierT1').checked) tiers.push(1);
+  if (document.getElementById('tierT2').checked) tiers.push(2);
+  if (document.getElementById('tierT3').checked) tiers.push(3);
+  saveChatTiers(tiers);
+}
+
+const SOURCE_LABELS = { donation: 'Doações', resub: 'Resubs', chat: 'Chat', manual: 'Manual' };
+
+function renderPriorityList() {
+  const list = document.getElementById('priorityList');
+  const priority = getSourcePriority();
+  list.innerHTML = priority.map(s => `
+    <div class="priority-item" draggable="true" data-source="${s}">
+      <span class="drag-handle">⠿</span>
+      <span class="priority-icon">${SOURCE_ICONS[s]}</span>
+      <span>${SOURCE_LABELS[s]}</span>
+    </div>
+  `).join('');
+
+  setupPriorityDrag();
+}
+
+function setupPriorityDrag() {
+  const list = document.getElementById('priorityList');
+  let draggedItem = null;
+
+  list.querySelectorAll('.priority-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      draggedItem = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      draggedItem = null;
+      savePriorityOrder();
+      renderDonations();
+    });
+
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!draggedItem || draggedItem === item) return;
+      const rect = item.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        list.insertBefore(draggedItem, item);
+      } else {
+        list.insertBefore(draggedItem, item.nextSibling);
+      }
+    });
+  });
+}
+
+function savePriorityOrder() {
+  const list = document.getElementById('priorityList');
+  const priority = [...list.querySelectorAll('.priority-item')].map(el => el.dataset.source);
+  saveSourcePriority(priority);
+}
 
 function getCharacters() {
   return DEFAULT_CHARACTERS;
@@ -50,51 +312,41 @@ function saveChannel() {
   localStorage.setItem('dbd_channel', document.getElementById('channelInput').value.trim());
 }
 
-function loadDonations() {
-  const saved = localStorage.getItem('dbd_donations');
-  if (saved) {
-    donations = JSON.parse(saved).map(d => ({ ...d, timestamp: new Date(d.timestamp) }));
-    renderDonations();
-  }
-}
-
 function saveDonations() {
-  localStorage.setItem('dbd_donations', JSON.stringify(donations));
+  window.donationStore?.set(getDonations());
 }
 
 function clearDoneDonations() {
-  const done = donations.filter(d => d.done);
+  const all = getDonations();
+  const done = all.filter(d => d.done);
   if (done.length === 0) return;
   lastDeletedDonations = done;
   lastDeletedDonation = null;
-  donations = donations.filter(d => !d.done);
-  saveDonations();
+  setDonations(all.filter(d => !d.done));
   renderDonations();
-  showUndoToast(done.length);
+  showUndoToast(done.length, undoDelete);
 }
 
 function clearAllDonations() {
-  donations = [];
-  chatMessages = [];
-  saveDonations();
-  saveChatMessages();
+  window.donationStore.clear();
   renderDonations();
-  renderChatMessages();
+  window.chatStore.clear();
 }
 
 function toggleDone(id) {
+  const donations = getDonations();
   const donation = donations.find(d => d.id === id);
   if (donation) {
     donation.done = !donation.done;
-    saveDonations();
+    setDonations(donations);
     updateDonationElement(id);
     updateStats();
-    document.getElementById('count').textContent = donations.filter(d => !d.belowThreshold && !d.done).length;
+    document.getElementById('count').textContent = getDonations().filter(d => !d.belowThreshold && !d.done).length;
   }
 }
 
 function updateDonationElement(id) {
-  const donation = donations.find(d => d.id === id);
+  const donation = getDonations().find(d => d.id === id);
   if (!donation) return;
   const el = document.querySelector(`.donation[onclick*="${id}"]`);
   if (!el) return;
@@ -143,7 +395,7 @@ function showContextMenu(e, id) {
   e.preventDefault();
   e.stopPropagation();
   contextMenuTarget = id;
-  const donation = donations.find(d => d.id === id);
+  const donation = getDonations().find(d => d.id === id);
   document.getElementById('contextMenuDoneText').textContent = donation?.done ? 'Marcar como não feito' : 'Marcar como feito';
   contextMenu.style.left = e.clientX + 'px';
   contextMenu.style.top = e.clientY + 'px';
@@ -162,14 +414,13 @@ document.addEventListener('contextmenu', (e) => {
 
 function deleteDonation(id) {
   const el = document.querySelector(`.donation[onclick*="${id}"]`);
-  const donation = donations.find(d => d.id === id);
+  const donation = getDonations().find(d => d.id === id);
   const doDelete = () => {
     lastDeletedDonation = donation;
     lastDeletedDonations = null;
-    donations = donations.filter(d => d.id !== id);
-    saveDonations();
+    setDonations(getDonations().filter(d => d.id !== id));
     renderDonations();
-    showUndoToast();
+    showUndoToast(1, undoDelete);
   };
   if (el) {
     el.classList.add('deleting');
@@ -181,41 +432,17 @@ function deleteDonation(id) {
 
 function undoDelete() {
   if (lastDeletedDonations) {
-    donations.push(...lastDeletedDonations);
+    setDonations([...getDonations(), ...lastDeletedDonations]);
     lastDeletedDonations = null;
   } else if (lastDeletedDonation) {
-    donations.push(lastDeletedDonation);
+    window.donationStore.add(lastDeletedDonation);
     lastDeletedDonation = null;
   } else {
     return;
   }
-  saveDonations();
   renderDonations();
-  hideUndoToast();
 }
 
-function showUndoToast(count = 1) {
-  hideUndoToast();
-  const container = document.getElementById('toastContainer');
-  const toast = document.createElement('div');
-  toast.className = 'toast undo-toast';
-  toast.id = 'undoToast';
-  const isMac = navigator.platform.includes('Mac');
-  const shortcut = isMac ? '⌘Z' : 'Ctrl+Z';
-  const msg = count > 1 ? `${count} excluídos` : 'Excluído';
-  toast.innerHTML = `<div class="undo-toast-content"><span>${msg}</span><button class="undo-btn" onclick="undoDelete()">Desfazer</button><span class="undo-hint">${shortcut}</span></div>`;
-  container.appendChild(toast);
-  setTimeout(() => {
-    if (document.getElementById('undoToast')) {
-      hideUndoToast();
-    }
-  }, 5000);
-}
-
-function hideUndoToast() {
-  const toast = document.getElementById('undoToast');
-  if (toast) toast.remove();
-}
 
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'z' && (lastDeletedDonation || lastDeletedDonations)) {
@@ -225,20 +452,24 @@ document.addEventListener('keydown', (e) => {
 });
 
 async function rerunExtraction(id) {
+  const donations = getDonations();
   const donation = donations.find(d => d.id === id);
   if (donation) {
     donation.character = 'Identificando...';
     donation.type = 'unknown';
+    setDonations(donations);
     renderDonations();
     await identifyCharacter(donation);
   }
 }
 
 async function reidentifyAll() {
+  const donations = getDonations();
   for (const d of donations) {
     d.character = 'Identificando...';
     d.type = 'unknown';
   }
+  setDonations(donations);
   renderDonations();
   for (const d of donations) {
     await identifyCharacter(d);
@@ -255,42 +486,6 @@ function contextMenuAction(action) {
   hideContextMenu();
 }
 
-function showToast(msg, duration = 5000) {
-  const container = document.getElementById('toastContainer');
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.innerHTML = `<div class="toast-title">Erro LLM</div><div class="toast-msg">${msg}</div>`;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.classList.add('fade-out');
-    setTimeout(() => toast.remove(), 200);
-  }, duration);
-}
-
-function loadChatMessages() {
-  const saved = localStorage.getItem('dbd_chat');
-  if (saved) {
-    chatMessages = JSON.parse(saved);
-    renderChatMessages();
-  }
-}
-
-function saveChatMessages() {
-  localStorage.setItem('dbd_chat', JSON.stringify(chatMessages.slice(-100)));
-}
-
-function renderChatMessages() {
-  const chatlog = document.getElementById('chatlog');
-  if (chatMessages.length === 0) {
-    chatlog.innerHTML = '<div class="empty">Mensagens do chat aparecerão aqui...</div>';
-    return;
-  }
-  chatlog.innerHTML = chatMessages.map(m => {
-    const userStyle = m.isDonate ? '' : (m.color ? `style="color:${m.color}"` : '');
-    return `<div class="chat-msg${m.isDonate ? ' donate' : ''}"><span class="chat-user ${m.isDonate ? 'donate' : ''}" ${userStyle}>${m.user}:</span><span class="chat-text">${m.message}</span></div>`;
-  }).join('');
-  chatlog.scrollTop = chatlog.scrollHeight;
-}
 
 function parseAmount(amountStr) {
   const match = amountStr.match(/[\d,\.]+/);
@@ -430,6 +625,7 @@ function connect() {
     for (const line of event.data.split('\r\n')) {
       if (line.startsWith('PING')) ws.send('PONG :tmi.twitch.tv');
       else if (line.includes('366')) setStatus(`t.tv/${channel}`, 'connected');
+      else if (line.includes('USERNOTICE')) handleUserNotice(line);
       else if (line.includes('PRIVMSG')) handleMessage(line);
     }
   };
@@ -437,7 +633,101 @@ function connect() {
   ws.onerror = () => setStatus('Erro', 'error');
 }
 
+function parseIrcTags(raw) {
+  const tags = {};
+  const tagMatch = raw.match(/^@([^ ]+)/);
+  if (tagMatch) {
+    tagMatch[1].split(';').forEach(pair => {
+      const [k, v] = pair.split('=');
+      tags[k] = v || '';
+    });
+  }
+  return tags;
+}
+
+function getSubTierFromBadges(badges) {
+  if (!badges) return 0;
+  const match = badges.match(/subscriber\/(\d+)/);
+  if (!match) return 0;
+  const tier = parseInt(match[1]);
+  if (tier >= 3000) return 3;
+  if (tier >= 2000) return 2;
+  return 1;
+}
+
+function handleUserNotice(raw) {
+  const tags = parseIrcTags(raw);
+  const msgId = tags['msg-id'];
+  if (msgId !== 'resub' && msgId !== 'sub') return;
+  if (!getSourcesEnabled().resub) return;
+
+  const displayName = tags['display-name'] || tags.login || 'unknown';
+  const msgMatch = raw.match(/USERNOTICE #\w+ :(.+)$/);
+  const message = msgMatch ? msgMatch[1].trim() : '';
+
+  if (!message) return;
+
+  addToChatLog(displayName, `[${msgId}] ${message}`, false, null);
+
+  const local = tryLocalMatch(message);
+  if (!local && !getApiKey()) return;
+
+  const request = {
+    id: Date.now() + Math.random(),
+    timestamp: new Date(),
+    donor: displayName,
+    amount: '',
+    amountVal: 0,
+    message,
+    character: 'Identificando...',
+    type: 'unknown',
+    belowThreshold: false,
+    source: 'resub'
+  };
+
+  window.donationStore.add(request);
+  renderDonations();
+  identifyCharacter(request);
+}
+
+function handleChatCommand(raw, tags, displayName, username, requestText) {
+  if (!getSourcesEnabled().chat) return;
+  if (!requestText) return;
+
+  if (sessionRequests[username]) return;
+
+  const isSub = tags.subscriber === '1';
+  const subTier = getSubTierFromBadges(tags.badges);
+  const allowedTiers = getChatTiers();
+  if (!isSub || !allowedTiers.includes(subTier)) return;
+
+  const local = tryLocalMatch(requestText);
+  if (!local && !getApiKey()) return;
+
+  sessionRequests[username] = Date.now();
+  saveSessionRequests();
+
+  const request = {
+    id: Date.now() + Math.random(),
+    timestamp: new Date(),
+    donor: displayName,
+    amount: '',
+    amountVal: 0,
+    message: requestText,
+    character: 'Identificando...',
+    type: 'unknown',
+    belowThreshold: false,
+    source: 'chat',
+    subTier
+  };
+
+  window.donationStore.add(request);
+  renderDonations();
+  identifyCharacter(request);
+}
+
 function handleMessage(raw) {
+  const tags = parseIrcTags(raw);
   const userMatch = raw.match(/display-name=([^;]*)/i);
   const msgMatch = raw.match(/PRIVMSG #\w+ :(.+)$/);
   const colorMatch = raw.match(/color=(#[0-9A-Fa-f]{6})/i);
@@ -448,6 +738,13 @@ function handleMessage(raw) {
   const color = colorMatch ? colorMatch[1] : null;
   const botName = getBotName();
   addToChatLog(displayName, message, username === botName, color);
+
+  const chatCommand = getChatCommand();
+  if (message.toLowerCase().startsWith(chatCommand.toLowerCase())) {
+    handleChatCommand(raw, tags, displayName, username, message.slice(chatCommand.length).trim());
+    return;
+  }
+
   if (username !== botName) return;
   const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
   if (!match) return;
@@ -465,11 +762,13 @@ function handleMessage(raw) {
     message: match[3].trim(),
     character: belowThreshold ? 'Ignorado' : 'Identificando...',
     type: belowThreshold ? 'skipped' : 'unknown',
-    belowThreshold
+    belowThreshold,
+    source: 'donation'
   };
 
-  donations.push(donation);
-  saveDonations();
+  if (!getSourcesEnabled().donation) return;
+
+  window.donationStore.add(donation);
   renderDonations();
 
   if (!belowThreshold) {
@@ -478,19 +777,7 @@ function handleMessage(raw) {
 }
 
 function addToChatLog(user, message, isDonate, color) {
-  chatMessages.push({ user, message, isDonate, color });
-  if (chatMessages.length > 100) chatMessages.shift();
-  saveChatMessages();
-
-  const chatlog = document.getElementById('chatlog');
-  if (chatlog.querySelector('.empty')) chatlog.innerHTML = '';
-  const div = document.createElement('div');
-  div.className = `chat-msg${isDonate ? ' donate' : ''}`;
-  const userStyle = isDonate ? '' : (color ? `style="color:${color}"` : '');
-  div.innerHTML = `<span class="chat-user ${isDonate ? 'donate' : ''}" ${userStyle}>${user}:</span><span class="chat-text">${message}</span>`;
-  chatlog.appendChild(div);
-  chatlog.scrollTop = chatlog.scrollHeight;
-  while (chatlog.children.length > 100) chatlog.removeChild(chatlog.firstChild);
+  window.chatStore.add({ user, message, isDonate, color });
 }
 
 const RETRIABLE_CODES = [429, 500, 502, 503, 504];
@@ -556,7 +843,7 @@ Return ONLY the JSON with the character name and type. If you can identify the e
           return callLLM(message, attempt + 1, modelIdx, startModelIdx);
         }
       }
-      showToast(msg);
+      showToast(msg, 'Erro LLM', 'red');
       setLLMStatus('error', `${model} ✗`);
       return { character: 'Erro na API', type: 'unknown' };
     }
@@ -572,7 +859,7 @@ Return ONLY the JSON with the character name and type. If you can identify the e
       await new Promise(r => setTimeout(r, delay));
       return callLLM(message, attempt + 1, modelIdx, startModelIdx);
     }
-    showToast(e.message || 'Erro desconhecido');
+    showToast(e.message || 'Erro desconhecido', 'Erro LLM', 'red');
     setLLMStatus('error', `${model} ✗`);
     return { character: 'Erro', type: 'unknown' };
   }
@@ -597,23 +884,18 @@ function tryLocalMatch(message) {
 async function identifyCharacter(donation) {
   const local = tryLocalMatch(donation.message);
   if (local) {
-    donation.character = local.character;
-    donation.type = local.type;
-    saveDonations();
+    window.donationStore.update(donation.id, { character: local.character, type: local.type });
     renderDonations();
     return;
   }
   if (!getApiKey()) {
-    donation.character = '';
-    donation.type = 'unknown';
-    saveDonations();
+    window.donationStore.update(donation.id, { character: '', type: 'unknown' });
     renderDonations();
     return;
   }
   const result = await callLLM(donation.message);
-  donation.character = result.character || '';
-  donation.type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
-  saveDonations();
+  const type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
+  window.donationStore.update(donation.id, { character: result.character || '', type });
   renderDonations();
 }
 
@@ -651,10 +933,10 @@ async function testExtraction() {
       message: input,
       character: result.character || '',
       type: type,
-      belowThreshold: false
+      belowThreshold: false,
+      source: 'manual'
     };
-    donations.push(donation);
-    saveDonations();
+    window.donationStore.add(donation);
     renderDonations();
     document.getElementById('debugInput').value = '';
   }
@@ -671,19 +953,29 @@ function formatRelativeTime(date) {
 }
 
 function updateStats() {
-  const pending = donations.filter(d => !d.belowThreshold && !d.done);
-  document.getElementById('survivorCount').textContent = pending.filter(d => d.type === 'survivor').length;
-  document.getElementById('killerCount').textContent = pending.filter(d => d.type === 'killer').length;
+  // Stats now rendered by React component
+}
+
+function getSortedDonations() {
+  const donations = getDonations();
+  const priority = getSourcePriority();
+  return [...donations].sort((a, b) => {
+    const aPrio = priority.indexOf(a.source || 'donation');
+    const bPrio = priority.indexOf(b.source || 'donation');
+    if (aPrio !== bPrio) return aPrio - bPrio;
+    return new Date(a.timestamp) - new Date(b.timestamp);
+  });
 }
 
 function renderDonations() {
+  const donations = getDonations();
   const container = document.getElementById('donations');
   const validDonations = donations.filter(d => !d.belowThreshold);
   const pendingDonations = validDonations.filter(d => !d.done);
   document.getElementById('count').textContent = pendingDonations.length;
   updateStats();
   if (donations.length === 0) { container.innerHTML = '<div class="empty">Aguardando doações...</div>'; return; }
-  const sortedDonations = [...donations].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const sortedDonations = getSortedDonations();
   container.innerHTML = sortedDonations.map(d => {
     const showChar = d.type === 'survivor' || d.type === 'killer' || d.character === 'Identificando...';
     const portrait = d.type === 'killer' && d.character && getKillerPortrait(d.character);
@@ -699,15 +991,19 @@ function renderDonations() {
     const checkmarkHtml = d.done ? `<span class="done-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></span>` : '';
     const collapsedCharHtml = isCollapsed && showChar ? `<span class="char-name-inline">${charDisplay}</span>` : '';
     const msgPreview = isCollapsed ? `<span class="msg-preview">${d.message.slice(0, 40)}${d.message.length > 40 ? '…' : ''}</span>` : '';
+    const badgeText = d.source === 'donation' ? d.amount :
+                      d.source === 'chat' ? `TIER ${d.subTier || 1}` :
+                      d.source === 'resub' ? 'RESUB' : '';
+    const badgeHtml = badgeText ? `<span class="amount source-${d.source} ${d.belowThreshold ? 'below' : ''}">${badgeText}</span>` : '';
     const actionBtns = `<div class="row-actions">
       <button class="row-btn danger" onclick="event.stopPropagation(); deleteDonation(${d.id})" title="Excluir">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
       </button>
     </div>`;
     return `
-    <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}${collapsedClass}" onclick="toggleDone(${d.id})" oncontextmenu="showContextMenu(event, ${d.id})">
+    <div class="donation ${d.belowThreshold ? 'below-threshold' : ''}${collapsedClass} source-${d.source || 'donation'}" onclick="toggleDone(${d.id})" oncontextmenu="showContextMenu(event, ${d.id})">
       <div class="donation-top">
-        <div class="donor">${checkmarkHtml}<span class="donor-name">${d.donor}</span>${collapsedCharHtml}${msgPreview}<span class="amount ${d.belowThreshold ? 'below' : ''}">${d.amount}</span></div>
+        <div class="donor">${checkmarkHtml}<span class="donor-name">${d.donor}</span>${collapsedCharHtml}${msgPreview}${badgeHtml}</div>
         <div class="time-actions">
           ${actionBtns}
           <span class="time">${formatRelativeTime(d.timestamp)}</span>
@@ -836,10 +1132,11 @@ async function loadAndReplayVOD() {
               message: match[3].trim(),
               character: belowThreshold ? '' : 'Identificando...',
               type: belowThreshold ? 'skipped' : 'unknown',
-              belowThreshold
+              belowThreshold,
+              source: 'donation'
             };
-            donations.push(donation);
-            saveDonations();
+            if (!getSourcesEnabled().donation) continue;
+            window.donationStore.add(donation);
             renderDonations();
             if (!belowThreshold) await identifyCharacter(donation);
           }
@@ -867,10 +1164,12 @@ loadMinDonation();
 loadChannel();
 loadGeminiModels();
 loadBotName();
-loadDonations();
-loadChatMessages();
+loadSessionRequests();
+loadSourcesPanel();
+setupManualAutocomplete();
 updateApiStatus();
 updateLLMStatus();
+renderDonations();
 
 function toggleChat() {
   const grid = document.querySelector('.grid');

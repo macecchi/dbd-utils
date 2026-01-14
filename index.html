@@ -23,16 +23,7 @@
         </div>
         <h1>DBD Tracker<span>Fila de pedidos</span></h1>
       </div>
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-value" id="survivorCount">0</div>
-          <div class="stat-label">Survs</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="killerCount">0</div>
-          <div class="stat-label">Killers</div>
-        </div>
-      </div>
+      <div class="stats"></div>
     </header>
 
     <section class="controls">
@@ -100,6 +91,73 @@
       </div>
     </main>
 
+    <section class="settings" id="sourcesPanel">
+      <div class="settings-header" onclick="toggleSourcesPanel()">
+        <span class="settings-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3v18M3 12h18" />
+          </svg>
+          Fontes de Pedidos
+        </span>
+        <span class="settings-toggle">▼</span>
+      </div>
+      <div class="settings-body">
+        <div class="sources-grid">
+          <label class="source-toggle">
+            <input type="checkbox" id="srcDonation" onchange="saveSourceToggle('donation', this)">
+            <span class="source-icon donation">$</span>
+            Doações
+          </label>
+          <label class="source-toggle">
+            <input type="checkbox" id="srcResub" onchange="saveSourceToggle('resub', this)">
+            <span class="source-icon resub">↻</span>
+            Resubs
+          </label>
+          <label class="source-toggle">
+            <input type="checkbox" id="srcChat" onchange="saveSourceToggle('chat', this)">
+            <span class="source-icon chat">💬</span>
+            Chat
+          </label>
+          <label class="source-toggle">
+            <input type="checkbox" id="srcManual" onchange="saveSourceToggle('manual', this)">
+            <span class="source-icon manual">✎</span>
+            Manual
+          </label>
+        </div>
+
+        <div class="sources-section">
+          <div class="sources-label">Comando do chat</div>
+          <input type="text" id="chatCommandInput" placeholder="!request" onchange="saveChatCommandInput()">
+        </div>
+
+        <div class="sources-section">
+          <div class="sources-label">Tiers permitidos</div>
+          <div class="tier-checkboxes">
+            <label><input type="checkbox" id="tierT1" onchange="saveTierCheckboxes()"> Tier 1</label>
+            <label><input type="checkbox" id="tierT2" onchange="saveTierCheckboxes()"> Tier 2</label>
+            <label><input type="checkbox" id="tierT3" onchange="saveTierCheckboxes()"> Tier 3</label>
+          </div>
+        </div>
+
+        <div class="sources-section">
+          <div class="sources-label">Prioridade (arrastar)</div>
+          <div class="priority-list" id="priorityList"></div>
+        </div>
+
+        <div class="sources-section">
+          <div class="sources-label">Adicionar manual</div>
+          <div class="manual-input-wrapper">
+            <input type="text" id="manualCharInput" placeholder="Digite o nome do personagem..." autocomplete="off">
+            <div class="autocomplete-dropdown" id="manualAutocomplete"></div>
+          </div>
+        </div>
+
+        <div class="sources-section">
+          <button class="btn btn-ghost" onclick="resetSession()">Nova Stream (resetar sessão)</button>
+        </div>
+      </div>
+    </section>
+
     <section class="settings" id="debugPanel">
       <div class="settings-header" onclick="toggleDebug()">
         <span class="settings-title">
@@ -125,6 +183,7 @@
           <button class="btn btn-ghost" onclick="reidentifyAll()" style="margin-top: 0.5rem;">Re-identificar
             todos</button>
           <button class="btn btn-ghost" onclick="clearAllDonations()" style="margin-top: 0.5rem;">Limpar tudo</button>
+          <button class="btn btn-ghost" onclick="loadMockData()" style="margin-top: 0.5rem;">Carregar mock</button>
         </div>
         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
           <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Replay VOD Chat</div>
@@ -227,6 +286,8 @@
   </div>
 
   <script src="characters.js"></script>
+  <script src="mock-data.js"></script>
+  <script type="module" src="/src/main.tsx"></script>
   <script src="main.js"></script>
 </body>
 
