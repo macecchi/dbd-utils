@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { useChat } from '../hooks/useChat';
+import { useChat } from '../store';
 
 export function ChatLog() {
-  const messages = useChat();
+  const messages = useChat((s) => s.messages);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

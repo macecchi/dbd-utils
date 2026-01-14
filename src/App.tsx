@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { ChatLog } from './components/ChatLog';
 import { ControlPanel } from './components/ControlPanel';
 import { DebugPanel } from './components/DebugPanel';
@@ -6,23 +7,36 @@ import { SettingsModal } from './components/SettingsModal';
 import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
-import { useRequests } from './hooks/useRequests';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { connect, identifyCharacter } from './services';
+import { useRequests, useSettings, useConnection } from './store';
 
 export function App() {
-  const requests = useRequests();
-  const pendingCount = requests.filter(d => !d.done && !d.belowThreshold).length;
-  const clearDoneRef = useRef<(() => void) | null>(null);
-  const [chatHidden, setChatHidden] = useState(() =>
-    localStorage.getItem('dbd_chat_hidden') === 'true'
-  );
+  const requests = useRequests((s) => s.requests);
+  const update = useRequests((s) => s.update);
+  const { apiKey, models, botName } = useSettings();
+  const { channel, chatHidden, setChatHidden } = useConnection();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const openSettings = useCallback(() => setSettingsOpen(true), []);
-  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const clearDoneRef = useRef<(() => void) | null>(null);
 
+  // Auto-identify requests that need it
   useEffect(() => {
-    localStorage.setItem('dbd_chat_hidden', String(chatHidden));
-  }, [chatHidden]);
+    const pending = requests.filter(r => r.needsIdentification);
+    for (const req of pending) {
+      identifyCharacter(req, { apiKey, models }).then(result => {
+        update(req.id, { ...result, needsIdentification: false });
+      });
+    }
+  }, [requests, apiKey, models, update]);
+
+  // Auto-connect on mount if channel is set
+  useEffect(() => {
+    if (channel) {
+      const timer = setTimeout(() => connect(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const pendingCount = requests.filter(d => !d.done && !d.belowThreshold).length;
 
   return (
     <>
@@ -37,7 +51,7 @@ export function App() {
           <Stats />
         </header>
 
-        <ControlPanel onOpenSettings={openSettings} />
+        <ControlPanel onOpenSettings={() => setSettingsOpen(true)} />
 
         <main className={`grid${chatHidden ? ' chat-hidden' : ''}`}>
           <div className="panel">
@@ -85,12 +99,12 @@ export function App() {
         <DebugPanel />
 
         <footer className="footer">
-          <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }} id="footerBotName">livepix</strong></div>
+          <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }}>{botName}</strong></div>
           <a href="https://github.com/macecchi/mandy-utils" target="_blank">GitHub</a>
         </footer>
       </div>
 
-      <SettingsModal isOpen={settingsOpen} onClose={closeSettings} />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ToastContainer />
     </>
   );

@@ -1,7 +1,4 @@
 import { DEFAULT_CHARACTERS, tryLocalMatch } from '../data/characters';
-import { settingsStore } from '../store/settings';
-import { requestStore } from '../store/requests';
-import { showToast } from '../store/toasts';
 import type { Request } from '../types';
 
 const RETRIABLE_CODES = [429, 500, 502, 503, 504];
@@ -10,17 +7,20 @@ const RETRY_DELAYS = [2000, 4000, 8000];
 
 let currentModelIndex = 0;
 
-const getApiKey = () => settingsStore.get().apiKey || '';
-const getGeminiModels = () => settingsStore.get().models || ['gemini-2.5-flash'];
+export interface LLMConfig {
+  apiKey: string;
+  models: string[];
+}
 
 export async function callLLM(
   message: string,
+  config: LLMConfig,
+  onError?: (msg: string) => void,
   attempt = 0,
   modelIdx = currentModelIndex,
   startIdx = currentModelIndex
 ): Promise<{ character: string; type: string }> {
-  const apiKey = getApiKey();
-  const models = getGeminiModels();
+  const { apiKey, models } = config;
   const model = models[modelIdx];
   if (!apiKey) return { character: 'Sem API key', type: 'unknown' };
 
@@ -68,14 +68,14 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
         const nextIdx = (modelIdx + 1) % models.length;
         if (nextIdx !== startIdx) {
           currentModelIndex = nextIdx;
-          return callLLM(message, 0, nextIdx, startIdx);
+          return callLLM(message, config, onError, 0, nextIdx, startIdx);
         }
         if (attempt < MAX_RETRIES) {
           await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
-          return callLLM(message, attempt + 1, modelIdx, startIdx);
+          return callLLM(message, config, onError, attempt + 1, modelIdx, startIdx);
         }
       }
-      showToast(msg, 'Erro LLM', 'red');
+      onError?.(msg);
       return { character: 'Erro na API', type: 'unknown' };
     }
 
@@ -85,65 +85,47 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
   } catch (e: any) {
     if (attempt < MAX_RETRIES) {
       await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
-      return callLLM(message, attempt + 1, modelIdx, startIdx);
+      return callLLM(message, config, onError, attempt + 1, modelIdx, startIdx);
     }
-    showToast(e.message || 'Erro', 'Erro LLM', 'red');
+    onError?.(e.message || 'Erro');
     return { character: 'Erro', type: 'unknown' };
   }
 }
 
-export async function identifyCharacter(request: Request) {
+export async function identifyCharacter(
+  request: Request,
+  config: LLMConfig,
+  onError?: (msg: string) => void
+): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' }> {
   const local = tryLocalMatch(request.message);
-  if (local) {
-    requestStore.update(request.id, local);
-    return;
-  }
-  if (!getApiKey()) {
-    requestStore.update(request.id, { character: '', type: 'unknown' });
-    return;
-  }
-  const result = await callLLM(request.message);
+  if (local) return local;
+
+  if (!config.apiKey) return { character: '', type: 'unknown' };
+
+  const result = await callLLM(request.message, config, onError);
   const type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
-  requestStore.update(request.id, {
+  return {
     character: result.character || '',
     type: type as 'survivor' | 'killer' | 'unknown'
-  });
+  };
 }
 
-export async function testExtraction(input: string, addToQueue: boolean) {
+export async function testExtraction(
+  input: string,
+  config: LLMConfig,
+  onError?: (msg: string) => void
+): Promise<{ character: string; type: 'killer' | 'survivor' | 'unknown'; isLocal: boolean }> {
   if (!input) return { character: '', type: 'unknown', isLocal: false };
-  const localResult = tryLocalMatch(input);
-  const isLocal = !!localResult;
-  let result: { character: string; type: 'killer' | 'survivor' | 'unknown' };
-  if (localResult) {
-    result = localResult;
-  } else {
-    const llm = await callLLM(input);
-    result = { character: llm.character || '', type: llm.type === 'none' ? 'unknown' : (llm.type as 'killer' | 'survivor' | 'unknown') || 'unknown' };
-  }
-  if (addToQueue && result.type !== 'unknown') {
-    requestStore.add({
-      id: Date.now(),
-      timestamp: new Date(),
-      donor: 'Teste',
-      amount: 'R$ 0,00',
-      amountVal: 0,
-      message: input,
-      character: result.character,
-      type: result.type,
-      belowThreshold: false,
-      source: 'manual'
-    });
-  }
-  return { character: result.character, type: result.type, isLocal };
-}
 
-export async function reidentifyAll() {
-  const requests = requestStore.get();
-  for (const d of requests) {
-    requestStore.update(d.id, { character: 'Identificando...', type: 'unknown' });
+  const localResult = tryLocalMatch(input);
+  if (localResult) {
+    return { ...localResult, isLocal: true };
   }
-  for (const d of requestStore.get()) {
-    await identifyCharacter(d);
-  }
+
+  const llm = await callLLM(input, config, onError);
+  return {
+    character: llm.character || '',
+    type: llm.type === 'none' ? 'unknown' : (llm.type as 'killer' | 'survivor' | 'unknown') || 'unknown',
+    isLocal: false
+  };
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSettings } from '../hooks/useSettings';
-import { settingsStore } from '../store/settings';
+import { useSettings } from '../store';
 
 interface Props {
   isOpen: boolean;
@@ -8,22 +7,22 @@ interface Props {
 }
 
 export function SettingsModal({ isOpen, onClose }: Props) {
-  const settings = useSettings();
-  const [apiKey, setApiKey] = useState('');
-  const [models, setModels] = useState('');
-  const [botName, setBotName] = useState('');
+  const { apiKey, models, botName, setApiKey, setModels, setBotName } = useSettings();
+  const [localKey, setLocalKey] = useState('');
+  const [localModels, setLocalModels] = useState('');
+  const [localBot, setLocalBot] = useState('');
   const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setApiKey(settings.apiKey);
-      setModels(settings.models.join('\n'));
-      setBotName(settings.botName);
+      setLocalKey(apiKey);
+      setLocalModels(models.join('\n'));
+      setLocalBot(botName);
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
-  }, [isOpen, settings]);
+  }, [isOpen, apiKey, models, botName]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -38,24 +37,24 @@ export function SettingsModal({ isOpen, onClose }: Props) {
   };
 
   const handleApiKeyChange = (val: string) => {
+    setLocalKey(val);
     setApiKey(val);
-    settingsStore.setApiKey(val.trim());
   };
 
   const handleModelsChange = (val: string) => {
-    setModels(val);
+    setLocalModels(val);
     const parsed = val.split('\n').map(m => m.trim()).filter(Boolean);
-    settingsStore.setModels(parsed);
+    if (parsed.length) setModels(parsed);
   };
 
   const handleBotNameChange = (val: string) => {
+    setLocalBot(val);
     setBotName(val);
-    settingsStore.setBotName(val.trim());
   };
 
   if (!isOpen) return null;
 
-  const hasKey = !!settings.apiKey;
+  const hasKey = !!apiKey;
 
   return (
     <div className="modal-overlay open" onClick={handleOverlayClick}>
@@ -85,7 +84,7 @@ export function SettingsModal({ isOpen, onClose }: Props) {
             <div className="api-key-row">
               <input
                 type={showKey ? 'text' : 'password'}
-                value={apiKey}
+                value={localKey}
                 onChange={e => handleApiKeyChange(e.target.value)}
                 placeholder="Cole sua API key aqui"
               />
@@ -104,7 +103,7 @@ export function SettingsModal({ isOpen, onClose }: Props) {
             <label>Modelos (um por linha, ordem de prioridade)</label>
             <textarea
               rows={3}
-              value={models}
+              value={localModels}
               onChange={e => handleModelsChange(e.target.value)}
               placeholder="gemini-2.0-flash&#10;gemini-2.5-flash"
               style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem' }}
@@ -114,7 +113,7 @@ export function SettingsModal({ isOpen, onClose }: Props) {
             <label>Bot de donates</label>
             <input
               type="text"
-              value={botName}
+              value={localBot}
               onChange={e => handleBotNameChange(e.target.value)}
               placeholder="livepix"
             />

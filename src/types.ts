@@ -22,6 +22,7 @@ export interface Request {
   done?: boolean;
   source: 'donation' | 'resub' | 'chat' | 'manual';
   subTier?: number;
+  needsIdentification?: boolean;
 }
 
 export type Donation = Request;

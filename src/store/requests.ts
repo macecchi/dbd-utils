@@ -1,42 +1,103 @@
-import type { Request, Donation } from '../types';
-import { createStore } from './createStore';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { Request } from '../types';
 
-export type { Request, Donation };
+interface RequestsStore {
+  requests: Request[];
+  deletedStack: Request[][];
+  add: (req: Request) => void;
+  update: (id: number, updates: Partial<Request>) => void;
+  remove: (ids: number[]) => void;
+  toggleDone: (id: number) => void;
+  clearDone: () => number;
+  undo: () => Request[] | null;
+  setAll: (requests: Request[]) => void;
+}
 
-const baseStore = createStore<Request[]>({
-  key: 'dbd_donations',
-  defaultValue: [],
-  load: (saved) => JSON.parse(saved).map((d: any) => ({
-    ...d,
-    timestamp: new Date(d.timestamp),
-    source: d.source || 'donation'
-  }))
-});
-
-export const requestStore = {
-  ...baseStore,
-
-  add: (request: Request) => {
-    baseStore.set([...baseStore.get(), request]);
-  },
-
-  update: (id: number, updates: Partial<Request>) => {
-    const requests = baseStore.get();
-    const idx = requests.findIndex(d => d.id === id);
-    if (idx !== -1) {
-      const updated = [...requests];
-      updated[idx] = { ...updated[idx], ...updates };
-      baseStore.set(updated);
-    }
-  },
-
-  remove: (id: number) => {
-    baseStore.set(baseStore.get().filter(d => d.id !== id));
-  },
-
-  clear: () => {
-    baseStore.set([]);
+function deserialize(str: string): Request[] {
+  try {
+    return JSON.parse(str).map((d: any) => ({
+      ...d,
+      timestamp: new Date(d.timestamp),
+      source: d.source || 'donation',
+    }));
+  } catch {
+    return [];
   }
-};
+}
 
-export const donationStore = requestStore;
+export const useRequests = create<RequestsStore>()(
+  persist(
+    (set, get) => ({
+      requests: [],
+      deletedStack: [],
+      add: (req) => set((s) => ({ requests: [...s.requests, req] })),
+      update: (id, updates) => set((s) => ({
+        requests: s.requests.map((r) => (r.id === id ? { ...r, ...updates } : r)),
+      })),
+      remove: (ids) => {
+        const { requests } = get();
+        const removed = requests.filter((r) => ids.includes(r.id));
+        if (removed.length === 0) return;
+        set((s) => ({
+          requests: s.requests.filter((r) => !ids.includes(r.id)),
+          deletedStack: [...s.deletedStack, removed],
+        }));
+      },
+      toggleDone: (id) => set((s) => ({
+        requests: s.requests.map((r) => (r.id === id ? { ...r, done: !r.done } : r)),
+      })),
+      clearDone: () => {
+        const { requests } = get();
+        const done = requests.filter((r) => r.done);
+        if (done.length === 0) return 0;
+        set((s) => ({
+          requests: s.requests.filter((r) => !r.done),
+          deletedStack: [...s.deletedStack, done],
+        }));
+        return done.length;
+      },
+      undo: () => {
+        const { deletedStack } = get();
+        if (deletedStack.length === 0) return null;
+        const last = deletedStack[deletedStack.length - 1];
+        set((s) => ({
+          requests: [...s.requests, ...last],
+          deletedStack: s.deletedStack.slice(0, -1),
+        }));
+        return last;
+      },
+      setAll: (requests) => set({ requests }),
+    }),
+    {
+      name: 'dbd-requests',
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) {
+            // Try migrate from old key
+            const old = localStorage.getItem('dbd_donations');
+            if (old) {
+              localStorage.removeItem('dbd_donations');
+              return { state: { requests: deserialize(old), deletedStack: [] } };
+            }
+            return null;
+          }
+          const parsed = JSON.parse(str);
+          return {
+            state: {
+              ...parsed.state,
+              requests: parsed.state.requests.map((r: any) => ({
+                ...r,
+                timestamp: new Date(r.timestamp),
+              })),
+            },
+          };
+        },
+        setItem: (name, value) => localStorage.setItem(name, JSON.stringify(value)),
+        removeItem: (name) => localStorage.removeItem(name),
+      },
+      partialize: (state) => ({ requests: state.requests }),
+    }
+  )
+);

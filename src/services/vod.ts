@@ -1,18 +1,23 @@
-import { chatStore } from '../store/chat';
-import { requestStore } from '../store/requests';
-import { connectionStore } from '../store/connection';
-import { sourcesStore } from '../store/sources';
-import { settingsStore } from '../store/settings';
-import { identifyCharacter } from './llm';
+import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage } from '../utils/helpers';
+import type { Request } from '../types';
+import type { ChatMessage } from '../types';
 
-// Public anonymous client ID for Twitch GQL - not a secret, widely used for unauthenticated access
 const TWITCH_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
 let vodReplayAbort: boolean | null = null;
 
-const getBotName = () => (settingsStore.get().botName || 'livepix').toLowerCase();
-const getMinDonation = () => connectionStore.get().minDonation;
-const getSourcesEnabled = () => sourcesStore.getEnabled();
+export interface VODConfig {
+  botName: string;
+  minDonation: number;
+  apiKey: string;
+  sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
+}
+
+export interface VODCallbacks {
+  onStatus: (s: string) => void;
+  onChat: (msg: ChatMessage) => void;
+  onRequest: (request: Request) => void;
+}
 
 async function fetchVODChat(vodId: string, offset = 0) {
   const query = {
@@ -35,10 +40,15 @@ async function fetchVODChat(vodId: string, offset = 0) {
   }
 }
 
-export async function loadAndReplayVOD(vodId: string, speed: number, onStatus: (s: string) => void) {
+export async function loadAndReplayVOD(
+  vodId: string,
+  speed: number,
+  config: VODConfig,
+  callbacks: VODCallbacks
+) {
   if (!vodId) return;
   vodReplayAbort = false;
-  const botName = getBotName();
+  const botName = config.botName.toLowerCase();
   let offset = 0, total = 0, donates = 0;
   const seen = new Set<string>();
 
@@ -61,31 +71,33 @@ export async function loadAndReplayVOD(vodId: string, speed: number, onStatus: (
 
       const isDonate = username === botName;
       if (isDonate) donates++;
-      chatStore.add({ user: displayName, message, isDonate, color: null });
+      callbacks.onChat({ user: displayName, message, isDonate, color: null });
 
       if (isDonate) {
         const parsed = parseDonationMessage(message);
-        if (parsed && getSourcesEnabled().donation) {
+        if (parsed && config.sourcesEnabled.donation) {
           const amountVal = parseAmount(parsed.amount);
-          const belowThreshold = amountVal < getMinDonation();
-          const request = {
+          const belowThreshold = amountVal < config.minDonation;
+          const local = belowThreshold ? null : tryLocalMatch(parsed.message);
+
+          const request: Request = {
             id: Date.now() + Math.random(),
             timestamp: new Date(),
             donor: parsed.donor,
             amount: parsed.amount,
             amountVal,
             message: parsed.message,
-            character: belowThreshold ? '' : 'Identificando...',
-            type: belowThreshold ? 'skipped' as const : 'unknown' as const,
+            character: belowThreshold ? '' : (local?.character || 'Identificando...'),
+            type: belowThreshold ? 'skipped' : (local?.type || 'unknown'),
             belowThreshold,
-            source: 'donation' as const
+            source: 'donation',
+            needsIdentification: !belowThreshold && !local
           };
-          requestStore.add(request);
-          if (!belowThreshold) await identifyCharacter(request);
+          callbacks.onRequest(request);
         }
       }
 
-      onStatus(`${total} msgs, ${donates} donates`);
+      callbacks.onStatus(`${total} msgs, ${donates} donates`);
       if (speed > 0) await new Promise(r => setTimeout(r, speed));
     }
 
@@ -93,7 +105,7 @@ export async function loadAndReplayVOD(vodId: string, speed: number, onStatus: (
     offset = lastOffset + 1;
   }
 
-  if (!vodReplayAbort) onStatus(`Done: ${total} msgs, ${donates} donates`);
+  if (!vodReplayAbort) callbacks.onStatus(`Done: ${total} msgs, ${donates} donates`);
   vodReplayAbort = null;
 }
 

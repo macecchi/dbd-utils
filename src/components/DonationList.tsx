@@ -1,26 +1,13 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { useRequests } from '../hooks/useRequests';
-import { requestStore } from '../store/requests';
-import { showUndoToast } from '../store/toasts';
+import { useEffect, useCallback } from 'react';
 import { identifyCharacter } from '../services';
 import { DonationCard } from './DonationCard';
 import { ContextMenu } from './ContextMenu';
 import { ContextMenuProvider } from '../context/ContextMenuContext';
-import type { Request } from '../types';
+import { useRequests, useSources, useSettings, useToasts } from '../store';
 
-export interface DonationListHandle {
-  clearDoneRequests: () => void;
-}
+type SourceType = 'donation' | 'resub' | 'chat' | 'manual';
 
-const DEFAULT_SOURCE_PRIORITY = ['donation', 'resub', 'chat', 'manual'];
-
-function getSourcePriority(): string[] {
-  const saved = localStorage.getItem('dbd_source_priority');
-  return saved ? JSON.parse(saved) : DEFAULT_SOURCE_PRIORITY;
-}
-
-function getSortedRequests(requests: Request[]): Request[] {
-  const priority = getSourcePriority();
+function getSortedRequests(requests: ReturnType<typeof useRequests.getState>['requests'], priority: SourceType[]) {
   return [...requests].sort((a, b) => {
     const aPrio = priority.indexOf(a.source || 'donation');
     const bPrio = priority.indexOf(b.source || 'donation');
@@ -29,83 +16,60 @@ function getSortedRequests(requests: Request[]): Request[] {
   });
 }
 
-interface DonationListProps {
+interface Props {
   onClearDoneRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export function DonationList({ onClearDoneRef }: DonationListProps) {
-  const requests = useRequests();
-  const lastDeletedRef = useRef<Request | Request[] | null>(null);
+export function DonationList({ onClearDoneRef }: Props) {
+  const { requests, toggleDone, remove, clearDone, undo, update } = useRequests();
+  const priority = useSources((s) => s.priority);
+  const { apiKey, models } = useSettings();
+  const { showUndo } = useToasts();
 
-  const toggleDone = useCallback((id: number) => {
-    const request = requestStore.get().find(d => d.id === id);
-    if (request) {
-      requestStore.update(id, { done: !request.done });
-    }
-  }, []);
+  const llmConfig = { apiKey, models };
 
-  const deleteRequest = useCallback((id: number) => {
-    const request = requestStore.get().find(d => d.id === id);
-    if (request) {
-      lastDeletedRef.current = request;
-      requestStore.remove(id);
-      showUndoToast(1, () => {
-        if (lastDeletedRef.current && !Array.isArray(lastDeletedRef.current)) {
-          requestStore.add(lastDeletedRef.current);
-          lastDeletedRef.current = null;
-        }
-      });
-    }
-  }, []);
+  const handleDelete = useCallback((id: number) => {
+    remove([id]);
+    showUndo(1, () => undo());
+  }, [remove, showUndo, undo]);
 
   const rerunExtraction = useCallback(async (id: number) => {
-    const request = requestStore.get().find(d => d.id === id);
+    const request = requests.find(d => d.id === id);
     if (request) {
-      requestStore.update(id, { character: 'Identificando...', type: 'unknown' });
-      await identifyCharacter(request);
+      update(id, { character: 'Identificando...', type: 'unknown' });
+      const result = await identifyCharacter(request, llmConfig);
+      update(id, result);
     }
-  }, []);
+  }, [requests, update, llmConfig]);
 
-  const clearDoneRequests = useCallback(() => {
-    const all = requestStore.get();
-    const done = all.filter(d => d.done);
-    if (done.length === 0) return;
-    lastDeletedRef.current = done;
-    requestStore.set(all.filter(d => !d.done));
-    showUndoToast(done.length, () => {
-      if (Array.isArray(lastDeletedRef.current)) {
-        requestStore.set([...requestStore.get(), ...lastDeletedRef.current]);
-        lastDeletedRef.current = null;
-      }
-    });
-  }, []);
+  const handleClearDone = useCallback(() => {
+    const count = clearDone();
+    if (count > 0) {
+      showUndo(count, () => undo());
+    }
+  }, [clearDone, showUndo, undo]);
 
   useEffect(() => {
-    if (onClearDoneRef) onClearDoneRef.current = clearDoneRequests;
+    if (onClearDoneRef) onClearDoneRef.current = handleClearDone;
     return () => { if (onClearDoneRef) onClearDoneRef.current = null; };
-  }, [clearDoneRequests, onClearDoneRef]);
+  }, [handleClearDone, onClearDoneRef]);
 
   useEffect(() => {
-    const handleUndo = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && lastDeletedRef.current) {
+    const handleUndoKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
-        if (Array.isArray(lastDeletedRef.current)) {
-          requestStore.set([...requestStore.get(), ...lastDeletedRef.current]);
-        } else {
-          requestStore.add(lastDeletedRef.current);
-        }
-        lastDeletedRef.current = null;
+        undo();
       }
     };
-    document.addEventListener('keydown', handleUndo);
-    return () => document.removeEventListener('keydown', handleUndo);
-  }, []);
+    document.addEventListener('keydown', handleUndoKey);
+    return () => document.removeEventListener('keydown', handleUndoKey);
+  }, [undo]);
 
   if (requests.length === 0) {
     return <div className="empty">Aguardando doações...</div>;
   }
 
-  const sorted = getSortedRequests(requests);
+  const sorted = getSortedRequests(requests, priority);
 
   return (
     <ContextMenuProvider>
@@ -114,13 +78,13 @@ export function DonationList({ onClearDoneRef }: DonationListProps) {
           key={d.id}
           donation={d}
           onToggleDone={toggleDone}
-          onDelete={deleteRequest}
+          onDelete={handleDelete}
         />
       ))}
       <ContextMenu
         onToggleDone={toggleDone}
         onRerun={rerunExtraction}
-        onDelete={deleteRequest}
+        onDelete={handleDelete}
       />
     </ContextMenuProvider>
   );

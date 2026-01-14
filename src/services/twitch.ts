@@ -1,56 +1,41 @@
-import { connectionStore } from '../store/connection';
-import { sourcesStore } from '../store/sources';
-import { settingsStore } from '../store/settings';
-import { chatStore } from '../store/chat';
-import { requestStore } from '../store/requests';
-import { identifyCharacter } from './llm';
 import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage } from '../utils/helpers';
+import { useConnection, useSettings, useSources, useRequests, useChat } from '../store';
+import type { Request } from '../types';
 
 let ws: WebSocket | null = null;
-
-const getSourcesEnabled = () => sourcesStore.getEnabled();
-const getChatCommand = () => sourcesStore.getChatCommand();
-const getChatTiers = () => sourcesStore.getChatTiers();
-const hasSessionRequest = (u: string) => sourcesStore.hasSessionRequest(u);
-const addSessionRequest = (u: string) => sourcesStore.addSessionRequest(u);
-const getMinDonation = () => connectionStore.get().minDonation;
-const getChannel = () => connectionStore.get().channel;
-const getApiKey = () => settingsStore.get().apiKey || '';
-const getBotName = () => (settingsStore.get().botName || 'livepix').toLowerCase();
-
-function setStatus(text: string, state: 'connected' | 'connecting' | 'disconnected' | 'error' = 'disconnected') {
-  connectionStore.setStatus(state, text);
-}
 
 export function disconnect() {
   if (ws) {
     ws.close();
     ws = null;
-    setStatus('Desconectado');
+    useConnection.getState().setStatus('disconnected', 'Desconectado');
   }
 }
 
 export function connect() {
-  const channel = getChannel().trim().toLowerCase();
-  if (!channel) return;
-  setStatus('Conectando...', 'connecting');
+  const { channel } = useConnection.getState();
+  const ch = channel.trim().toLowerCase();
+  if (!ch) return;
+
+  useConnection.getState().setStatus('connecting', 'Conectando...');
+
   ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
   ws.onopen = () => {
     ws!.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
     ws!.send('NICK justinfan' + Math.floor(Math.random() * 99999));
-    ws!.send(`JOIN #${channel}`);
+    ws!.send(`JOIN #${ch}`);
   };
   ws.onmessage = (e) => {
     for (const line of e.data.split('\r\n')) {
       if (line.startsWith('PING')) ws!.send('PONG :tmi.twitch.tv');
-      else if (line.includes('366')) setStatus(`t.tv/${channel}`, 'connected');
+      else if (line.includes('366')) useConnection.getState().setStatus('connected', `t.tv/${ch}`);
       else if (line.includes('USERNOTICE')) handleUserNotice(line);
       else if (line.includes('PRIVMSG')) handleMessage(line);
     }
   };
-  ws.onclose = () => { setStatus('Desconectado', 'error'); ws = null; };
-  ws.onerror = () => setStatus('Erro', 'error');
+  ws.onclose = () => { useConnection.getState().setStatus('error', 'Desconectado'); ws = null; };
+  ws.onerror = () => useConnection.getState().setStatus('error', 'Erro');
 }
 
 function parseIrcTags(raw: string): Record<string, string> {
@@ -69,67 +54,82 @@ function getSubTierFromBadges(badges: string): number {
 }
 
 function handleUserNotice(raw: string) {
+  const { enabled } = useSources.getState();
+  const { apiKey } = useSettings.getState();
+  const { add: addRequest } = useRequests.getState();
+  const { add: addChat } = useChat.getState();
+
   const tags = parseIrcTags(raw);
   if (tags['msg-id'] !== 'resub' && tags['msg-id'] !== 'sub') return;
-  if (!getSourcesEnabled().resub) return;
+  if (!enabled.resub) return;
 
   const displayName = tags['display-name'] || 'unknown';
   const msgMatch = raw.match(/USERNOTICE #\w+ :(.+)$/);
   const message = msgMatch?.[1]?.trim() || '';
   if (!message) return;
 
-  chatStore.add({ user: displayName, message: `[${tags['msg-id']}] ${message}`, isDonate: false, color: null });
+  addChat({ user: displayName, message: `[${tags['msg-id']}] ${message}`, isDonate: false, color: null });
 
   const local = tryLocalMatch(message);
-  if (!local && !getApiKey()) return;
+  if (!local && !apiKey) return;
 
-  const request = {
+  const request: Request = {
     id: Date.now() + Math.random(),
     timestamp: new Date(),
     donor: displayName,
     amount: '',
     amountVal: 0,
     message,
-    character: 'Identificando...',
-    type: 'unknown' as const,
+    character: local?.character || 'Identificando...',
+    type: local?.type || 'unknown',
     belowThreshold: false,
-    source: 'resub' as const
+    source: 'resub',
+    needsIdentification: !local
   };
-  requestStore.add(request);
-  identifyCharacter(request);
+  addRequest(request);
 }
 
 function handleChatCommand(tags: Record<string, string>, displayName: string, username: string, requestText: string) {
-  if (!getSourcesEnabled().chat || !requestText) return;
+  const { enabled, chatTiers, hasSessionRequest, addSessionRequest } = useSources.getState();
+  const { apiKey } = useSettings.getState();
+  const { add: addRequest } = useRequests.getState();
+
+  if (!enabled.chat || !requestText) return;
   if (hasSessionRequest(username)) return;
 
   const isSub = tags.subscriber === '1';
   const subTier = getSubTierFromBadges(tags.badges);
-  if (!isSub || !getChatTiers().includes(subTier)) return;
+  if (!isSub || !chatTiers.includes(subTier)) return;
 
   const local = tryLocalMatch(requestText);
-  if (!local && !getApiKey()) return;
+  if (!local && !apiKey) return;
 
   addSessionRequest(username);
 
-  const request = {
+  const request: Request = {
     id: Date.now() + Math.random(),
     timestamp: new Date(),
     donor: displayName,
     amount: '',
     amountVal: 0,
     message: requestText,
-    character: 'Identificando...',
-    type: 'unknown' as const,
+    character: local?.character || 'Identificando...',
+    type: local?.type || 'unknown',
     belowThreshold: false,
-    source: 'chat' as const,
-    subTier
+    source: 'chat',
+    subTier,
+    needsIdentification: !local
   };
-  requestStore.add(request);
-  identifyCharacter(request);
+  addRequest(request);
 }
 
 function handleMessage(raw: string) {
+  const { botName, apiKey } = useSettings.getState();
+  const { minDonation } = useConnection.getState();
+  const { enabled, chatCommand } = useSources.getState();
+  const { add: addRequest } = useRequests.getState();
+  const { add: addChat } = useChat.getState();
+
   const tags = parseIrcTags(raw);
   const userMatch = raw.match(/display-name=([^;]*)/i);
   const msgMatch = raw.match(/PRIVMSG #\w+ :(.+)$/);
@@ -140,39 +140,35 @@ function handleMessage(raw: string) {
   const username = displayName.toLowerCase();
   const message = msgMatch[1].trim();
   const color = colorMatch?.[1] || null;
-  const botName = getBotName();
+  const bot = botName.toLowerCase();
 
-  chatStore.add({ user: displayName, message, isDonate: username === botName, color });
+  addChat({ user: displayName, message, isDonate: username === bot, color });
 
-  const chatCommand = getChatCommand();
   if (message.toLowerCase().startsWith(chatCommand.toLowerCase())) {
     handleChatCommand(tags, displayName, username, message.slice(chatCommand.length).trim());
     return;
   }
 
-  if (username !== botName) return;
+  if (username !== bot) return;
   const parsed = parseDonationMessage(message);
-  if (!parsed || !getSourcesEnabled().donation) return;
+  if (!parsed || !enabled.donation) return;
 
   const amountVal = parseAmount(parsed.amount);
-  const belowThreshold = amountVal < getMinDonation();
+  const belowThreshold = amountVal < minDonation;
+  const local = belowThreshold ? null : tryLocalMatch(parsed.message);
 
-  const request = {
+  const request: Request = {
     id: Date.now(),
     timestamp: new Date(),
     donor: parsed.donor,
     amount: parsed.amount,
     amountVal,
     message: parsed.message,
-    character: belowThreshold ? 'Ignorado' : 'Identificando...',
-    type: belowThreshold ? 'skipped' as const : 'unknown' as const,
+    character: belowThreshold ? 'Ignorado' : (local?.character || 'Identificando...'),
+    type: belowThreshold ? 'skipped' : (local?.type || 'unknown'),
     belowThreshold,
-    source: 'donation' as const
+    source: 'donation',
+    needsIdentification: !belowThreshold && !local && !!apiKey
   };
-  requestStore.add(request);
-
-  if (!belowThreshold) {
-    const requests = requestStore.get();
-    identifyCharacter(requests[requests.length - 1]);
-  }
+  addRequest(request);
 }

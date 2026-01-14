@@ -1,49 +1,49 @@
-import { createStore } from './createStore';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 const DEFAULT_MODELS = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 
-export interface Settings {
+interface SettingsState {
   apiKey: string;
   models: string[];
   botName: string;
+  setApiKey: (key: string) => void;
+  setModels: (models: string[]) => void;
+  setBotName: (name: string) => void;
 }
 
-const baseStore = createStore<Settings>({
-  key: 'dbd_settings',
-  defaultValue: {
-    apiKey: '',
-    models: DEFAULT_MODELS,
-    botName: 'livepix'
-  },
-  load: () => ({
-    apiKey: localStorage.getItem('gemini_key') || '',
-    models: JSON.parse(localStorage.getItem('gemini_models') || 'null') || DEFAULT_MODELS,
-    botName: localStorage.getItem('dbd_bot_name') || 'livepix'
-  }),
-  save: (settings) => {
-    if (settings.apiKey) {
-      localStorage.setItem('gemini_key', settings.apiKey);
-    } else {
-      localStorage.removeItem('gemini_key');
+// Migrate from old localStorage keys
+function migrateOldSettings(): Partial<SettingsState> {
+  const apiKey = localStorage.getItem('gemini_key') || '';
+  const models = JSON.parse(localStorage.getItem('gemini_models') || 'null') || DEFAULT_MODELS;
+  const botName = localStorage.getItem('dbd_bot_name') || 'livepix';
+  // Clean up old keys
+  localStorage.removeItem('gemini_key');
+  localStorage.removeItem('gemini_models');
+  localStorage.removeItem('dbd_bot_name');
+  return { apiKey, models, botName };
+}
+
+export const useSettings = create<SettingsState>()(
+  persist(
+    (set) => ({
+      apiKey: '',
+      models: DEFAULT_MODELS,
+      botName: 'livepix',
+      setApiKey: (apiKey) => set({ apiKey: apiKey.trim() }),
+      setModels: (models) => set({ models }),
+      setBotName: (botName) => set({ botName: botName.trim() || 'livepix' }),
+    }),
+    {
+      name: 'dbd-settings',
+      onRehydrateStorage: () => (state) => {
+        if (state && !state.apiKey && localStorage.getItem('gemini_key')) {
+          const migrated = migrateOldSettings();
+          state.setApiKey(migrated.apiKey || '');
+          state.setModels(migrated.models || DEFAULT_MODELS);
+          state.setBotName(migrated.botName || 'livepix');
+        }
+      },
     }
-    localStorage.setItem('gemini_models', JSON.stringify(settings.models));
-    localStorage.setItem('dbd_bot_name', settings.botName);
-    return JSON.stringify(settings);
-  }
-});
-
-export const settingsStore = {
-  ...baseStore,
-
-  setApiKey: (key: string) => {
-    baseStore.set({ ...baseStore.get(), apiKey: key });
-  },
-
-  setModels: (models: string[]) => {
-    baseStore.set({ ...baseStore.get(), models: models.length ? models : DEFAULT_MODELS });
-  },
-
-  setBotName: (name: string) => {
-    baseStore.set({ ...baseStore.get(), botName: name || 'livepix' });
-  }
-};
+  )
+);

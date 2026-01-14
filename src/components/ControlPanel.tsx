@@ -1,5 +1,4 @@
-import { useConnection } from '../hooks/useConnection';
-import { connectionStore } from '../store/connection';
+import { useConnection } from '../store';
 import { connect, disconnect } from '../services';
 
 interface Props {
@@ -7,7 +6,7 @@ interface Props {
 }
 
 export function ControlPanel({ onOpenSettings }: Props) {
-  const { status, statusText, channel, minDonation } = useConnection();
+  const { channel, minDonation, status, statusText, setChannel, setMinDonation } = useConnection();
   const isConnected = status === 'connected';
 
   const handleConnect = () => {
@@ -26,7 +25,7 @@ export function ControlPanel({ onOpenSettings }: Props) {
           type="text"
           value={channel}
           placeholder="canal"
-          onChange={e => connectionStore.setChannel(e.target.value)}
+          onChange={e => setChannel(e.target.value)}
         />
       </div>
       <div className="field">
@@ -36,7 +35,7 @@ export function ControlPanel({ onOpenSettings }: Props) {
           value={minDonation}
           min={0}
           step={1}
-          onChange={e => connectionStore.setMinDonation(parseFloat(e.target.value) || 0)}
+          onChange={e => setMinDonation(parseFloat(e.target.value) || 0)}
         />
       </div>
       <button className="btn btn-icon" onClick={onOpenSettings} title="Configurações IA">

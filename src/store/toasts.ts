@@ -1,42 +1,37 @@
+import { create } from 'zustand';
 import type { Toast } from '../types';
-import { createMemoryStore } from './createStore';
 
-export type { Toast };
+interface ToastsStore {
+  toasts: Toast[];
+  nextId: number;
+  add: (toast: Omit<Toast, 'id'>) => number;
+  remove: (id: number) => void;
+  show: (msg: string, title?: string, color?: string, duration?: number) => void;
+  showUndo: (count: number, undoCallback: () => void) => void;
+}
 
-let nextId = 1;
-
-const baseStore = createMemoryStore<Toast[]>({ defaultValue: [] });
-
-export const toastStore = {
-  ...baseStore,
-
-  add: (toast: Omit<Toast, 'id'>) => {
-    const id = nextId++;
-    const newToast = { ...toast, id };
-    baseStore.set([...baseStore.get(), newToast]);
-
+export const useToasts = create<ToastsStore>((set, get) => ({
+  toasts: [],
+  nextId: 1,
+  add: (toast) => {
+    const id = get().nextId;
+    set((s) => ({
+      toasts: [...s.toasts, { ...toast, id }],
+      nextId: s.nextId + 1,
+    }));
     if (toast.duration > 0) {
-      setTimeout(() => toastStore.remove(id), toast.duration);
+      setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), toast.duration);
     }
     return id;
   },
-
-  remove: (id: number) => {
-    baseStore.set(baseStore.get().filter(t => t.id !== id));
-  }
-};
-
-export function showToast(msg: string, title?: string, color?: string, duration = 5000) {
-  toastStore.add({ message: msg, title, color, duration, type: 'default' });
-}
-
-export function showToastInfo(msg: string, duration = 3000) {
-  toastStore.add({ message: msg, duration, type: 'info' });
-}
-
-export function showUndoToast(count: number, undoCallback: () => void) {
-  const isMac = navigator.platform.includes('Mac');
-  const hint = isMac ? '⌘Z' : 'Ctrl+Z';
-  const msg = count > 1 ? `${count} excluídos` : 'Excluído';
-  toastStore.add({ message: msg, duration: 5000, type: 'undo', undoCallback, undoHint: hint });
-}
+  remove: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+  show: (message, title, color, duration = 5000) => {
+    get().add({ message, title, color, duration, type: 'default' });
+  },
+  showUndo: (count, undoCallback) => {
+    const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
+    const hint = isMac ? '⌘Z' : 'Ctrl+Z';
+    const msg = count > 1 ? `${count} excluídos` : 'Excluído';
+    get().add({ message: msg, duration: 5000, type: 'undo', undoCallback, undoHint: hint });
+  },
+}));

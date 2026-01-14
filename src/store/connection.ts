@@ -1,54 +1,51 @@
-import { createStore } from './createStore';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { ConnectionState } from '../types';
 
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
-
-export interface ConnectionState {
-  status: ConnectionStatus;
-  statusText: string;
+interface ConnectionStore {
   channel: string;
   minDonation: number;
+  status: ConnectionState;
+  statusText: string;
+  chatHidden: boolean;
+  setChannel: (channel: string) => void;
+  setMinDonation: (min: number) => void;
+  setStatus: (status: ConnectionState, text: string) => void;
+  setChatHidden: (hidden: boolean) => void;
 }
 
-const KEYS = {
-  channel: 'dbd_channel',
-  minDonation: 'dbd_min_donation',
-};
-
-const baseStore = createStore<ConnectionState>({
-  key: 'dbd_connection',
-  defaultValue: {
-    status: 'disconnected',
-    statusText: 'Desconectado',
-    channel: '',
-    minDonation: 10,
-  },
-  load: () => ({
-    status: 'disconnected' as ConnectionStatus,
-    statusText: 'Desconectado',
-    channel: localStorage.getItem(KEYS.channel) || '',
-    minDonation: parseFloat(localStorage.getItem(KEYS.minDonation) || '10'),
-  }),
-  save: (state) => {
-    localStorage.setItem(KEYS.channel, state.channel);
-    localStorage.setItem(KEYS.minDonation, state.minDonation.toString());
-    return JSON.stringify(state);
-  }
-});
-
-export const connectionStore = {
-  ...baseStore,
-  getSnapshot: () => baseStore.get(),
-
-  setStatus: (status: ConnectionStatus, statusText: string) => {
-    const current = baseStore.get();
-    baseStore.set({ ...current, status, statusText });
-  },
-
-  setChannel: (channel: string) => {
-    baseStore.set({ ...baseStore.get(), channel });
-  },
-
-  setMinDonation: (val: number) => {
-    baseStore.set({ ...baseStore.get(), minDonation: val });
-  }
-};
+export const useConnection = create<ConnectionStore>()(
+  persist(
+    (set) => ({
+      channel: '',
+      minDonation: 10,
+      status: 'disconnected',
+      statusText: 'Desconectado',
+      chatHidden: false,
+      setChannel: (channel) => set({ channel }),
+      setMinDonation: (minDonation) => set({ minDonation }),
+      setStatus: (status, statusText) => set({ status, statusText }),
+      setChatHidden: (chatHidden) => set({ chatHidden }),
+    }),
+    {
+      name: 'dbd-connection',
+      partialize: (state) => ({ channel: state.channel, minDonation: state.minDonation, chatHidden: state.chatHidden }),
+      onRehydrateStorage: () => () => {
+        // Migrate old keys
+        const oldChannel = localStorage.getItem('dbd_channel');
+        const oldMin = localStorage.getItem('dbd_min_donation');
+        const oldChatHidden = localStorage.getItem('dbd_chat_hidden');
+        if (oldChannel || oldChatHidden) {
+          localStorage.removeItem('dbd_channel');
+          localStorage.removeItem('dbd_min_donation');
+          localStorage.removeItem('dbd_chat_hidden');
+          useConnection.setState({
+            channel: oldChannel || '',
+            minDonation: parseFloat(oldMin || '10'),
+            chatHidden: oldChatHidden === 'true',
+          });
+        }
+      },
+    }
+  )
+);

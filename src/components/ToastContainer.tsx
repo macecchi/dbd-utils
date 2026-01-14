@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useToasts } from '../hooks/useToasts';
-import { toastStore, Toast } from '../store/toasts';
+import { useToasts } from '../store';
+import type { Toast } from '../types';
 
-function ToastItem({ toast }: { toast: Toast }) {
+interface ToastItemProps {
+  toast: Toast;
+  onRemove: (id: number) => void;
+}
+
+function ToastItem({ toast, onRemove }: ToastItemProps) {
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
@@ -12,14 +17,9 @@ function ToastItem({ toast }: { toast: Toast }) {
     }
   }, [toast.duration]);
 
-  const handleRemove = () => {
-    setFading(true);
-    setTimeout(() => toastStore.remove(toast.id), 200);
-  };
-
   const handleUndo = () => {
     toast.undoCallback?.();
-    toastStore.remove(toast.id);
+    onRemove(toast.id);
   };
 
   const className = [
@@ -59,11 +59,12 @@ function ToastItem({ toast }: { toast: Toast }) {
 }
 
 export function ToastContainer() {
-  const toasts = useToasts();
+  const { toasts, remove } = useToasts();
+
   return (
     <>
       {toasts.map(toast => (
-        <ToastItem key={toast.id} toast={toast} />
+        <ToastItem key={toast.id} toast={toast} onRemove={remove} />
       ))}
     </>
   );

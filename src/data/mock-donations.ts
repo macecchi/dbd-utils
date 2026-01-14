@@ -1,6 +1,4 @@
 import type { Request } from '../types';
-import { requestStore } from '../store/requests';
-import { showToast } from '../store/toasts';
 
 const MOCK_REQUESTS: Omit<Request, 'id' | 'timestamp'>[] = [
   { donor: "PedroGamer", amount: "R$ 50,00", amountVal: 50, message: "Quero muito ver a Nurse!", character: "Nurse", type: "killer", source: "donation", belowThreshold: false },
@@ -26,7 +24,7 @@ const MOCK_REQUESTS: Omit<Request, 'id' | 'timestamp'>[] = [
   { donor: "BigDonor", amount: "R$ 200,00", amountVal: 200, message: "blight rpd", character: "Blight", type: "killer", source: "donation", belowThreshold: false },
 ];
 
-export function loadMockData() {
+export function loadMockData(setRequests: (fn: (r: Request[]) => Request[]) => void) {
   const now = Date.now();
   const mockWithIds: Request[] = MOCK_REQUESTS.map((d, i) => ({
     ...d,
@@ -35,6 +33,5 @@ export function loadMockData() {
     done: d.done || false
   }));
 
-  requestStore.set(mockWithIds);
-  showToast(`${mockWithIds.length} itens mock carregados`);
+  setRequests(() => mockWithIds);
 }

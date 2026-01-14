@@ -1,8 +1,18 @@
 import { useState, FormEvent } from 'react';
-import { testExtraction, reidentifyAll, clearAllDonations, loadAndReplayVOD, cancelVODReplay } from '../services';
+import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } from '../services';
+import type { VODCallbacks } from '../services';
+import type { Request } from '../types';
 import { loadMockData } from '../data/mock-donations';
+import { useRequests, useChat, useSettings, useConnection, useSources, useToasts } from '../store';
 
 export function DebugPanel() {
+  const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
+  const { clear: clearChat, add: addChat } = useChat();
+  const { apiKey, models, botName } = useSettings();
+  const { minDonation } = useConnection();
+  const { enabled: sourcesEnabled } = useSources();
+  const { show: showToast } = useToasts();
+
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [addToQueue, setAddToQueue] = useState(false);
@@ -12,13 +22,16 @@ export function DebugPanel() {
   const [vodStatus, setVodStatus] = useState('');
   const [isReplaying, setIsReplaying] = useState(false);
 
+  const llmConfig = { apiKey, models };
+  const vodConfig = { botName, minDonation, apiKey, sourcesEnabled };
+
   const handleTest = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     setResult({ text: 'Identificando...', show: true });
 
-    const res = await testExtraction(input, addToQueue);
+    const res = await testExtraction(input, llmConfig, (msg) => showToast(msg, 'Erro LLM', 'red'));
     const prefix = res.isLocal ? '[local]' : '[IA]';
     const color = res.type === 'survivor' ? 'var(--blue)' : res.type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
     const display = res.character || res.type;
@@ -29,8 +42,43 @@ export function DebugPanel() {
     });
 
     if (addToQueue && res.type !== 'unknown') {
+      const request: Request = {
+        id: Date.now(),
+        timestamp: new Date(),
+        donor: 'Teste',
+        amount: 'R$ 0,00',
+        amountVal: 0,
+        message: input,
+        character: res.character,
+        type: res.type,
+        belowThreshold: false,
+        source: 'manual'
+      };
+      addRequest(request);
       setInput('');
     }
+  };
+
+  const handleReidentifyAll = async () => {
+    for (const d of requests) {
+      update(d.id, { character: 'Identificando...', type: 'unknown' });
+    }
+    for (const d of requests) {
+      const result = await identifyCharacter(d, llmConfig, (msg) => showToast(msg, 'Erro LLM', 'red'));
+      update(d.id, result);
+    }
+  };
+
+  const handleClearAll = () => {
+    setRequests([]);
+    clearChat();
+  };
+
+  const handleLoadMock = () => {
+    loadMockData((fn) => {
+      const newRequests = fn([]);
+      setRequests(newRequests);
+    });
   };
 
   const handleVODReplay = async () => {
@@ -46,8 +94,14 @@ export function DebugPanel() {
     setIsReplaying(true);
     setVodStatus('Fetching...');
 
+    const callbacks: VODCallbacks = {
+      onStatus: setVodStatus,
+      onChat: addChat,
+      onRequest: addRequest
+    };
+
     try {
-      await loadAndReplayVOD(vodId, speed, setVodStatus);
+      await loadAndReplayVOD(vodId, speed, vodConfig, callbacks);
     } catch (e: any) {
       setVodStatus(`Error: ${e.message}`);
     }
@@ -85,13 +139,13 @@ export function DebugPanel() {
           <div className="debug-result show" dangerouslySetInnerHTML={{ __html: result.text }} />
         )}
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-          <button className="btn btn-ghost" onClick={() => reidentifyAll()} style={{ marginTop: '0.5rem' }}>
+          <button className="btn btn-ghost" onClick={handleReidentifyAll} style={{ marginTop: '0.5rem' }}>
             Re-identificar todos
           </button>
-          <button className="btn btn-ghost" onClick={() => clearAllDonations()} style={{ marginTop: '0.5rem' }}>
+          <button className="btn btn-ghost" onClick={handleClearAll} style={{ marginTop: '0.5rem' }}>
             Limpar tudo
           </button>
-          <button className="btn btn-ghost" onClick={() => loadMockData()} style={{ marginTop: '0.5rem' }}>
+          <button className="btn btn-ghost" onClick={handleLoadMock} style={{ marginTop: '0.5rem' }}>
             Carregar mock
           </button>
         </div>

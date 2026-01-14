@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useSources } from '../hooks/useSources';
-import { sourcesStore, SourceType } from '../store/sources';
-import { requestStore } from '../store/requests';
-import { showToastInfo } from '../store/toasts';
 import { CHARACTERS } from '../data/characters';
+import { useRequests, useSources } from '../store';
+import type { Request } from '../types';
+
+type SourceType = 'donation' | 'resub' | 'chat' | 'manual';
 
 const SOURCE_LABELS: Record<SourceType, string> = {
   donation: 'Doações',
@@ -53,7 +53,12 @@ function getAllCharacterNames(): CharacterOption[] {
 }
 
 export function SourcesPanel() {
-  const sources = useSources();
+  const {
+    enabled, chatCommand, chatTiers, priority,
+    setEnabled, setChatCommand, setChatTiers, setPriority, clearSessionRequests
+  } = useSources();
+  const addRequest = useRequests((s) => s.add);
+
   const [isOpen, setIsOpen] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [autocompleteItems, setAutocompleteItems] = useState<CharacterOption[]>([]);
@@ -83,8 +88,8 @@ export function SourcesPanel() {
   };
 
   const selectCharacter = useCallback((char: CharacterOption) => {
-    if (!sources.enabled.manual) return;
-    const request = {
+    if (!enabled.manual) return;
+    const request: Request = {
       id: Date.now() + Math.random(),
       timestamp: new Date(),
       donor: 'Manual',
@@ -92,14 +97,14 @@ export function SourcesPanel() {
       amountVal: 0,
       message: char.name,
       character: char.name,
-      type: char.type as 'survivor' | 'killer',
+      type: char.type,
       belowThreshold: false,
-      source: 'manual' as const
+      source: 'manual'
     };
-    requestStore.add(request);
+    addRequest(request);
     setManualInput('');
     setShowAutocomplete(false);
-  }, [sources.enabled.manual]);
+  }, [enabled.manual, addRequest]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!showAutocomplete || autocompleteItems.length === 0) return;
@@ -124,21 +129,16 @@ export function SourcesPanel() {
   const handleDragOver = (e: React.DragEvent, targetSource: SourceType) => {
     e.preventDefault();
     if (!draggedItem || draggedItem === targetSource) return;
-    const newPriority = [...sources.priority];
+    const newPriority = [...priority];
     const draggedIdx = newPriority.indexOf(draggedItem);
     const targetIdx = newPriority.indexOf(targetSource);
     newPriority.splice(draggedIdx, 1);
     newPriority.splice(targetIdx, 0, draggedItem);
-    sourcesStore.setPriority(newPriority);
+    setPriority(newPriority);
   };
 
   const handleDragEnd = () => {
     setDraggedItem(null);
-  };
-
-  const handleResetSession = () => {
-    sourcesStore.resetSession();
-    showToastInfo('Sessao reiniciada');
   };
 
   return (
@@ -158,8 +158,8 @@ export function SourcesPanel() {
             <label key={source} className="source-toggle">
               <input
                 type="checkbox"
-                checked={sources.enabled[source]}
-                onChange={e => sourcesStore.setEnabled(source, e.target.checked)}
+                checked={enabled[source]}
+                onChange={e => setEnabled({ ...enabled, [source]: e.target.checked })}
               />
               <span className={`source-icon ${source}`}>
                 {source === 'donation' ? '$' : source === 'resub' ? '↻' : source === 'chat' ? '💬' : '✎'}
@@ -173,9 +173,9 @@ export function SourcesPanel() {
           <div className="sources-label">Comando do chat</div>
           <input
             type="text"
-            value={sources.chatCommand}
+            value={chatCommand}
             placeholder="!request"
-            onChange={e => sourcesStore.setChatCommand(e.target.value.trim())}
+            onChange={e => setChatCommand(e.target.value.trim() || '!request')}
           />
         </div>
 
@@ -186,12 +186,12 @@ export function SourcesPanel() {
               <label key={tier}>
                 <input
                   type="checkbox"
-                  checked={sources.chatTiers.includes(tier)}
+                  checked={chatTiers.includes(tier)}
                   onChange={e => {
                     const newTiers = e.target.checked
-                      ? [...sources.chatTiers, tier]
-                      : sources.chatTiers.filter(t => t !== tier);
-                    sourcesStore.setChatTiers(newTiers);
+                      ? [...chatTiers, tier]
+                      : chatTiers.filter(t => t !== tier);
+                    setChatTiers(newTiers);
                   }}
                 />
                 Tier {tier}
@@ -203,7 +203,7 @@ export function SourcesPanel() {
         <div className="sources-section">
           <div className="sources-label">Prioridade (arrastar)</div>
           <div className="priority-list">
-            {sources.priority.map(source => (
+            {priority.map(source => (
               <div
                 key={source}
                 className={`priority-item ${draggedItem === source ? 'dragging' : ''}`}
@@ -249,7 +249,7 @@ export function SourcesPanel() {
         </div>
 
         <div className="sources-section">
-          <button className="btn btn-ghost" onClick={handleResetSession}>
+          <button className="btn btn-ghost" onClick={clearSessionRequests}>
             Nova Stream (resetar sessao)
           </button>
         </div>

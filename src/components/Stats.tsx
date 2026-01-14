@@ -1,7 +1,7 @@
-import { useRequests } from '../hooks/useRequests';
+import { useRequests } from '../store';
 
 export function Stats() {
-  const requests = useRequests();
+  const requests = useRequests((s) => s.requests);
   const pending = requests.filter(d => !d.belowThreshold && !d.done);
   const survivorCount = pending.filter(d => d.type === 'survivor').length;
   const killerCount = pending.filter(d => d.type === 'killer').length;
