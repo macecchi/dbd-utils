@@ -1,4 +1,6 @@
-const CHARACTERS = {
+import type { CharacterData } from '../types';
+
+export const CHARACTERS: CharacterData = {
   survivors: [
     { name: "Dwight Fairfield", aliases: [] },
     { name: "Meg Thomas", aliases: [] },
@@ -96,3 +98,26 @@ const CHARACTERS = {
     { name: "The First", aliases: ["First", "Vecna", "One", "Número Um", "Henry Creel"], portrait: "https://deadbydaylight.wiki.gg/images/K42_TheFirst_Portrait.png" },
   ]
 };
+
+export const DEFAULT_CHARACTERS = {
+  survivors: CHARACTERS.survivors.map(c => [c.name, ...c.aliases].join('/')),
+  killers: CHARACTERS.killers.map(c => [c.name, ...c.aliases].join('/'))
+};
+
+export function tryLocalMatch(message: string): { character: string; type: 'killer' | 'survivor' } | null {
+  const lower = message.toLowerCase();
+  for (const type of ['killers', 'survivors'] as const) {
+    for (const char of CHARACTERS[type]) {
+      for (const name of [char.name, ...char.aliases]) {
+        if (new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(lower)) {
+          return { character: char.name, type: type === 'killers' ? 'killer' : 'survivor' };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+export function getKillerPortrait(name: string): string | undefined {
+  return CHARACTERS.killers.find(k => k.name === name)?.portrait;
+}

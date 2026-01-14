@@ -1,8 +1,8 @@
-import { useDonations } from '../hooks/useDonations';
+import { useRequests } from '../hooks/useRequests';
 
 export function Stats() {
-  const donations = useDonations();
-  const pending = donations.filter(d => !d.belowThreshold && !d.done);
+  const requests = useRequests();
+  const pending = requests.filter(d => !d.belowThreshold && !d.done);
   const survivorCount = pending.filter(d => d.type === 'survivor').length;
   const killerCount = pending.filter(d => d.type === 'killer').length;
 

@@ -1,0 +1,167 @@
+/* Settings and Sources Panels */
+
+/* Settings */
+.settings {
+  padding: 1rem 1.25rem;
+  background: var(--bg-elevated);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-title {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-toggle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.settings.open .settings-toggle {
+  transform: rotate(180deg);
+}
+
+.settings-body {
+  display: none;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.settings.open .settings-body {
+  display: block;
+}
+
+/* Sources Panel */
+.sources-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.source-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.source-toggle:hover {
+  border-color: var(--border-light);
+}
+
+.source-toggle input {
+  width: 14px;
+  height: 14px;
+}
+
+.source-toggle .source-icon {
+  font-size: 1rem;
+  width: auto;
+  height: auto;
+}
+
+.source-toggle .source-icon.donation { color: var(--green); }
+.source-toggle .source-icon.resub { color: var(--accent); }
+.source-toggle .source-icon.chat { color: var(--blue); }
+.source-toggle .source-icon.manual { color: var(--yellow); }
+
+.sources-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.sources-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.tier-checkboxes {
+  display: flex;
+  gap: 1rem;
+}
+
+.tier-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.tier-checkboxes input {
+  width: 14px;
+  height: 14px;
+}
+
+/* Priority List */
+.priority-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.priority-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: grab;
+  user-select: none;
+  transition: all 0.15s;
+}
+
+.priority-item:hover {
+  border-color: var(--border-light);
+}
+
+.priority-item.dragging {
+  opacity: 0.5;
+  border-color: var(--accent);
+}
+
+.drag-handle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: grab;
+}
+
+.priority-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.priority-icon svg {
+  width: 100%;
+  height: 100%;
+}

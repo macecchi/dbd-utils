@@ -1,0 +1,34 @@
+/* Chat Log Styles */
+
+.chat-body {
+  padding: 0.75rem 1rem;
+}
+
+.chat-msg {
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+}
+
+.chat-msg.donate {
+  background: var(--accent-dim);
+  margin: 0.2rem -1rem;
+  padding: 0.3rem 1rem;
+  border-left: 2px solid var(--accent);
+}
+
+.chat-user {
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+
+.chat-user.donate {
+  color: var(--accent);
+}
+
+.chat-user.regular {
+  color: var(--blue);
+}
+
+.chat-text {
+  color: var(--text-secondary);
+}

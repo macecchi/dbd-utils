@@ -1,30 +1,19 @@
-export interface Toast {
-  id: number;
-  message: string;
-  title?: string;
-  color?: string;
-  duration: number;
-  type: 'default' | 'info' | 'undo';
-  undoCallback?: () => void;
-  undoHint?: string;
-}
+import type { Toast } from '../types';
+import { createMemoryStore } from './createStore';
 
-let toasts: Toast[] = [];
+export type { Toast };
+
 let nextId = 1;
-const listeners = new Set<() => void>();
 
-function notify() {
-  listeners.forEach(fn => fn());
-}
+const baseStore = createMemoryStore<Toast[]>({ defaultValue: [] });
 
 export const toastStore = {
-  get: () => toasts,
+  ...baseStore,
 
   add: (toast: Omit<Toast, 'id'>) => {
     const id = nextId++;
     const newToast = { ...toast, id };
-    toasts = [...toasts, newToast];
-    notify();
+    baseStore.set([...baseStore.get(), newToast]);
 
     if (toast.duration > 0) {
       setTimeout(() => toastStore.remove(id), toast.duration);
@@ -33,13 +22,7 @@ export const toastStore = {
   },
 
   remove: (id: number) => {
-    toasts = toasts.filter(t => t.id !== id);
-    notify();
-  },
-
-  subscribe: (fn: () => void) => {
-    listeners.add(fn);
-    return () => listeners.delete(fn);
+    baseStore.set(baseStore.get().filter(t => t.id !== id));
   }
 };
 
@@ -57,9 +40,3 @@ export function showUndoToast(count: number, undoCallback: () => void) {
   const msg = count > 1 ? `${count} excluídos` : 'Excluído';
   toastStore.add({ message: msg, duration: 5000, type: 'undo', undoCallback, undoHint: hint });
 }
-
-// Expose to vanilla JS
-(window as any).showToast = showToast;
-(window as any).showToastInfo = showToastInfo;
-(window as any).showUndoToast = showUndoToast;
-(window as any).toastStore = toastStore;

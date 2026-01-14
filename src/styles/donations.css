@@ -1,0 +1,250 @@
+/* Donation Cards / Request Cards */
+
+.donation {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s, padding 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.donation.deleting {
+  animation: deleteSlide 0.3s ease forwards;
+}
+
+@keyframes deleteSlide {
+  to {
+    opacity: 0;
+    transform: translateX(-100%);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+.donation:hover {
+  background: var(--bg-card);
+}
+
+.donation.below-threshold {
+  opacity: 0.5;
+}
+
+.donation.collapsed {
+  opacity: 0.5;
+  padding: 0.5rem 1.25rem;
+}
+
+.donation.collapsed .donation-top {
+  margin-bottom: 0;
+}
+
+.donation .message,
+.donation .character {
+  max-height: 200px;
+  overflow: hidden;
+  transition: max-height 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
+}
+
+.donation.collapsed .message,
+.donation.collapsed .character {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.char-name-inline {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.msg-preview {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.time-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.donation:hover .row-actions {
+  opacity: 1;
+}
+
+.row-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.row-btn:hover {
+  background: var(--bg-card);
+  color: var(--green);
+}
+
+.row-btn.active {
+  color: var(--green);
+}
+
+.row-btn.danger:hover {
+  color: var(--red);
+}
+
+.row-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+
+.donation-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  gap: 0.5rem;
+}
+
+.donor {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.done-check {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.done-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.donor-name {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--green);
+  padding: 0.15rem 0.4rem;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.amount.below {
+  color: var(--text-muted);
+  background: rgba(102, 102, 102, 0.1);
+}
+
+.amount.source-resub {
+  color: var(--purple);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.amount.source-chat {
+  color: var(--blue);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.message {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+}
+
+.character {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.badge.unknown {
+  background: var(--text-muted);
+  color: var(--bg);
+}
+
+.badge.skipped {
+  background: var(--border);
+  color: var(--text-muted);
+}
+
+.char-name {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.char-name.identifying {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.char-portrait-wrapper {
+  --defaultCharPortraitDimensions: 50px;
+  width: var(--defaultCharPortraitDimensions);
+  height: var(--defaultCharPortraitDimensions);
+  border-radius: 4px;
+  background: url('../../images/CharPortrait_bg.webp');
+  background-size: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.char-portrait-bg.killer {
+  background: url('../../images/CharPortrait_roleBG.webp');
+  background-size: contain;
+  width: var(--defaultCharPortraitDimensions);
+  height: var(--defaultCharPortraitDimensions);
+  position: absolute;
+  filter: sepia(1) saturate(30) hue-rotate(289.1deg) saturate(7) brightness(0.47)
+}
+
+.char-portrait {
+  width: var(--defaultCharPortraitDimensions);
+  object-fit: cover;
+  filter: drop-shadow(0px 4px 6px #00000050);
+}
