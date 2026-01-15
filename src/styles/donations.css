@@ -27,6 +27,16 @@
   background: var(--bg-card);
 }
 
+.donation.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.donation.drag-over {
+  border-top: 2px solid var(--accent);
+  margin-top: -1px;
+}
+
 .donation.below-threshold {
   opacity: 0.5;
 }

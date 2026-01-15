@@ -12,6 +12,7 @@ interface RequestsStore {
   clearDone: () => number;
   undo: () => Request[] | null;
   setAll: (requests: Request[]) => void;
+  reorder: (fromId: number, toId: number) => void;
 }
 
 export const useRequests = create<RequestsStore>()(
@@ -56,6 +57,15 @@ export const useRequests = create<RequestsStore>()(
         return last;
       },
       setAll: (requests) => set({ requests }),
+      reorder: (fromId, toId) => set((s) => {
+        const requests = [...s.requests];
+        const fromIdx = requests.findIndex(r => r.id === fromId);
+        const toIdx = requests.findIndex(r => r.id === toId);
+        if (fromIdx === -1 || toIdx === -1) return s;
+        const [moved] = requests.splice(fromIdx, 1);
+        requests.splice(toIdx, 0, moved);
+        return { requests };
+      }),
     }),
     {
       name: 'dbd-requests',

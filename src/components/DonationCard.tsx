@@ -17,9 +17,17 @@ interface Props {
   donation: Request;
   onToggleDone: (id: number) => void;
   onDelete: (id: number) => void;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: (id: number) => void;
+  onDragOver?: (id: number) => void;
+  onDragEnd?: () => void;
 }
 
-export const DonationCard = memo(function DonationCard({ donation, onToggleDone, onDelete }: Props) {
+export const DonationCard = memo(function DonationCard({
+  donation, onToggleDone, onDelete,
+  isDragging, isDragOver, onDragStart, onDragOver, onDragEnd
+}: Props) {
   const { show: showContextMenu } = useContextMenu();
   const d = donation;
   const showChar = d.type === 'survivor' || d.type === 'killer' || d.character === 'Identificando...';
@@ -42,15 +50,39 @@ export const DonationCard = memo(function DonationCard({ donation, onToggleDone,
                     d.source === 'chat' ? `TIER ${d.subTier || 1}` :
                     d.source === 'resub' ? 'RESUB' : '';
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move';
+    onDragStart?.(d.id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    onDragOver?.(d.id);
+  };
+
+  const handleDragEnd = () => {
+    onDragEnd?.();
+  };
+
   const className = [
     'donation',
     d.belowThreshold && 'below-threshold',
     isCollapsed && 'collapsed',
-    `source-${d.source || 'donation'}`
+    `source-${d.source || 'donation'}`,
+    isDragging && 'dragging',
+    isDragOver && 'drag-over'
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={className} onContextMenu={handleContext}>
+    <div
+      className={className}
+      onContextMenu={handleContext}
+      draggable
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
       <div className="row-hover-actions">
         <button className={`hover-btn ${d.done ? 'undo' : 'done'}`} onClick={handleClick}>
           {d.done ? (

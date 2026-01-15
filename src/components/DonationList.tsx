@@ -1,30 +1,20 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { identifyCharacter } from '../services';
 import { DonationCard } from './DonationCard';
 import { ContextMenu } from './ContextMenu';
 import { ContextMenuProvider } from '../context/ContextMenuContext';
-import { useRequests, useSources, useSettings, useToasts } from '../store';
-
-type SourceType = 'donation' | 'resub' | 'chat' | 'manual';
-
-function getSortedRequests(requests: ReturnType<typeof useRequests.getState>['requests'], priority: SourceType[]) {
-  return [...requests].sort((a, b) => {
-    const aPrio = priority.indexOf(a.source || 'donation');
-    const bPrio = priority.indexOf(b.source || 'donation');
-    if (aPrio !== bPrio) return aPrio - bPrio;
-    return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-  });
-}
+import { useRequests, useSettings, useToasts } from '../store';
 
 interface Props {
   onClearDoneRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 export function DonationList({ onClearDoneRef }: Props) {
-  const { requests, toggleDone, remove, clearDone, undo, update } = useRequests();
-  const priority = useSources((s) => s.priority);
+  const { requests, toggleDone, remove, clearDone, undo, update, reorder } = useRequests();
   const { apiKey, models } = useSettings();
   const { showUndo } = useToasts();
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
 
   const llmConfig = { apiKey, models };
 
@@ -65,20 +55,41 @@ export function DonationList({ onClearDoneRef }: Props) {
     return () => document.removeEventListener('keydown', handleUndoKey);
   }, [undo]);
 
+  const handleDragStart = useCallback((id: number) => {
+    setDraggedId(id);
+  }, []);
+
+  const handleDragOver = useCallback((id: number) => {
+    if (draggedId && draggedId !== id) {
+      setDragOverId(id);
+    }
+  }, [draggedId]);
+
+  const handleDragEnd = useCallback(() => {
+    if (draggedId && dragOverId && draggedId !== dragOverId) {
+      reorder(draggedId, dragOverId);
+    }
+    setDraggedId(null);
+    setDragOverId(null);
+  }, [draggedId, dragOverId, reorder]);
+
   if (requests.length === 0) {
     return <div className="empty">Aguardando doações...</div>;
   }
 
-  const sorted = getSortedRequests(requests, priority);
-
   return (
     <ContextMenuProvider>
-      {sorted.map(d => (
+      {requests.map(d => (
         <DonationCard
           key={d.id}
           donation={d}
           onToggleDone={toggleDone}
           onDelete={handleDelete}
+          isDragging={draggedId === d.id}
+          isDragOver={dragOverId === d.id}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
         />
       ))}
       <ContextMenu
