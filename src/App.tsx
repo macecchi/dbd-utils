@@ -45,7 +45,7 @@ export function App() {
         <header className="header">
           <div className="brand">
             <div className="brand-icon">
-              <img src="images/Dead-by-Daylight-Emblem.png" alt="DBD" />
+              <img src="/images/Dead-by-Daylight-Emblem.png" alt="DBD" />
             </div>
             <h1>DBD Tracker<span>Fila de pedidos</span></h1>
           </div>
@@ -58,7 +58,7 @@ export function App() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">
-                <img src="images/IconHelpLoading_players.webp" />
+                <img src="/images/IconHelpLoading_players.webp" />
                 Fila
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

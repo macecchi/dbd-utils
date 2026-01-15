@@ -281,7 +281,7 @@
   width: var(--defaultCharPortraitDimensions);
   height: var(--defaultCharPortraitDimensions);
   border-radius: var(--radius-sm);
-  background: url('../../images/CharPortrait_bg.webp');
+  background: url('/images/CharPortrait_bg.webp');
   background-size: contain;
   display: flex;
   align-items: center;
@@ -292,7 +292,7 @@
 }
 
 .char-portrait-bg.killer {
-  background: url('../../images/CharPortrait_roleBG.webp');
+  background: url('/images/CharPortrait_roleBG.webp');
   background-size: contain;
   width: var(--defaultCharPortraitDimensions);
   height: var(--defaultCharPortraitDimensions);
