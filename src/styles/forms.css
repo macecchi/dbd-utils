@@ -1,15 +1,4 @@
-/* Controls, Fields, Buttons */
-
-.controls {
-  display: flex;
-  gap: 1rem;
-  align-items: end;
-  flex-wrap: wrap;
-  padding: 1.25rem;
-  background: var(--bg-elevated);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-}
+/* Form Controls, Inputs, Buttons, Toggles */
 
 .field {
   display: flex;
@@ -23,7 +12,7 @@
 }
 
 .field label {
-  font-size: 0.75rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -32,11 +21,11 @@ input,
 select,
 textarea {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   padding: 0.6rem 0.9rem;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   color: var(--text);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -73,13 +62,14 @@ textarea {
   width: 100%;
 }
 
+/* Buttons */
 .btn {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   font-weight: 500;
-  padding: 0.6rem 1.25rem;
+  padding: 0.6rem var(--space-xl);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -96,8 +86,8 @@ textarea {
 }
 
 .btn-small {
-  font-size: 0.75rem;
-  padding: 0.4rem 0.75rem;
+  font-size: var(--text-sm);
+  padding: 0.4rem var(--space-md);
 }
 
 .btn-small-icon {
@@ -105,6 +95,11 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.btn-sm {
+  padding: 0.35rem var(--space-md);
+  font-size: var(--text-sm);
 }
 
 .btn-primary {
@@ -120,67 +115,6 @@ textarea {
   background: var(--green);
 }
 
-.status-block {
-  margin-left: auto;
-  padding-left: 1rem;
-  border-left: 1px solid var(--border);
-  min-width: 160px;
-}
-
-.status-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-
-.status-dot.connected {
-  background: var(--green);
-}
-
-.status-dot.connecting {
-  background: var(--yellow);
-  animation: pulse 1s infinite;
-}
-
-.status-dot.error {
-  background: var(--red);
-}
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.4;
-  }
-}
-
-.api-status {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  margin-top: 0.25rem;
-}
-
-.api-status.set {
-  color: var(--green);
-}
-
-.api-status.missing {
-  color: var(--yellow);
-}
-
-/* Icon Button */
 .btn-icon {
   display: flex;
   align-items: center;
@@ -190,7 +124,7 @@ textarea {
   padding: 0;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
@@ -210,30 +144,51 @@ textarea {
   transition: transform 0.3s ease;
 }
 
-/* Debug */
-.debug-row {
-  display: flex;
-  gap: 0.75rem;
+/* Toggle Switch */
+.source-toggle {
+  position: relative;
+  cursor: pointer;
 }
 
-.debug-row input {
-  flex: 1;
+.source-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
 }
 
-.debug-result {
-  margin-top: 0.75rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  min-height: 1.2rem;
-  display: none;
-}
-
-.debug-result.show {
+.toggle-slider {
   display: block;
+  width: 32px;
+  height: 18px;
+  background: var(--border);
+  border-radius: 9px;
+  position: relative;
+  transition: background 0.2s;
 }
 
-/* Manual Input Autocomplete */
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.source-toggle input:checked + .toggle-slider {
+  background: var(--accent);
+}
+
+.source-toggle input:checked + .toggle-slider::after {
+  left: 16px;
+  background: white;
+}
+
+/* Autocomplete */
 .manual-input-wrapper {
   position: relative;
 }
@@ -245,8 +200,8 @@ textarea {
   right: 0;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  margin-top: 4px;
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
   max-height: 200px;
   overflow-y: auto;
   z-index: 100;
@@ -259,13 +214,13 @@ textarea {
 }
 
 .autocomplete-item {
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   transition: background 0.1s;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-md);
   min-height: 44px;
 }
 

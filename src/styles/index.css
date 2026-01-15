@@ -1,10 +1,19 @@
 /* Main stylesheet - imports all component styles */
 
+/* Base */
 @import './base.css';
-@import './controls.css';
+@import './layout.css';
+@import './forms.css';
+
+/* Components */
+@import './control-panel.css';
+@import './sources-panel.css';
+@import './debug-panel.css';
 @import './requests.css';
-@import './panels.css';
-@import './modals.css';
+@import './manual-entry.css';
 @import './chat.css';
-@import './toast.css';
+
+/* Overlays */
+@import './modals.css';
 @import './context-menu.css';
+@import './toast.css';

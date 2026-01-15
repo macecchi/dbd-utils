@@ -1,0 +1,70 @@
+/* Debug/Settings Panel */
+
+.settings {
+  padding: var(--space-lg) var(--space-xl);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-title {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.settings-toggle {
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  display: flex;
+}
+
+.settings.open .settings-toggle {
+  transform: rotate(180deg);
+}
+
+.settings-body {
+  display: none;
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border);
+}
+
+.settings.open .settings-body {
+  display: block;
+}
+
+/* Debug Row */
+.debug-row {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.debug-row input {
+  flex: 1;
+}
+
+.debug-result {
+  margin-top: var(--space-md);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  min-height: 1.2rem;
+  display: none;
+}
+
+.debug-result.show {
+  display: block;
+}

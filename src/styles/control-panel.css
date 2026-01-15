@@ -1,0 +1,70 @@
+/* Control Panel - Connection controls and status */
+
+.controls {
+  display: flex;
+  gap: var(--space-lg);
+  align-items: end;
+  flex-wrap: wrap;
+  padding: var(--space-xl);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.status-block {
+  margin-left: auto;
+  padding-left: var(--space-lg);
+  border-left: 1px solid var(--border);
+  min-width: 160px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-base);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.status-dot.connected {
+  background: var(--green);
+}
+
+.status-dot.connecting {
+  background: var(--yellow);
+  animation: pulse 1s infinite;
+}
+
+.status-dot.error {
+  background: var(--red);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.api-status {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+.api-status.set {
+  color: var(--green);
+}
+
+.api-status.missing {
+  color: var(--yellow);
+}

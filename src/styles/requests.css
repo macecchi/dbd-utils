@@ -1,7 +1,7 @@
 /* Character Request Cards */
 
 .request-card {
-  padding: 1rem 1.25rem;
+  padding: var(--space-lg) var(--space-xl);
   border-bottom: 1px solid var(--border);
   transition: background 0.15s, padding 0.2s ease, opacity 0.2s ease;
   position: relative;
@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  padding: var(--space-sm);
   cursor: grab;
   color: var(--text-muted);
   order: 1;
@@ -59,17 +59,9 @@
   margin-top: -1px;
 }
 
-.request-card.below-threshold {
-  opacity: 0.5;
-}
-
 .request-card.collapsed {
   opacity: 0.5;
-  padding: 0.5rem 1.25rem;
-}
-
-.request-card.collapsed .request-card-top {
-  margin-bottom: 0;
+  padding: var(--space-sm) var(--space-xl);
 }
 
 .request-card .message,
@@ -87,13 +79,13 @@
 }
 
 .char-name-inline {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   text-transform: capitalize;
 }
 
 .msg-preview {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   font-style: italic;
   max-width: 200px;
@@ -111,8 +103,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 0 1rem 0 3rem;
+  gap: var(--space-sm);
+  padding: 0 var(--space-lg) 0 3rem;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
@@ -126,12 +118,12 @@
 }
 
 .request-card.collapsed .request-action-btn {
-  padding: 0.4rem 0.6rem;
+  padding: var(--btn-padding-sm);
 }
 
 .request-card.collapsed .request-action-btn svg {
-  width: 14px;
-  height: 14px;
+  width: var(--btn-icon-size-sm);
+  height: var(--btn-icon-size-sm);
 }
 
 .request-card.collapsed .drag-handle svg {
@@ -142,11 +134,11 @@
 .request-action-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--space-sm);
+  padding: var(--btn-padding);
   border: none;
-  border-radius: 4px;
-  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
   transition: background 0.1s, transform 0.1s;
@@ -163,28 +155,28 @@
 }
 
 .request-action-btn svg {
-  width: 18px;
-  height: 18px;
+  width: var(--btn-icon-size);
+  height: var(--btn-icon-size);
 }
 
 .request-action-btn.done,
 .request-action-btn.undo {
-  background: rgba(0, 173, 97, 0.2);
-  color: #00e676;
+  background: var(--green-bg);
+  color: var(--green-bright);
 }
 
 .request-action-btn.done:hover,
 .request-action-btn.undo:hover {
-  background: rgba(0, 173, 97, 0.35);
+  background: var(--green-bg-hover);
 }
 
 .request-action-btn.delete {
-  background: rgba(235, 69, 69, 0.2);
-  color: #ff6b6b;
+  background: var(--red-bg);
+  color: var(--red-bright);
 }
 
 .request-action-btn.delete:hover {
-  background: rgba(235, 69, 69, 0.35);
+  background: var(--red-bg-hover);
 }
 
 .request-card-top {
@@ -192,7 +184,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.4rem;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }
 
 .donor {
@@ -222,38 +214,38 @@
 
 .amount {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--green);
   padding: 0.15rem 0.4rem;
-  background: rgba(34, 197, 94, 0.1);
-  border-radius: 4px;
+  background: var(--green-bg-light);
+  border-radius: var(--radius-sm);
   white-space: nowrap;
 }
 
 .amount.below {
   color: var(--text-muted);
-  background: rgba(102, 102, 102, 0.1);
+  background: var(--muted-bg);
 }
 
 .amount.source-resub {
   color: var(--purple);
-  background: rgba(168, 85, 247, 0.1);
+  background: var(--purple-bg);
 }
 
 .amount.source-chat {
   color: var(--blue);
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--blue-bg);
 }
 
 .time {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .message {
-  font-size: 0.9rem;
+  font-size: var(--text-md);
   color: var(--text-secondary);
   margin-bottom: 0.6rem;
 }
@@ -288,7 +280,7 @@
   --defaultCharPortraitDimensions: 50px;
   width: var(--defaultCharPortraitDimensions);
   height: var(--defaultCharPortraitDimensions);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: url('../../images/CharPortrait_bg.webp');
   background-size: contain;
   display: flex;

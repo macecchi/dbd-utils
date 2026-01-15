@@ -5,7 +5,27 @@ Keep project docs updated when making changes.
 
 ## Structure
 
-tbd
+```
+src/
+├── components/       # React components
+├── context/          # React context providers
+├── data/             # Character data, constants
+├── styles/           # CSS modules
+│   ├── base.css          # Variables, resets
+│   ├── layout.css        # App shell, grid, panels
+│   ├── forms.css         # Inputs, buttons, toggles
+│   ├── control-panel.css # Connection UI
+│   ├── sources-panel.css # Source config
+│   ├── debug-panel.css   # Debug tools
+│   ├── requests.css      # Request cards
+│   ├── manual-entry.css  # Manual entry popup
+│   ├── chat.css          # Chat log
+│   ├── modals.css        # Settings modal
+│   ├── context-menu.css  # Right-click menu
+│   └── toast.css         # Notifications
+├── types/            # TypeScript types
+└── App.tsx           # Main component
+```
 
 ## Key functions
 
