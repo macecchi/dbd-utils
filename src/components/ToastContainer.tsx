@@ -61,11 +61,13 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
 export function ToastContainer() {
   const { toasts, remove } = useToasts();
 
+  if (toasts.length === 0) return null;
+
   return (
-    <>
+    <div className="toast-container">
       {toasts.map(toast => (
         <ToastItem key={toast.id} toast={toast} onRemove={remove} />
       ))}
-    </>
+    </div>
   );
 }
