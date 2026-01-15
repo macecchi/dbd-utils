@@ -1,6 +1,6 @@
 import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage } from '../utils/helpers';
-import { useConnection, useSettings, useSources, useRequests, useChat } from '../store';
+import { useTwitch, useSettings, useSources, useRequests, useChat } from '../store';
 import type { Request } from '../types';
 
 let ws: WebSocket | null = null;
@@ -9,16 +9,16 @@ export function disconnect() {
   if (ws) {
     ws.close();
     ws = null;
-    useConnection.getState().setStatus('disconnected', 'Desconectado');
+    useTwitch.getState().setStatus('disconnected', 'Desconectado');
   }
 }
 
 export function connect() {
-  const { channel } = useConnection.getState();
+  const { channel } = useTwitch.getState();
   const ch = channel.trim().toLowerCase();
   if (!ch) return;
 
-  useConnection.getState().setStatus('connecting', 'Conectando...');
+  useTwitch.getState().setStatus('connecting', 'Conectando...');
 
   ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
   ws.onopen = () => {
@@ -29,13 +29,13 @@ export function connect() {
   ws.onmessage = (e) => {
     for (const line of e.data.split('\r\n')) {
       if (line.startsWith('PING')) ws!.send('PONG :tmi.twitch.tv');
-      else if (line.includes('366')) useConnection.getState().setStatus('connected', `t.tv/${ch}`);
+      else if (line.includes('366')) useTwitch.getState().setStatus('connected', `t.tv/${ch}`);
       else if (line.includes('USERNOTICE')) handleUserNotice(line);
       else if (line.includes('PRIVMSG')) handleMessage(line);
     }
   };
-  ws.onclose = () => { useConnection.getState().setStatus('error', 'Desconectado'); ws = null; };
-  ws.onerror = () => useConnection.getState().setStatus('error', 'Erro');
+  ws.onclose = () => { useTwitch.getState().setStatus('error', 'Desconectado'); ws = null; };
+  ws.onerror = () => useTwitch.getState().setStatus('error', 'Erro');
 }
 
 function parseIrcTags(raw: string): Record<string, string> {
@@ -124,8 +124,7 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, us
 }
 
 function handleMessage(raw: string) {
-  const { botName, apiKey } = useSettings.getState();
-  const { minDonation } = useConnection.getState();
+  const { botName, apiKey, minDonation } = useSettings.getState();
   const { enabled, chatCommand } = useSources.getState();
   const { add: addRequest } = useRequests.getState();
   const { add: addChat } = useChat.getState();

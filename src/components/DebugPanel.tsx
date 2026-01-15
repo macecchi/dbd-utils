@@ -3,13 +3,12 @@ import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } 
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-donations';
-import { useRequests, useChat, useSettings, useConnection, useSources, useToasts } from '../store';
+import { useRequests, useChat, useSettings, useSources, useToasts } from '../store';
 
 export function DebugPanel() {
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
-  const { apiKey, models, botName } = useSettings();
-  const { minDonation } = useConnection();
+  const { apiKey, models, botName, minDonation } = useSettings();
   const { enabled: sourcesEnabled } = useSources();
   const { show: showToast } = useToasts();
 
