@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { ChatLog } from './components/ChatLog';
 import { ControlPanel } from './components/ControlPanel';
 import { DebugPanel } from './components/DebugPanel';
@@ -17,7 +17,7 @@ export function App() {
   const { apiKey, models, botName, channel, chatHidden, setChatHidden } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
-  const clearDoneRef = useRef<(() => void) | null>(null);
+  const [showDone, setShowDone] = useState(false);
 
   // Auto-identify requests that need it
   useEffect(() => {
@@ -67,8 +67,8 @@ export function App() {
                     <path d="M12 5v14M5 12h14" />
                   </svg>
                 </button>
-                <button className="btn btn-ghost btn-small" onClick={() => clearDoneRef.current?.()}>
-                  Limpar feitos
+                <button className={`btn btn-ghost btn-small${showDone ? ' active' : ''}`} onClick={() => setShowDone(v => !v)}>
+                  {showDone ? 'Esconder feitos' : 'Mostrar feitos'}
                 </button>
                 {chatHidden && (
                   <button className="btn btn-ghost btn-small" onClick={() => setChatHidden(false)}>
@@ -79,7 +79,7 @@ export function App() {
               </div>
             </div>
             <div className="panel-body">
-              <CharacterRequestList onClearDoneRef={clearDoneRef} />
+              <CharacterRequestList showDone={showDone} />
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { identifyCharacter } from '../services';
 import { CharacterRequestCard } from './CharacterRequestCard';
 import { ContextMenu } from './ContextMenu';
@@ -6,22 +6,26 @@ import { ContextMenuProvider } from '../context/ContextMenuContext';
 import { useRequests, useSettings, useToasts } from '../store';
 
 interface Props {
-  onClearDoneRef?: React.MutableRefObject<(() => void) | null>;
+  showDone?: boolean;
 }
 
-export function CharacterRequestList({ onClearDoneRef }: Props) {
-  const { requests, toggleDone, remove, clearDone, undo, update, reorder } = useRequests();
+export function CharacterRequestList({ showDone = false }: Props) {
+  const { requests, toggleDone, update, reorder } = useRequests();
   const { apiKey, models } = useSettings();
-  const { showUndo, clearUndo } = useToasts();
+  const { showUndo } = useToasts();
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
 
   const llmConfig = { apiKey, models };
+  const filtered = showDone ? requests : requests.filter(r => !r.done);
 
-  const handleDelete = useCallback((id: number) => {
-    remove([id]);
-    showUndo(1, () => undo());
-  }, [remove, showUndo, undo]);
+  const handleToggleDone = useCallback((id: number) => {
+    const request = requests.find(r => r.id === id);
+    if (request && !request.done && !showDone) {
+      showUndo('Marcado como feito', () => toggleDone(id));
+    }
+    toggleDone(id);
+  }, [requests, toggleDone, showDone, showUndo]);
 
   const rerunExtraction = useCallback(async (id: number) => {
     const request = requests.find(r => r.id === id);
@@ -31,30 +35,6 @@ export function CharacterRequestList({ onClearDoneRef }: Props) {
       update(id, result);
     }
   }, [requests, update, llmConfig]);
-
-  const handleClearDone = useCallback(() => {
-    const count = clearDone();
-    if (count > 0) {
-      showUndo(count, () => undo());
-    }
-  }, [clearDone, showUndo, undo]);
-
-  useEffect(() => {
-    if (onClearDoneRef) onClearDoneRef.current = handleClearDone;
-    return () => { if (onClearDoneRef) onClearDoneRef.current = null; };
-  }, [handleClearDone, onClearDoneRef]);
-
-  useEffect(() => {
-    const handleUndoKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-        e.preventDefault();
-        undo();
-        clearUndo();
-      }
-    };
-    document.addEventListener('keydown', handleUndoKey);
-    return () => document.removeEventListener('keydown', handleUndoKey);
-  }, [undo, clearUndo]);
 
   const handleDragStart = useCallback((id: number) => {
     setDraggedId(id);
@@ -74,18 +54,18 @@ export function CharacterRequestList({ onClearDoneRef }: Props) {
     setDragOverId(null);
   }, [draggedId, dragOverId, reorder]);
 
-  if (requests.length === 0) {
-    return <div className="empty">Aguardando pedidos...</div>;
+  if (filtered.length === 0) {
+    return <div className="empty">{showDone ? 'Nenhum pedido' : 'Aguardando pedidos...'}</div>;
   }
 
   return (
     <ContextMenuProvider>
-      {requests.map(r => (
+      {filtered.map(r => (
         <CharacterRequestCard
           key={r.id}
           request={r}
-          onToggleDone={toggleDone}
-          onDelete={handleDelete}
+          onToggleDone={handleToggleDone}
+          showDone={showDone}
           isDragging={draggedId === r.id}
           isDragOver={dragOverId === r.id}
           onDragStart={handleDragStart}
@@ -94,9 +74,8 @@ export function CharacterRequestList({ onClearDoneRef }: Props) {
         />
       ))}
       <ContextMenu
-        onToggleDone={toggleDone}
+        onToggleDone={handleToggleDone}
         onRerun={rerunExtraction}
-        onDelete={handleDelete}
       />
     </ContextMenuProvider>
   );

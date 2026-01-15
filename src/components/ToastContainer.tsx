@@ -34,11 +34,8 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   if (toast.type === 'undo') {
     return (
       <div className={className}>
-        <div className="undo-toast-content">
-          <span>{toast.message}</span>
-          <button className="undo-btn" onClick={handleUndo}>Desfazer</button>
-          <span className="undo-hint">{toast.undoHint}</span>
-        </div>
+        <span>{toast.message}</span>
+        <button className="undo-btn" onClick={handleUndo}>Desfazer</button>
       </div>
     );
   }

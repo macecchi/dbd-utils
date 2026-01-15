@@ -41,7 +41,6 @@ export interface Toast {
   duration: number;
   type: 'default' | 'info' | 'undo';
   undoCallback?: () => void;
-  undoHint?: string;
 }
 
 export interface SourcesEnabled {

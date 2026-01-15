@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import type { Request } from '../types';
 import { useContextMenu } from '../context/ContextMenuContext';
 import { getKillerPortrait } from '../data/characters';
@@ -17,7 +17,7 @@ function formatRelativeTime(date: Date): string {
 interface Props {
   request: Request;
   onToggleDone: (id: number) => void;
-  onDelete: (id: number) => void;
+  showDone?: boolean;
   isDragging?: boolean;
   isDragOver?: boolean;
   onDragStart?: (id: number) => void;
@@ -26,25 +26,29 @@ interface Props {
 }
 
 export const CharacterRequestCard = memo(function CharacterRequestCard({
-  request, onToggleDone, onDelete,
+  request, onToggleDone, showDone = false,
   isDragging, isDragOver, onDragStart, onDragOver, onDragEnd
 }: Props) {
   const { show: showContextMenu } = useContextMenu();
+  const [exiting, setExiting] = useState(false);
   const r = request;
   const showChar = r.type === 'survivor' || r.type === 'killer' || r.character === 'Identificando...';
   const portrait = r.type === 'killer' && r.character ? getKillerPortrait(r.character) : null;
   const charDisplay = r.character || r.type;
   const isCollapsed = r.done;
 
-  const handleClick = () => onToggleDone(r.id);
+  const handleClick = () => {
+    if (!r.done && !showDone) {
+      setExiting(true);
+      setTimeout(() => onToggleDone(r.id), 300);
+    } else {
+      onToggleDone(r.id);
+    }
+  };
   const handleContext = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     showContextMenu(r.id, e.clientX, e.clientY, !!r.done);
-  };
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete(r.id);
   };
 
   const badgeText = r.source === 'donation' ? r.amount :
@@ -71,7 +75,8 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
     isCollapsed && 'collapsed',
     `source-${r.source || 'donation'}`,
     isDragging && 'dragging',
-    isDragOver && 'drag-over'
+    isDragOver && 'drag-over',
+    exiting && 'deleting'
   ].filter(Boolean).join(' ');
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -97,7 +102,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
       onMouseLeave={handleMouseUp}
     >
       <div className="request-actions">
-        <div className="drag-handle">
+        <div className="drag-handle" title="Arrastar">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <circle cx="9" cy="6" r="1.5" />
             <circle cx="15" cy="6" r="1.5" />
@@ -107,26 +112,20 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
             <circle cx="15" cy="18" r="1.5" />
           </svg>
         </div>
-        <button className="request-action-btn delete" onClick={handleDelete}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
-        </button>
-
-        <button className={`request-action-btn ${r.done ? 'undo' : 'done'}`} onClick={handleClick}>
+        <button
+          className={`request-action-btn ${r.done ? 'undo' : 'done'}`}
+          onClick={handleClick}
+          title={r.done ? 'Marcar como não feito' : 'Marcar como feito'}
+        >
           {r.done ? (
-            <>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-              </svg>
-            </>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
           ) : (
-            <>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           )}
         </button>
       </div>

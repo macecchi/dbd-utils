@@ -3,18 +3,16 @@ import { useContextMenu } from '../context/ContextMenuContext';
 interface Props {
   onToggleDone: (id: number) => void;
   onRerun: (id: number) => void;
-  onDelete: (id: number) => void;
 }
 
-export function ContextMenu({ onToggleDone, onRerun, onDelete }: Props) {
+export function ContextMenu({ onToggleDone, onRerun }: Props) {
   const { state, hide } = useContextMenu();
 
-  const handleAction = (action: 'done' | 'rerun' | 'delete') => {
+  const handleAction = (action: 'done' | 'rerun') => {
     if (!state.requestId) return;
     switch (action) {
       case 'done': onToggleDone(state.requestId); break;
       case 'rerun': onRerun(state.requestId); break;
-      case 'delete': onDelete(state.requestId); break;
     }
     hide();
   };
@@ -38,13 +36,6 @@ export function ContextMenu({ onToggleDone, onRerun, onDelete }: Props) {
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
         </svg>
         Re-identificar
-      </div>
-      <div className="context-menu-item danger" onClick={() => handleAction('delete')}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-        Excluir
       </div>
     </div>
   );

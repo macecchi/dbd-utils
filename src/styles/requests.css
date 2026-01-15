@@ -31,7 +31,7 @@
 }
 
 .request-card.deleting {
-  animation: deleteSlide 0.3s ease forwards;
+  animation: deleteSlide 0.8s ease forwards;
 }
 
 @keyframes deleteSlide {
