@@ -37,7 +37,7 @@ export function App() {
     }
   }, []);
 
-  const pendingCount = requests.filter(d => !d.done && !d.belowThreshold).length;
+  const pendingCount = requests.filter(d => !d.done).length;
 
   return (
     <>

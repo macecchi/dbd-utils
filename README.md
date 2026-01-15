@@ -5,7 +5,7 @@ Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durant
 ## Como funciona
 
 1. Conecta ao chat da Twitch via IRC (somente leitura, sem autenticação)
-2. Detecta pedidos de personagens de múltiplas fontes (doações, resubs, comandos de chat)
+2. Detecta pedidos de personagens de múltiplas fontes (donates, resubs, comandos de chat)
 3. Identifica automaticamente o personagem mencionado usando IA (Gemini) ou correspondência local
 4. Exibe fila ordenada por prioridade com retratos dos killers
 
@@ -13,7 +13,7 @@ Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durant
 
 | Fonte | Como funciona |
 |-------|---------------|
-| **Doações** | Detecta mensagens do bot de doação (ex: LivePix). Filtra por valor mínimo |
+| **Donates** | Detecta mensagens do bot de doação (ex: LivePix). Filtra por valor mínimo |
 | **Resubs** | Captura mensagens de resub via USERNOTICE do Twitch IRC |
 | **Chat** | Comando configurável (padrão: `!request`) para inscritos. Filtra por tier mínimo |
 | **Manual** | Entrada manual com autocomplete de personagens |
@@ -36,17 +36,17 @@ Funciona sem API key se os nomes dos personagens forem mencionados diretamente n
 
 ### Fila de pedidos
 
-- Clique em um pedido para marcar como concluído
+- Clique em um pedido para marcar como feito
 - Botão direito abre menu de contexto (concluir, re-identificar, excluir)
 - Arraste para reordenar manualmente
 - `Ctrl/Cmd+Z` desfaz a última exclusão
-- **Limpar feitos** remove todos os pedidos concluídos
+- **Limpar feitos** remove todos os pedidos feitos
 - **+** adiciona pedido manual com autocomplete
 
 ### Painel de fontes
 
 - Ative/desative cada fonte individualmente
-- **Doações**: configure valor mínimo (pedidos abaixo aparecem colapsados)
+- **Donates**: configure valor mínimo
 - **Chat**: configure comando e tier mínimo de inscrito
 - Arraste os pills de prioridade para definir ordem de classificação
 

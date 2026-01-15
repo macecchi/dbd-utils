@@ -75,7 +75,7 @@ export function DonationList({ onClearDoneRef }: Props) {
   }, [draggedId, dragOverId, reorder]);
 
   if (requests.length === 0) {
-    return <div className="empty">Aguardando doações...</div>;
+    return <div className="empty">Aguardando pedidos...</div>;
   }
 
   return (

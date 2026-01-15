@@ -2,6 +2,7 @@ import { memo } from 'react';
 import type { Request } from '../types';
 import { useContextMenu } from '../context/ContextMenuContext';
 import { getKillerPortrait } from '../data/characters';
+import { CharacterAvatar } from './CharacterAvatar';
 
 const rtf = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' });
 
@@ -33,7 +34,7 @@ export const DonationCard = memo(function DonationCard({
   const showChar = d.type === 'survivor' || d.type === 'killer' || d.character === 'Identificando...';
   const portrait = d.type === 'killer' && d.character ? getKillerPortrait(d.character) : null;
   const charDisplay = d.character || d.type;
-  const isCollapsed = d.done || d.belowThreshold;
+  const isCollapsed = d.done;
 
   const handleClick = () => onToggleDone(d.id);
   const handleContext = (e: React.MouseEvent) => {
@@ -67,7 +68,6 @@ export const DonationCard = memo(function DonationCard({
 
   const className = [
     'donation',
-    d.belowThreshold && 'below-threshold',
     isCollapsed && 'collapsed',
     `source-${d.source || 'donation'}`,
     isDragging && 'dragging',
@@ -98,7 +98,7 @@ export const DonationCard = memo(function DonationCard({
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
-              Concluído
+              Feito
             </>
           )}
         </button>
@@ -126,7 +126,7 @@ export const DonationCard = memo(function DonationCard({
             </span>
           )}
           {badgeText && (
-            <span className={`amount source-${d.source}${d.belowThreshold ? ' below' : ''}`}>
+            <span className={`amount source-${d.source}`}>
               {badgeText}
             </span>
           )}
@@ -136,12 +136,7 @@ export const DonationCard = memo(function DonationCard({
       <p className="message">{d.message}</p>
       {showChar && (
         <div className="character">
-          {portrait && (
-            <div className="char-portrait-wrapper">
-              <div className="char-portrait-bg killer"></div>
-              <img src={portrait} alt="" className="char-portrait" />
-            </div>
-          )}
+          <CharacterAvatar portrait={portrait ?? undefined} type={d.type} />
           <span className={`char-name${d.character === 'Identificando...' ? ' identifying' : ''}${!d.character && d.type !== 'unknown' ? ' type-only' : ''}`}>
             {charDisplay}
           </span>

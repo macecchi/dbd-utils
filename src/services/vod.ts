@@ -77,23 +77,23 @@ export async function loadAndReplayVOD(
         const parsed = parseDonationMessage(message);
         if (parsed && config.sourcesEnabled.donation) {
           const amountVal = parseAmount(parsed.amount);
-          const belowThreshold = amountVal < config.minDonation;
-          const local = belowThreshold ? null : tryLocalMatch(parsed.message);
+          if (amountVal >= config.minDonation) {
+            const local = tryLocalMatch(parsed.message);
 
-          const request: Request = {
-            id: Date.now() + Math.random(),
-            timestamp: new Date(),
-            donor: parsed.donor,
-            amount: parsed.amount,
-            amountVal,
-            message: parsed.message,
-            character: belowThreshold ? '' : (local?.character || 'Identificando...'),
-            type: belowThreshold ? 'skipped' : (local?.type || 'unknown'),
-            belowThreshold,
-            source: 'donation',
-            needsIdentification: !belowThreshold && !local
-          };
-          callbacks.onRequest(request);
+            const request: Request = {
+              id: Date.now() + Math.random(),
+              timestamp: new Date(),
+              donor: parsed.donor,
+              amount: parsed.amount,
+              amountVal,
+              message: parsed.message,
+              character: local?.character || 'Identificando...',
+              type: local?.type || 'unknown',
+              source: 'donation',
+              needsIdentification: !local
+            };
+            callbacks.onRequest(request);
+          }
         }
       }
 

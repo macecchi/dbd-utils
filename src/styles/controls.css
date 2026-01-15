@@ -55,6 +55,11 @@ input[type="number"] {
 
 select {
   cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
 }
 
 select option {
@@ -251,17 +256,13 @@ textarea {
   cursor: pointer;
   font-size: 0.85rem;
   transition: background 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
 }
 
 .autocomplete-item:hover,
 .autocomplete-item.active {
   background: var(--bg-card);
-}
-
-.autocomplete-item.killer {
-  color: var(--red);
-}
-
-.autocomplete-item.survivor {
-  color: var(--blue);
 }

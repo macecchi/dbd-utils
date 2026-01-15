@@ -50,7 +50,6 @@ export function DebugPanel() {
         message: input,
         character: res.character,
         type: res.type,
-        belowThreshold: false,
         source: 'manual'
       };
       addRequest(request);
@@ -118,7 +117,11 @@ export function DebugPanel() {
           </svg>
           Debug
         </span>
-        <span className="settings-toggle">▼</span>
+        <span className="settings-toggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
       </div>
       <div className="settings-body">
         <form className="debug-row" onSubmit={handleTest}>
@@ -137,14 +140,14 @@ export function DebugPanel() {
         {result.show && (
           <div className="debug-result show" dangerouslySetInnerHTML={{ __html: result.text }} />
         )}
-        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-          <button className="btn btn-ghost" onClick={handleReidentifyAll} style={{ marginTop: '0.5rem' }}>
+        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" onClick={handleReidentifyAll}>
             Re-identificar todos
           </button>
-          <button className="btn btn-ghost" onClick={handleClearAll} style={{ marginTop: '0.5rem' }}>
+          <button className="btn btn-ghost" onClick={handleClearAll}>
             Limpar tudo
           </button>
-          <button className="btn btn-ghost" onClick={handleLoadMock} style={{ marginTop: '0.5rem' }}>
+          <button className="btn btn-ghost" onClick={handleLoadMock}>
             Carregar mock
           </button>
         </div>

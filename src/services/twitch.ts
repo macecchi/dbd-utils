@@ -82,20 +82,18 @@ function handleUserNotice(raw: string) {
     message,
     character: local?.character || 'Identificando...',
     type: local?.type || 'unknown',
-    belowThreshold: false,
     source: 'resub',
     needsIdentification: !local
   };
   addRequest(request);
 }
 
-function handleChatCommand(tags: Record<string, string>, displayName: string, username: string, requestText: string) {
-  const { enabled, chatTiers, hasSessionRequest, addSessionRequest } = useSources.getState();
+function handleChatCommand(tags: Record<string, string>, displayName: string, _username: string, requestText: string) {
+  const { enabled, chatTiers } = useSources.getState();
   const { apiKey } = useSettings.getState();
   const { add: addRequest } = useRequests.getState();
 
   if (!enabled.chat || !requestText) return;
-  if (hasSessionRequest(username)) return;
 
   const isSub = tags.subscriber === '1';
   const subTier = getSubTierFromBadges(tags.badges);
@@ -103,8 +101,6 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, us
 
   const local = tryLocalMatch(requestText);
   if (!local && !apiKey) return;
-
-  addSessionRequest(username);
 
   const request: Request = {
     id: Date.now() + Math.random(),
@@ -115,7 +111,6 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, us
     message: requestText,
     character: local?.character || 'Identificando...',
     type: local?.type || 'unknown',
-    belowThreshold: false,
     source: 'chat',
     subTier,
     needsIdentification: !local
@@ -153,8 +148,10 @@ function handleMessage(raw: string) {
   if (!parsed || !enabled.donation) return;
 
   const amountVal = parseAmount(parsed.amount);
-  const belowThreshold = amountVal < minDonation;
-  const local = belowThreshold ? null : tryLocalMatch(parsed.message);
+  if (amountVal < minDonation) return;
+
+  const local = tryLocalMatch(parsed.message);
+  if (!local && !apiKey) return;
 
   const request: Request = {
     id: Date.now(),
@@ -163,11 +160,10 @@ function handleMessage(raw: string) {
     amount: parsed.amount,
     amountVal,
     message: parsed.message,
-    character: belowThreshold ? 'Ignorado' : (local?.character || 'Identificando...'),
-    type: belowThreshold ? 'skipped' : (local?.type || 'unknown'),
-    belowThreshold,
+    character: local?.character || 'Identificando...',
+    type: local?.type || 'unknown',
     source: 'donation',
-    needsIdentification: !belowThreshold && !local && !!apiKey
+    needsIdentification: !local
   };
   addRequest(request);
 }

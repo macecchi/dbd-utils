@@ -2,9 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Request } from '../types';
 
+interface DeletedItem {
+  request: Request;
+  index: number;
+}
+
 interface RequestsStore {
   requests: Request[];
-  deletedStack: Request[][];
+  deletedStack: DeletedItem[][];
   add: (req: Request) => void;
   update: (id: number, updates: Partial<Request>) => void;
   remove: (ids: number[]) => void;
@@ -26,7 +31,12 @@ export const useRequests = create<RequestsStore>()(
       })),
       remove: (ids) => {
         const { requests } = get();
-        const removed = requests.filter((r) => ids.includes(r.id));
+        const removed: DeletedItem[] = [];
+        requests.forEach((r, idx) => {
+          if (ids.includes(r.id)) {
+            removed.push({ request: r, index: idx });
+          }
+        });
         if (removed.length === 0) return;
         set((s) => ({
           requests: s.requests.filter((r) => !ids.includes(r.id)),
@@ -38,23 +48,35 @@ export const useRequests = create<RequestsStore>()(
       })),
       clearDone: () => {
         const { requests } = get();
-        const done = requests.filter((r) => r.done);
-        if (done.length === 0) return 0;
+        const removed: DeletedItem[] = [];
+        requests.forEach((r, idx) => {
+          if (r.done) {
+            removed.push({ request: r, index: idx });
+          }
+        });
+        if (removed.length === 0) return 0;
         set((s) => ({
           requests: s.requests.filter((r) => !r.done),
-          deletedStack: [...s.deletedStack, done],
+          deletedStack: [...s.deletedStack, removed],
         }));
-        return done.length;
+        return removed.length;
       },
       undo: () => {
-        const { deletedStack } = get();
+        const { deletedStack, requests } = get();
         if (deletedStack.length === 0) return null;
         const last = deletedStack[deletedStack.length - 1];
-        set((s) => ({
-          requests: [...s.requests, ...last],
-          deletedStack: s.deletedStack.slice(0, -1),
-        }));
-        return last;
+        const newRequests = [...requests];
+        // restore in order of original indices so positions stay correct
+        const sorted = [...last].sort((a, b) => a.index - b.index);
+        for (const item of sorted) {
+          const idx = Math.min(item.index, newRequests.length);
+          newRequests.splice(idx, 0, item.request);
+        }
+        set({
+          requests: newRequests,
+          deletedStack: deletedStack.slice(0, -1),
+        });
+        return last.map((d) => d.request);
       },
       setAll: (requests) => set({ requests }),
       reorder: (fromId, toId) => set((s) => {

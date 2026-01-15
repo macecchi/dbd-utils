@@ -1,21 +1,30 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { CHARACTERS } from '../data/characters';
 import { useRequests } from '../store';
+import { CharacterAvatar } from './CharacterAvatar';
 import type { Request } from '../types';
 
 interface CharacterOption {
   name: string;
   type: 'killer' | 'survivor';
+  portrait?: string;
+  aliases: string[];
 }
 
 function getAllCharacterNames(): CharacterOption[] {
   const names: CharacterOption[] = [];
-  for (const type of ['killers', 'survivors'] as const) {
-    for (const char of CHARACTERS[type]) {
-      names.push({ name: char.name, type: type === 'killers' ? 'killer' : 'survivor' });
-    }
+  for (const char of CHARACTERS.killers) {
+    names.push({ name: char.name, type: 'killer', portrait: char.portrait, aliases: char.aliases });
+  }
+  for (const char of CHARACTERS.survivors) {
+    names.push({ name: char.name, type: 'survivor', aliases: char.aliases });
   }
   return names;
+}
+
+function matchesSearch(char: CharacterOption, query: string): boolean {
+  if (char.name.toLowerCase().includes(query)) return true;
+  return char.aliases.some(a => a.toLowerCase().includes(query));
 }
 
 interface Props {
@@ -52,7 +61,14 @@ export function ManualEntry({ isOpen, onClose }: Props) {
       setAutocompleteItems([]);
       return;
     }
-    const matches = allChars.current.filter(c => c.name.toLowerCase().includes(val)).slice(0, 8);
+    const matches = allChars.current
+      .filter(c => matchesSearch(c, val))
+      .sort((a, b) => {
+        if (a.type === 'killer' && b.type !== 'killer') return -1;
+        if (a.type !== 'killer' && b.type === 'killer') return 1;
+        return 0;
+      })
+      .slice(0, 8);
     setAutocompleteItems(matches);
     setAutocompleteIndex(-1);
   };
@@ -67,7 +83,6 @@ export function ManualEntry({ isOpen, onClose }: Props) {
       message: char.name,
       character: char.name,
       type: char.type,
-      belowThreshold: false,
       source: 'manual'
     };
     addRequest(request);
@@ -121,7 +136,8 @@ export function ManualEntry({ isOpen, onClose }: Props) {
                   className={`autocomplete-item ${item.type} ${i === autocompleteIndex ? 'active' : ''}`}
                   onClick={() => selectCharacter(item)}
                 >
-                  {item.name}
+                  <CharacterAvatar portrait={item.portrait} type={item.type} size="sm" />
+                  <span>{item.name}</span>
                 </div>
               ))}
             </div>

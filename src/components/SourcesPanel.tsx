@@ -4,15 +4,15 @@ import { useSources, useSettings } from '../store';
 type SourceType = 'donation' | 'resub' | 'chat';
 
 const SOURCE_LABELS: Record<SourceType, string> = {
-  donation: 'Doações',
+  donation: 'Donates',
   resub: 'Resubs',
   chat: 'Chat'
 };
 
 const SOURCE_DESCRIPTIONS: Record<SourceType, string> = {
-  donation: 'Detectado via bot de doação',
-  resub: 'Detectado via USERNOTICE',
-  chat: 'Comando de chat para subs'
+  donation: 'Pedidos feitos via donate a partir do valor mínimo definido',
+  resub: 'Mensagens de reinscrição',
+  chat: 'Comando de chat para inscritos'
 };
 
 const SOURCE_ICONS: Record<SourceType, JSX.Element> = {
@@ -37,9 +37,9 @@ const SOURCE_ICONS: Record<SourceType, JSX.Element> = {
 export function SourcesPanel() {
   const {
     enabled, chatCommand, chatTiers, priority,
-    setEnabled, setChatCommand, setChatTiers, setPriority, clearSessionRequests
+    setEnabled, setChatCommand, setChatTiers, setPriority
   } = useSources();
-  const { minDonation, setMinDonation } = useSettings();
+  const { minDonation, setMinDonation, botName, setBotName } = useSettings();
 
   const [isOpen, setIsOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState<SourceType | null>(null);
@@ -66,23 +66,29 @@ export function SourcesPanel() {
 
   const filteredPriority = priority.filter((s): s is SourceType => s !== 'manual');
 
-  const renderSourceCard = (source: SourceType) => {
+  const getMinTier = (): number => {
+    if (chatTiers.length === 0) return 1;
+    return Math.min(...chatTiers);
+  };
+
+  const setMinTier = (minTier: number) => {
+    setChatTiers([1, 2, 3].filter(t => t >= minTier));
+  };
+
+  const renderSourceSection = (source: SourceType) => {
     const isEnabled = enabled[source];
 
     return (
-      <div
-        key={source}
-        className={`source-card ${source} ${isEnabled ? 'enabled' : 'disabled'}`}
-      >
-        <div className="source-card-header">
-          <div className="source-card-info">
-            <span className="source-card-icon">{SOURCE_ICONS[source]}</span>
-            <div className="source-card-text">
-              <span className="source-card-title">{SOURCE_LABELS[source]}</span>
-              <span className="source-card-desc">{SOURCE_DESCRIPTIONS[source]}</span>
+      <div key={source} className={`source-section source-${source} ${isEnabled ? 'enabled' : 'disabled'}`}>
+        <div className="source-section-header">
+          <div className="source-section-title">
+            <span className="source-section-icon">{SOURCE_ICONS[source]}</span>
+            <div className="source-section-text">
+              <span>{SOURCE_LABELS[source]}</span>
+              <span className="source-section-desc">{SOURCE_DESCRIPTIONS[source]}</span>
             </div>
           </div>
-          <label className="source-card-toggle">
+          <label className="source-toggle">
             <input
               type="checkbox"
               checked={isEnabled}
@@ -93,14 +99,26 @@ export function SourcesPanel() {
         </div>
 
         {source === 'donation' && isEnabled && (
-          <div className="source-card-body">
-            <div className="source-card-row">
-              <label className="source-card-label">Mínimo</label>
-              <div className="min-donation-input">
-                <span className="min-donation-prefix">R$</span>
+          <div className="source-section-body">
+            <div className="source-field">
+              <label htmlFor="donation-bot">Bot</label>
+              <input
+                id="donation-bot"
+                name="donation-bot"
+                type="text"
+                value={botName}
+                placeholder="livepix"
+                onChange={e => setBotName(e.target.value.trim() || 'livepix')}
+              />
+            </div>
+            <div className="source-field">
+              <label htmlFor="donation-min">Mínimo</label>
+              <div className="input-with-prefix">
+                <span>R$</span>
                 <input
+                  id="donation-min"
+                  name="donation-min"
                   type="number"
-                  className="source-card-input"
                   value={minDonation}
                   min={0}
                   step={1}
@@ -112,39 +130,26 @@ export function SourcesPanel() {
         )}
 
         {source === 'chat' && isEnabled && (
-          <div className="source-card-body">
-            <div className="source-card-row">
-              <label className="source-card-label">Comando</label>
+          <div className="source-section-body">
+            <div className="source-field">
+              <label htmlFor="chat-command">Comando</label>
               <input
+                id="chat-command"
+                name="chat-command"
                 type="text"
-                className="source-card-input"
                 value={chatCommand}
                 placeholder="!request"
                 onChange={e => setChatCommand(e.target.value.trim() || '!request')}
               />
             </div>
-            <div className="source-card-row">
-              <label className="source-card-label">Tiers</label>
-              <div className="tier-pills">
-                {[1, 2, 3].map(tier => (
-                  <button
-                    key={tier}
-                    className={`tier-pill ${chatTiers.includes(tier) ? 'active' : ''}`}
-                    onClick={() => {
-                      const newTiers = chatTiers.includes(tier)
-                        ? chatTiers.filter(t => t !== tier)
-                        : [...chatTiers, tier];
-                      setChatTiers(newTiers);
-                    }}
-                  >
-                    {tier}
-                  </button>
-                ))}
-              </div>
+            <div className="source-field">
+              <label htmlFor="chat-tier">Tier mínimo</label>
+              <select id="chat-tier" name="chat-tier" value={getMinTier()} onChange={e => setMinTier(Number(e.target.value))}>
+                <option value={1}>Tier 1</option>
+                <option value={2}>Tier 2</option>
+                <option value={3}>Tier 3</option>
+              </select>
             </div>
-            <button className="btn btn-sm btn-ghost" onClick={clearSessionRequests}>
-              Nova Stream
-            </button>
           </div>
         )}
       </div>
@@ -154,7 +159,15 @@ export function SourcesPanel() {
   return (
     <section className={`sources-panel ${isOpen ? 'open' : ''}`} id="sourcesPanel">
       <div className="sources-panel-header" onClick={() => setIsOpen(!isOpen)}>
-        <span className="sources-panel-title">Fontes de Pedidos</span>
+        <span className="sources-panel-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+          Fontes de Pedidos
+        </span>
         <span className="sources-panel-toggle">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
             <path d="M6 9l6 6 6-6" />
@@ -163,8 +176,8 @@ export function SourcesPanel() {
       </div>
 
       <div className="sources-panel-body">
-        <div className="source-cards">
-          {(['donation', 'resub', 'chat'] as SourceType[]).map(renderSourceCard)}
+        <div className="source-sections">
+          {(['donation', 'resub', 'chat'] as SourceType[]).map(renderSourceSection)}
         </div>
 
         <div className="priority-section">

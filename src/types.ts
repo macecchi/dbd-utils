@@ -17,8 +17,7 @@ export interface Request {
   amountVal: number;
   message: string;
   character: string;
-  type: 'survivor' | 'killer' | 'unknown' | 'skipped' | 'none';
-  belowThreshold: boolean;
+  type: 'survivor' | 'killer' | 'unknown' | 'none';
   done?: boolean;
   source: 'donation' | 'resub' | 'chat' | 'manual';
   subTier?: number;
