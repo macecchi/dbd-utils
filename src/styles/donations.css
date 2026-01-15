@@ -81,7 +81,7 @@
 }
 
 /* Hover action overlay */
-.row-hover-actions {
+.request-action-btns {
   position: absolute;
   inset: 0;
   display: flex;
@@ -95,12 +95,12 @@
   z-index: 10;
 }
 
-.donation:hover .row-hover-actions {
+.donation:hover .request-action-btns {
   opacity: 1;
   pointer-events: auto;
 }
 
-.hover-btn {
+.request-action-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -111,38 +111,43 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.hover-btn svg {
+.request-action-btn svg {
   width: 18px;
   height: 18px;
 }
 
-.hover-btn.done {
+.request-action-btn.done {
+  background: transparent;
+  color: var(--green);
+  border: 1px solid var(--green);
+}
+
+.request-action-btn.done:hover {
   background: var(--green);
   color: #000;
 }
 
-.hover-btn.done:hover {
-  background: #4ade80;
-}
-
-.hover-btn.undo {
-  background: var(--text-muted);
-  color: #000;
-}
-
-.hover-btn.undo:hover {
-  background: #a1a1aa;
-}
-
-.hover-btn.delete {
+.request-action-btn.undo {
   background: transparent;
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
 
-.hover-btn.delete:hover {
+.request-action-btn.undo:hover {
+  background: var(--text-muted);
+  color: #000;
+}
+
+.request-action-btn.delete {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
+}
+
+.request-action-btn.delete:hover {
   background: var(--red);
   color: #fff;
   border-color: var(--red);
