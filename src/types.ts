@@ -24,7 +24,7 @@ export interface Request {
   needsIdentification?: boolean;
 }
 
-export type Donation = Request;
+export type CharacterRequest = Request;
 
 export interface ChatMessage {
   user: string;

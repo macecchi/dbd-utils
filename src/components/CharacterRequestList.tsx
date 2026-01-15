@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { identifyCharacter } from '../services';
-import { DonationCard } from './DonationCard';
+import { CharacterRequestCard } from './CharacterRequestCard';
 import { ContextMenu } from './ContextMenu';
 import { ContextMenuProvider } from '../context/ContextMenuContext';
 import { useRequests, useSettings, useToasts } from '../store';
@@ -9,7 +9,7 @@ interface Props {
   onClearDoneRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export function DonationList({ onClearDoneRef }: Props) {
+export function CharacterRequestList({ onClearDoneRef }: Props) {
   const { requests, toggleDone, remove, clearDone, undo, update, reorder } = useRequests();
   const { apiKey, models } = useSettings();
   const { showUndo, clearUndo } = useToasts();
@@ -24,7 +24,7 @@ export function DonationList({ onClearDoneRef }: Props) {
   }, [remove, showUndo, undo]);
 
   const rerunExtraction = useCallback(async (id: number) => {
-    const request = requests.find(d => d.id === id);
+    const request = requests.find(r => r.id === id);
     if (request) {
       update(id, { character: 'Identificando...', type: 'unknown' });
       const result = await identifyCharacter(request, llmConfig);
@@ -80,14 +80,14 @@ export function DonationList({ onClearDoneRef }: Props) {
 
   return (
     <ContextMenuProvider>
-      {requests.map(d => (
-        <DonationCard
-          key={d.id}
-          donation={d}
+      {requests.map(r => (
+        <CharacterRequestCard
+          key={r.id}
+          request={r}
           onToggleDone={toggleDone}
           onDelete={handleDelete}
-          isDragging={draggedId === d.id}
-          isDragOver={dragOverId === d.id}
+          isDragging={draggedId === r.id}
+          isDragOver={dragOverId === r.id}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}

@@ -15,7 +15,7 @@ function formatRelativeTime(date: Date): string {
 }
 
 interface Props {
-  donation: Request;
+  request: Request;
   onToggleDone: (id: number) => void;
   onDelete: (id: number) => void;
   isDragging?: boolean;
@@ -25,41 +25,41 @@ interface Props {
   onDragEnd?: () => void;
 }
 
-export const DonationCard = memo(function DonationCard({
-  donation, onToggleDone, onDelete,
+export const CharacterRequestCard = memo(function CharacterRequestCard({
+  request, onToggleDone, onDelete,
   isDragging, isDragOver, onDragStart, onDragOver, onDragEnd
 }: Props) {
   const { show: showContextMenu } = useContextMenu();
-  const d = donation;
-  const showChar = d.type === 'survivor' || d.type === 'killer' || d.character === 'Identificando...';
-  const portrait = d.type === 'killer' && d.character ? getKillerPortrait(d.character) : null;
-  const charDisplay = d.character || d.type;
-  const isCollapsed = d.done;
+  const r = request;
+  const showChar = r.type === 'survivor' || r.type === 'killer' || r.character === 'Identificando...';
+  const portrait = r.type === 'killer' && r.character ? getKillerPortrait(r.character) : null;
+  const charDisplay = r.character || r.type;
+  const isCollapsed = r.done;
 
-  const handleClick = () => onToggleDone(d.id);
+  const handleClick = () => onToggleDone(r.id);
   const handleContext = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    showContextMenu(d.id, e.clientX, e.clientY, !!d.done);
+    showContextMenu(r.id, e.clientX, e.clientY, !!r.done);
   };
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDelete(d.id);
+    onDelete(r.id);
   };
 
-  const badgeText = d.source === 'donation' ? d.amount :
-                    d.source === 'chat' ? `TIER ${d.subTier || 1}` :
-                    d.source === 'resub' ? 'RESUB' : '';
+  const badgeText = r.source === 'donation' ? r.amount :
+                    r.source === 'chat' ? `TIER ${r.subTier || 1}` :
+                    r.source === 'resub' ? 'RESUB' : '';
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = 'move';
-    onDragStart?.(d.id);
+    onDragStart?.(r.id);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    onDragOver?.(d.id);
+    onDragOver?.(r.id);
   };
 
   const handleDragEnd = () => {
@@ -67,9 +67,9 @@ export const DonationCard = memo(function DonationCard({
   };
 
   const className = [
-    'donation',
+    'request-card',
     isCollapsed && 'collapsed',
-    `source-${d.source || 'donation'}`,
+    `source-${r.source || 'donation'}`,
     isDragging && 'dragging',
     isDragOver && 'drag-over'
   ].filter(Boolean).join(' ');
@@ -83,15 +83,15 @@ export const DonationCard = memo(function DonationCard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="request-action-btns">
+      <div className="request-actions">
         <button className="request-action-btn delete" onClick={handleDelete}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
           </svg>
         </button>
 
-        <button className={`request-action-btn ${d.done ? 'undo' : 'done'}`} onClick={handleClick}>
-          {d.done ? (
+        <button className={`request-action-btn ${r.done ? 'undo' : 'done'}`} onClick={handleClick}>
+          {r.done ? (
             <>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -107,35 +107,35 @@ export const DonationCard = memo(function DonationCard({
           )}
         </button>
       </div>
-      <div className="donation-top">
+      <div className="request-card-top">
         <div className="donor">
-          {d.done && (
+          {r.done && (
             <span className="done-check">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
             </span>
           )}
-          <span className="donor-name">{d.donor}</span>
+          <span className="donor-name">{r.donor}</span>
           {isCollapsed && showChar && <span className="char-name-inline">{charDisplay}</span>}
           {isCollapsed && (
             <span className="msg-preview">
-              {d.message.slice(0, 40)}{d.message.length > 40 ? '…' : ''}
+              {r.message.slice(0, 40)}{r.message.length > 40 ? '…' : ''}
             </span>
           )}
           {badgeText && (
-            <span className={`amount source-${d.source}`}>
+            <span className={`amount source-${r.source}`}>
               {badgeText}
             </span>
           )}
         </div>
-        <span className="time">{formatRelativeTime(d.timestamp)}</span>
+        <span className="time">{formatRelativeTime(r.timestamp)}</span>
       </div>
-      <p className="message">{d.message}</p>
+      <p className="message">{r.message}</p>
       {showChar && (
         <div className="character">
-          <CharacterAvatar portrait={portrait ?? undefined} type={d.type} />
-          <span className={`char-name${d.character === 'Identificando...' ? ' identifying' : ''}${!d.character && d.type !== 'unknown' ? ' type-only' : ''}`}>
+          <CharacterAvatar portrait={portrait ?? undefined} type={r.type} />
+          <span className={`char-name${r.character === 'Identificando...' ? ' identifying' : ''}${!r.character && r.type !== 'unknown' ? ' type-only' : ''}`}>
             {charDisplay}
           </span>
         </div>

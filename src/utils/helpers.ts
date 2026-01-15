@@ -3,13 +3,13 @@ export function parseAmount(str: string): number {
   return m ? parseFloat(m[0].replace(',', '.')) : 0;
 }
 
-export interface ParsedDonation {
+export interface ParsedDonationMessage {
   donor: string;
   amount: string;
   message: string;
 }
 
-export function parseDonationMessage(message: string): ParsedDonation | null {
+export function parseDonationMessage(message: string): ParsedDonationMessage | null {
   const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
   if (!match) return null;
   return {

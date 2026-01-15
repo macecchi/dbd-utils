@@ -10,11 +10,11 @@ export function ContextMenu({ onToggleDone, onRerun, onDelete }: Props) {
   const { state, hide } = useContextMenu();
 
   const handleAction = (action: 'done' | 'rerun' | 'delete') => {
-    if (!state.donationId) return;
+    if (!state.requestId) return;
     switch (action) {
-      case 'done': onToggleDone(state.donationId); break;
-      case 'rerun': onRerun(state.donationId); break;
-      case 'delete': onDelete(state.donationId); break;
+      case 'done': onToggleDone(state.requestId); break;
+      case 'rerun': onRerun(state.requestId); break;
+      case 'delete': onDelete(state.requestId); break;
     }
     hide();
   };

@@ -80,6 +80,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  height: 2.5em;
 }
 
 .sources-panel-toggle {
@@ -128,20 +129,17 @@
 
 .source-section-title {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text);
 }
 
-.source-section-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
 .source-section-desc {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -150,7 +148,6 @@
   width: 16px;
   height: 16px;
   display: flex;
-  margin-top: 0.15rem;
 }
 
 .source-section-icon svg {
@@ -209,7 +206,6 @@
 /* Section Body */
 .source-section-body {
   margin-top: 0.75rem;
-  padding-left: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -329,6 +325,7 @@
 .priority-pill-icon {
   width: 14px;
   height: 14px;
+  display: flex;
 }
 
 .priority-pill-icon svg {

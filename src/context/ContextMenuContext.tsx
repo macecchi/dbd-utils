@@ -4,7 +4,7 @@ interface ContextMenuState {
   show: boolean;
   x: number;
   y: number;
-  donationId: number | null;
+  requestId: number | null;
   isDone: boolean;
 }
 
@@ -18,7 +18,7 @@ const initialState: ContextMenuState = {
   show: false,
   x: 0,
   y: 0,
-  donationId: null,
+  requestId: null,
   isDone: false
 };
 
@@ -28,17 +28,17 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ContextMenuState>(initialState);
 
   const show = useCallback((id: number, x: number, y: number, isDone: boolean) => {
-    setState({ show: true, x, y, donationId: id, isDone });
+    setState({ show: true, x, y, requestId: id, isDone });
   }, []);
 
   const hide = useCallback(() => {
-    setState(s => ({ ...s, show: false, donationId: null }));
+    setState(s => ({ ...s, show: false, requestId: null }));
   }, []);
 
   useEffect(() => {
     const handleClick = () => hide();
     const handleContext = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.donation')) hide();
+      if (!(e.target as Element).closest('.request-card')) hide();
     };
     document.addEventListener('click', handleClick);
     document.addEventListener('contextmenu', handleContext);

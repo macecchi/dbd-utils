@@ -83,10 +83,7 @@ export function SourcesPanel() {
         <div className="source-section-header">
           <div className="source-section-title">
             <span className="source-section-icon">{SOURCE_ICONS[source]}</span>
-            <div className="source-section-text">
-              <span>{SOURCE_LABELS[source]}</span>
-              <span className="source-section-desc">{SOURCE_DESCRIPTIONS[source]}</span>
-            </div>
+            <span>{SOURCE_LABELS[source]}</span>
           </div>
           <label className="source-toggle">
             <input
@@ -97,6 +94,8 @@ export function SourcesPanel() {
             <span className="toggle-slider" />
           </label>
         </div>
+
+        <span className="source-section-desc">{SOURCE_DESCRIPTIONS[source]}</span>
 
         {source === 'donation' && isEnabled && (
           <div className="source-section-body">

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ChatLog } from './components/ChatLog';
 import { ControlPanel } from './components/ControlPanel';
 import { DebugPanel } from './components/DebugPanel';
-import { DonationList } from './components/DonationList';
+import { CharacterRequestList } from './components/CharacterRequestList';
 import { ManualEntry } from './components/ManualEntry';
 import { SettingsModal } from './components/SettingsModal';
 import { SourcesPanel } from './components/SourcesPanel';
@@ -62,7 +62,7 @@ export function App() {
                 Fila
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button className="btn btn-ghost btn-small" onClick={() => setManualOpen(true)} title="Adicionar manual">
+                <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setManualOpen(true)} title="Adicionar manual">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
                   </svg>
@@ -79,7 +79,7 @@ export function App() {
               </div>
             </div>
             <div className="panel-body">
-              <DonationList onClearDoneRef={clearDoneRef} />
+              <CharacterRequestList onClearDoneRef={clearDoneRef} />
             </div>
           </div>
 

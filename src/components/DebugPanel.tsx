@@ -2,7 +2,7 @@ import { useState, FormEvent } from 'react';
 import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } from '../services';
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
-import { loadMockData } from '../data/mock-donations';
+import { loadMockData } from '../data/mock-requests';
 import { useRequests, useChat, useSettings, useSources, useToasts } from '../store';
 
 export function DebugPanel() {

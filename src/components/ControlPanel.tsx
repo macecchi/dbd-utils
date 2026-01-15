@@ -47,7 +47,7 @@ export function ControlPanel({ onOpenSettings }: Props) {
         </div>
         <div className="status-row">
           <span className="status-dot" id="llmStatusDot" />
-          <span id="llmStatusText">LLM</span>
+          <span id="llmStatusText">IA não configurada</span>
         </div>
       </div>
     </section>

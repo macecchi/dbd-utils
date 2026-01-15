@@ -1,13 +1,14 @@
-/* Donation Cards / Request Cards */
+/* Character Request Cards */
 
-.donation {
+.request-card {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
   transition: background 0.15s, padding 0.2s ease, opacity 0.2s ease;
   position: relative;
+  cursor: grab;
 }
 
-.donation.deleting {
+.request-card.deleting {
   animation: deleteSlide 0.3s ease forwards;
 }
 
@@ -23,42 +24,42 @@
   }
 }
 
-.donation:hover {
+.request-card:hover {
   background: var(--bg-card);
 }
 
-.donation.dragging {
+.request-card.dragging {
   opacity: 0.4;
   cursor: grabbing;
 }
 
-.donation.drag-over {
+.request-card.drag-over {
   border-top: 2px solid var(--accent);
   margin-top: -1px;
 }
 
-.donation.below-threshold {
+.request-card.below-threshold {
   opacity: 0.5;
 }
 
-.donation.collapsed {
+.request-card.collapsed {
   opacity: 0.5;
   padding: 0.5rem 1.25rem;
 }
 
-.donation.collapsed .donation-top {
+.request-card.collapsed .request-card-top {
   margin-bottom: 0;
 }
 
-.donation .message,
-.donation .character {
+.request-card .message,
+.request-card .character {
   max-height: 200px;
   overflow: hidden;
   transition: max-height 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
 }
 
-.donation.collapsed .message,
-.donation.collapsed .character {
+.request-card.collapsed .message,
+.request-card.collapsed .character {
   max-height: 0;
   opacity: 0;
   margin: 0;
@@ -81,7 +82,7 @@
 }
 
 /* Hover action overlay */
-.request-action-btns {
+.request-actions {
   position: absolute;
   inset: 0;
   display: flex;
@@ -95,7 +96,7 @@
   z-index: 10;
 }
 
-.donation:hover .request-action-btns {
+.request-card:hover .request-actions {
   opacity: 1;
   pointer-events: auto;
 }
@@ -112,6 +113,7 @@
   cursor: pointer;
   transition: all 0.15s;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: var(--bg-card);
 }
 
 .request-action-btn svg {
@@ -120,7 +122,6 @@
 }
 
 .request-action-btn.done {
-  background: transparent;
   color: var(--green);
   border: 1px solid var(--green);
 }
@@ -131,18 +132,16 @@
 }
 
 .request-action-btn.undo {
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
+  color: var(--green);
+  border: 1px solid var(--green);
 }
 
 .request-action-btn.undo:hover {
-  background: var(--text-muted);
+  background: var(--green);
   color: #000;
 }
 
 .request-action-btn.delete {
-  background: transparent;
   color: var(--red);
   border: 1px solid var(--red);
 }
@@ -153,8 +152,7 @@
   border-color: var(--red);
 }
 
-
-.donation-top {
+.request-card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
