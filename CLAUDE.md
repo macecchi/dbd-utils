@@ -31,4 +31,3 @@ All state in localStorage:
 - `dbd_chat_command` - Chat command string
 - `dbd_chat_tiers` - Allowed subscriber tiers [1,2,3]
 - `dbd_source_priority` - Source order for sorting
-- `dbd_session_requests` - {username: timestamp} for session limits
