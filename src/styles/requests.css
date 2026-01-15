@@ -5,7 +5,29 @@
   border-bottom: 1px solid var(--border);
   transition: background 0.15s, padding 0.2s ease, opacity 0.2s ease;
   position: relative;
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
   cursor: grab;
+  color: var(--text-muted);
+  order: 1;
+}
+
+.drag-handle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.drag-handle:hover {
+  color: var(--text-secondary);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
 }
 
 .request-card.deleting {
@@ -30,7 +52,6 @@
 
 .request-card.dragging {
   opacity: 0.4;
-  cursor: grabbing;
 }
 
 .request-card.drag-over {
@@ -84,16 +105,19 @@
 /* Hover action overlay */
 .request-actions {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
-  padding-right: 1.25rem;
+  gap: 0.5rem;
+  padding: 0 1rem 0 3rem;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
   z-index: 10;
+  background: linear-gradient(to right, transparent, var(--bg-card) 2rem);
 }
 
 .request-card:hover .request-actions {
@@ -101,19 +125,41 @@
   pointer-events: auto;
 }
 
+.request-card.collapsed .request-action-btn {
+  padding: 0.4rem 0.6rem;
+}
+
+.request-card.collapsed .request-action-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.request-card.collapsed .drag-handle svg {
+  width: 12px;
+  height: 12px;
+}
+
 .request-action-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 1rem;
+  padding: 0.5rem 0.75rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background: var(--bg-card);
+  transition: background 0.1s, transform 0.1s;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.request-action-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.request-action-btn:active {
+  transform: scale(0.95);
 }
 
 .request-action-btn svg {
@@ -121,35 +167,24 @@
   height: 18px;
 }
 
-.request-action-btn.done {
-  color: var(--green);
-  border: 1px solid var(--green);
-}
-
-.request-action-btn.done:hover {
-  background: var(--green);
-  color: #000;
-}
-
+.request-action-btn.done,
 .request-action-btn.undo {
-  color: var(--green);
-  border: 1px solid var(--green);
+  background: rgba(0, 173, 97, 0.2);
+  color: #00e676;
 }
 
+.request-action-btn.done:hover,
 .request-action-btn.undo:hover {
-  background: var(--green);
-  color: #000;
+  background: rgba(0, 173, 97, 0.35);
 }
 
 .request-action-btn.delete {
-  color: var(--red);
-  border: 1px solid var(--red);
+  background: rgba(235, 69, 69, 0.2);
+  color: #ff6b6b;
 }
 
 .request-action-btn.delete:hover {
-  background: var(--red);
-  color: #fff;
-  border-color: var(--red);
+  background: rgba(235, 69, 69, 0.35);
 }
 
 .request-card-top {
