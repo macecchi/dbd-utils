@@ -21,17 +21,6 @@ export const useChat = create<ChatStore>()(
       clear: () => set({ messages: [] }),
       setAll: (messages) => set({ messages }),
     }),
-    {
-      name: 'dbd-chat',
-      onRehydrateStorage: () => () => {
-        const old = localStorage.getItem('dbd_chat');
-        if (old) {
-          try {
-            useChat.setState({ messages: JSON.parse(old) });
-          } catch {}
-          localStorage.removeItem('dbd_chat');
-        }
-      },
-    }
+    { name: 'dbd-chat' }
   )
 );

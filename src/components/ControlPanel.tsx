@@ -1,4 +1,4 @@
-import { useTwitch, useSettings } from '../store';
+import { useSettings } from '../store';
 import { connect, disconnect } from '../services';
 
 interface Props {
@@ -6,8 +6,7 @@ interface Props {
 }
 
 export function ControlPanel({ onOpenSettings }: Props) {
-  const { channel, status, statusText, setChannel } = useTwitch();
-  const { minDonation, setMinDonation } = useSettings();
+  const { channel, status, statusText, setChannel, minDonation, setMinDonation } = useSettings();
   const isConnected = status === 'connected';
 
   const handleConnect = () => {

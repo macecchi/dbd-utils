@@ -8,13 +8,12 @@ import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
 import { connect, identifyCharacter } from './services';
-import { useRequests, useSettings, useTwitch } from './store';
+import { useRequests, useSettings } from './store';
 
 export function App() {
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
-  const { apiKey, models, botName } = useSettings();
-  const { channel, chatHidden, setChatHidden } = useTwitch();
+  const { apiKey, models, botName, channel, chatHidden, setChatHidden } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const clearDoneRef = useRef<(() => void) | null>(null);
 
