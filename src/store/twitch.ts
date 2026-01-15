@@ -26,18 +26,6 @@ export const useTwitch = create<TwitchStore>()(
     {
       name: 'dbd-twitch',
       partialize: (state) => ({ channel: state.channel, chatHidden: state.chatHidden }),
-      onRehydrateStorage: () => () => {
-        const oldChannel = localStorage.getItem('dbd_channel');
-        const oldChatHidden = localStorage.getItem('dbd_chat_hidden');
-        if (oldChannel || oldChatHidden) {
-          localStorage.removeItem('dbd_channel');
-          localStorage.removeItem('dbd_chat_hidden');
-          useTwitch.setState({
-            channel: oldChannel || '',
-            chatHidden: oldChatHidden === 'true',
-          });
-        }
-      },
     }
   )
 );

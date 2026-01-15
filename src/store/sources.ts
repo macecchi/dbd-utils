@@ -44,28 +44,6 @@ export const useSources = create<SourcesStore>()(
       })),
       clearSessionRequests: () => set({ sessionRequests: {} }),
     }),
-    {
-      name: 'dbd-sources',
-      onRehydrateStorage: () => () => {
-        // Migrate old keys
-        const oldEnabled = localStorage.getItem('dbd_sources_enabled');
-        if (oldEnabled) {
-          try {
-            useSources.setState({
-              enabled: JSON.parse(oldEnabled) || DEFAULT_ENABLED,
-              chatCommand: localStorage.getItem('dbd_chat_command') || '!request',
-              chatTiers: JSON.parse(localStorage.getItem('dbd_chat_tiers') || '[1,2,3]'),
-              priority: JSON.parse(localStorage.getItem('dbd_source_priority') || 'null') || DEFAULT_PRIORITY,
-              sessionRequests: JSON.parse(localStorage.getItem('dbd_session_requests') || '{}'),
-            });
-          } catch {}
-          localStorage.removeItem('dbd_sources_enabled');
-          localStorage.removeItem('dbd_chat_command');
-          localStorage.removeItem('dbd_chat_tiers');
-          localStorage.removeItem('dbd_source_priority');
-          localStorage.removeItem('dbd_session_requests');
-        }
-      },
-    }
+    { name: 'dbd-sources' }
   )
 );

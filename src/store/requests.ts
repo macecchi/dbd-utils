@@ -14,18 +14,6 @@ interface RequestsStore {
   setAll: (requests: Request[]) => void;
 }
 
-function deserialize(str: string): Request[] {
-  try {
-    return JSON.parse(str).map((d: any) => ({
-      ...d,
-      timestamp: new Date(d.timestamp),
-      source: d.source || 'donation',
-    }));
-  } catch {
-    return [];
-  }
-}
-
 export const useRequests = create<RequestsStore>()(
   persist(
     (set, get) => ({
@@ -71,23 +59,16 @@ export const useRequests = create<RequestsStore>()(
     }),
     {
       name: 'dbd-requests',
+      partialize: (state) => ({ requests: state.requests }),
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name);
-          if (!str) {
-            // Try migrate from old key
-            const old = localStorage.getItem('dbd_donations');
-            if (old) {
-              localStorage.removeItem('dbd_donations');
-              return { state: { requests: deserialize(old), deletedStack: [] } };
-            }
-            return null;
-          }
+          if (!str) return null;
           const parsed = JSON.parse(str);
           return {
             state: {
               ...parsed.state,
-              requests: parsed.state.requests.map((r: any) => ({
+              requests: (parsed.state.requests || []).map((r: any) => ({
                 ...r,
                 timestamp: new Date(r.timestamp),
               })),
@@ -97,7 +78,6 @@ export const useRequests = create<RequestsStore>()(
         setItem: (name, value) => localStorage.setItem(name, JSON.stringify(value)),
         removeItem: (name) => localStorage.removeItem(name),
       },
-      partialize: (state) => ({ requests: state.requests }),
     }
   )
 );
