@@ -6,7 +6,7 @@ interface Props {
 }
 
 export function ControlPanel({ onOpenSettings }: Props) {
-  const { channel, status, statusText, setChannel, minDonation, setMinDonation } = useSettings();
+  const { channel, status, statusText, setChannel } = useSettings();
   const isConnected = status === 'connected';
 
   const handleConnect = () => {
@@ -26,16 +26,6 @@ export function ControlPanel({ onOpenSettings }: Props) {
           value={channel}
           placeholder="canal"
           onChange={e => setChannel(e.target.value)}
-        />
-      </div>
-      <div className="field">
-        <label>Donate Mínimo (R$)</label>
-        <input
-          type="number"
-          value={minDonation}
-          min={0}
-          step={1}
-          onChange={e => setMinDonation(parseFloat(e.target.value) || 0)}
         />
       </div>
       <button className="btn btn-icon" onClick={onOpenSettings} title="Configurações IA">

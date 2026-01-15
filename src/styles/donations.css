@@ -4,7 +4,7 @@
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
   transition: background 0.15s, padding 0.2s ease, opacity 0.2s ease;
-  cursor: pointer;
+  position: relative;
 }
 
 .donation.deleting {
@@ -70,55 +70,75 @@
   text-overflow: ellipsis;
 }
 
-.time-actions {
+/* Hover action overlay */
+.row-hover-actions {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 30, 30, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-right: 1.25rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.donation:hover .row-hover-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hover-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.row-actions {
-  display: flex;
-  gap: 0.25rem;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.donation:hover .row-actions {
-  opacity: 1;
-}
-
-.row-btn {
-  width: 24px;
-  height: 24px;
-  padding: 0;
+  padding: 0.6rem 1rem;
   border: none;
-  background: transparent;
-  color: var(--text-muted);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   transition: all 0.15s;
 }
 
-.row-btn:hover {
-  background: var(--bg-card);
-  color: var(--green);
+.hover-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
-.row-btn.active {
-  color: var(--green);
+.hover-btn.done {
+  background: var(--green);
+  color: #000;
 }
 
-.row-btn.danger:hover {
-  color: var(--red);
+.hover-btn.done:hover {
+  background: #4ade80;
 }
 
-.row-btn svg {
-  width: 14px;
-  height: 14px;
+.hover-btn.undo {
+  background: var(--text-muted);
+  color: #000;
+}
+
+.hover-btn.undo:hover {
+  background: #a1a1aa;
+}
+
+.hover-btn.delete {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.hover-btn.delete:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
 }
 
 

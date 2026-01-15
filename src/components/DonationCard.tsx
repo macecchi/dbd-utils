@@ -50,7 +50,33 @@ export const DonationCard = memo(function DonationCard({ donation, onToggleDone,
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={className} onClick={handleClick} onContextMenu={handleContext}>
+    <div className={className} onContextMenu={handleContext}>
+      <div className="row-hover-actions">
+        <button className={`hover-btn ${d.done ? 'undo' : 'done'}`} onClick={handleClick}>
+          {d.done ? (
+            <>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Desfazer
+            </>
+          ) : (
+            <>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Concluído
+            </>
+          )}
+        </button>
+        <button className="hover-btn delete" onClick={handleDelete}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+          Excluir
+        </button>
+      </div>
       <div className="donation-top">
         <div className="donor">
           {d.done && (
@@ -73,16 +99,7 @@ export const DonationCard = memo(function DonationCard({ donation, onToggleDone,
             </span>
           )}
         </div>
-        <div className="time-actions">
-          <div className="row-actions">
-            <button className="row-btn danger" onClick={handleDelete} title="Excluir">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-          <span className="time">{formatRelativeTime(d.timestamp)}</span>
-        </div>
+        <span className="time">{formatRelativeTime(d.timestamp)}</span>
       </div>
       <p className="message">{d.message}</p>
       {showChar && (
