@@ -7,7 +7,7 @@ export function Stats() {
   const killerCount = pending.filter(d => d.type === 'killer').length;
 
   return (
-    <>
+    <div className="stats">
       <div className="stat">
         <div className="stat-value">{survivorCount}</div>
         <div className="stat-label">Survs</div>
@@ -16,6 +16,6 @@ export function Stats() {
         <div className="stat-value">{killerCount}</div>
         <div className="stat-label">Killers</div>
       </div>
-    </>
+    </div>
   );
 }
