@@ -12,7 +12,7 @@ interface Props {
 export function DonationList({ onClearDoneRef }: Props) {
   const { requests, toggleDone, remove, clearDone, undo, update, reorder } = useRequests();
   const { apiKey, models } = useSettings();
-  const { showUndo } = useToasts();
+  const { showUndo, clearUndo } = useToasts();
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
 
@@ -49,11 +49,12 @@ export function DonationList({ onClearDoneRef }: Props) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
         undo();
+        clearUndo();
       }
     };
     document.addEventListener('keydown', handleUndoKey);
     return () => document.removeEventListener('keydown', handleUndoKey);
-  }, [undo]);
+  }, [undo, clearUndo]);
 
   const handleDragStart = useCallback((id: number) => {
     setDraggedId(id);

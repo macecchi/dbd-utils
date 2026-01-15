@@ -15,10 +15,9 @@
 }
 
 .settings-title {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -59,12 +58,21 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
   user-select: none;
 }
 
+.sources-panel.open .sources-panel-header {
+  border-bottom-color: var(--border);
+}
+
+.sources-panel:not(.open) .sources-panel-header {
+  border-bottom-color: transparent;
+}
+
 .sources-panel-title {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text);
 }
@@ -398,7 +406,11 @@
   align-items: center;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
-  font-weight: 500;
+}
+
+.manual-entry-header span {
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .manual-entry-close {
