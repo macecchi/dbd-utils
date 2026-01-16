@@ -2,7 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ConnectionState } from '../types';
 
-const DEFAULT_MODELS = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+const DEFAULTS = {
+  models: ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+  channel: 'MandyMess',
+  botName: 'livepix',
+};
 
 interface SettingsState {
   apiKey: string | null;
@@ -25,9 +29,9 @@ export const useSettings = create<SettingsState>()(
   persist(
     (set, get) => ({
       apiKey: null,
-      models: DEFAULT_MODELS,
-      botName: 'livepix',
-      channel: 'mandymess',
+      models: DEFAULTS.models,
+      botName: DEFAULTS.botName,
+      channel: DEFAULTS.channel,
       status: 'disconnected',
       statusText: 'Desconectado',
       chatHidden: true,
@@ -60,9 +64,9 @@ export const useSettings = create<SettingsState>()(
           console.log('Migrating legacy settings');
           const state = {
             apiKey: localStorage.getItem('gemini_key') || null,
-            models: JSON.parse(localStorage.getItem('gemini_models') || 'null') || DEFAULT_MODELS,
-            botName: localStorage.getItem('dbd_bot_name') || 'livepix',
-            channel: localStorage.getItem('dbd_channel') || '',
+            models: JSON.parse(localStorage.getItem('gemini_models') || 'null') || DEFAULTS.models,
+            botName: localStorage.getItem('dbd_bot_name') || DEFAULTS.botName,
+            channel: localStorage.getItem('dbd_channel') || DEFAULTS.channel,
             chatHidden: true,
           };
           legacyKeys.forEach(k => localStorage.removeItem(k));
