@@ -177,7 +177,11 @@ export function App() {
 
         <footer className="footer">
           <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }}>{botName}</strong></div>
-          <a href="https://github.com/macecchi/mandy-utils" target="_blank">GitHub</a>
+          <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span>Versão: {__APP_VERSION__}</span>
+            <span className="footer-separator">•</span>
+            <a href="https://github.com/macecchi/dbd-utils" target="_blank">GitHub</a>
+          </span>
         </footer>
       </div>
 
