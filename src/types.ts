@@ -22,6 +22,7 @@ export interface Request {
   source: 'donation' | 'resub' | 'chat' | 'manual';
   subTier?: number;
   needsIdentification?: boolean;
+  validating?: boolean;
 }
 
 export type CharacterRequest = Request;

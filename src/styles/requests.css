@@ -11,7 +11,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 1.5em;
   font-weight: 600;
-  color: #66666642;
+  color: #66666652;
   text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
   min-width: 2ch;
   text-align: right;
@@ -205,17 +205,6 @@
   margin-top: 0.5em;
 }
 
-.done-check {
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-}
-
-.done-check svg {
-  width: 14px;
-  height: 14px;
-}
-
 .donor-name {
   font-weight: 600;
   font-size: 0.8em;
@@ -285,6 +274,14 @@
 .char-name.identifying {
   color: var(--text-muted);
   font-style: italic;
+}
+
+.validating-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--yellow);
+  animation: pulse 1s infinite;
 }
 
 .char-portrait-wrapper {

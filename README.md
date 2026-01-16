@@ -1,13 +1,15 @@
 # DBD Tracker
 
-Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durante streams na Twitch.
+Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durante streams na Twitch. 
+
+Feito com carinho para a comunidade brasileira 🇧🇷 de Dead by Daylight, em especial [MandyMess](https://twitch.tv/mandymess) 🫶
 
 ## Como funciona
 
-1. Conecta ao chat da Twitch via IRC (somente leitura, sem autenticação)
-2. Detecta pedidos de personagens de múltiplas fontes (donates, resubs, comandos de chat)
-3. Identifica automaticamente o personagem mencionado usando IA (Gemini) ou correspondência local
-4. Exibe fila ordenada por prioridade com retratos dos killers
+1. Conecta ao chat da Twitch em tempo real
+2. Detecta pedidos de personagens de múltiplas fontes que o streamer configura (donates, resubs, comandos de chat)
+3. Identifica automaticamente o personagem mencionado, usando IA (Gemini, free tier) quando necessário
+4. Exibe fila ordenada por prioridade com retratos dos personagens
 
 ## Fontes de pedidos
 
@@ -15,7 +17,7 @@ Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durant
 |-------|---------------|
 | **Donates** | Detecta mensagens do bot de doação (ex: LivePix). Filtra por valor mínimo |
 | **Resubs** | Captura mensagens de resub via USERNOTICE do Twitch IRC |
-| **Chat** | Comando configurável (padrão: `!request`) para inscritos. Filtra por tier mínimo |
+| **Chat** | Comando configurável (padrão: `!fila`) para inscritos. Filtra por tier mínimo |
 | **Manual** | Entrada manual com autocomplete de personagens |
 
 ## Instalação
@@ -37,24 +39,23 @@ Funciona sem API key se os nomes dos personagens forem mencionados diretamente n
 ### Fila de pedidos
 
 - Clique em um pedido para marcar como feito
-- Botão direito abre menu de contexto (concluir, re-identificar, excluir)
 - Arraste para reordenar manualmente
-- `Ctrl/Cmd+Z` desfaz a última exclusão
-- **Limpar feitos** remove todos os pedidos feitos
-- **+** adiciona pedido manual com autocomplete
+- Selecione a ordenação de pedidos por fila de chegada ou por prioridade
+- Botão **+** adiciona pedido manual com autocomplete
 
 ### Painel de fontes
 
 - Ative/desative cada fonte individualmente
 - **Donates**: configure valor mínimo
-- **Chat**: configure comando e tier mínimo de inscrito
+- **Chat**: configure comando e tier mínimo de inscrito (ex: só Tier 2 e 3 podem pedir)
 - Arraste os pills de prioridade para definir ordem de classificação
 
 ### Configurações LLM
 
+Usamos o Google Gemini que oferece um plano gratuito e fácil de configurar.
+
 - **API Key**: chave do Google Gemini para identificação de personagens
 - **Modelos**: lista de modelos em ordem de prioridade (fallback em caso de rate limit)
-- **Bot de donates**: nome do bot que posta mensagens de doação no chat
 
 ### Chat ao vivo
 
@@ -66,17 +67,10 @@ Painel expansível com ferramentas de desenvolvimento:
 
 - **Testar extração**: testa identificação de personagem em uma mensagem
 - **Re-identificar todos**: reprocessa todos os pedidos da fila
-- **Replay VOD**: reproduz chat de uma VOD para testes (requer ID da VOD)
-
-## Dados
-
-Todos os dados são salvos em localStorage:
-
-- `dbd-requests` - fila de pedidos
-- `dbd-settings` - configurações (canal, API key, modelos)
-- `dbd-sources` - configurações de fontes
-- `dbd-chat` - histórico recente do chat
+- **Replay VOD**: reproduz chat de uma VOD para testes (requer ID da VOD, que pode ser encontrada na url do vídeo)
 
 ## Licença
 
 MIT
+
+Todos os direitos de Dead by Daylight pertencem à Behaviour Interactive.

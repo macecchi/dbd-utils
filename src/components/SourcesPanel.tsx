@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSources, useSettings } from '../store';
+import { DEFAULTS } from '../store/sources';
 
 type SourceType = 'donation' | 'resub' | 'chat';
 
@@ -137,8 +138,8 @@ export function SourcesPanel() {
                 name="chat-command"
                 type="text"
                 value={chatCommand}
-                placeholder="!request"
-                onChange={e => setChatCommand(e.target.value.trim() || '!request')}
+                placeholder={DEFAULTS.chatCommand}
+                onChange={e => setChatCommand(e.target.value.trim() || DEFAULTS.chatCommand)}
               />
             </div>
             <div className="source-field">

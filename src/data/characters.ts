@@ -104,6 +104,12 @@ export const DEFAULT_CHARACTERS = {
   killers: CHARACTERS.killers.map(c => [c.name, ...c.aliases].join('/'))
 };
 
+const GENERIC_SURVIVOR_PATTERNS = [
+  /\b(?:jog[aue]|uma?)\s+(?:de\s+)?surv(?:ivor)?(?:zinho|zinha)?\b/i,
+  /\b(?:de\s+)?surv(?:ivor)?(?:zinho|zinha)?\b/i,
+  /\bsobrevivente\b/i,
+];
+
 export function tryLocalMatch(message: string): { character: string; type: 'killer' | 'survivor'; ambiguous?: boolean } | null {
   const lower = message.toLowerCase();
   const matches: { character: string; type: 'killer' | 'survivor'; position: number }[] = [];
@@ -124,7 +130,15 @@ export function tryLocalMatch(message: string): { character: string; type: 'kill
     }
   }
 
-  if (matches.length === 0) return null;
+  if (matches.length === 0) {
+    // No specific character found - check for generic survivor request
+    for (const pattern of GENERIC_SURVIVOR_PATTERNS) {
+      if (pattern.test(lower)) {
+        return { character: 'Survivor', type: 'survivor' };
+      }
+    }
+    return null;
+  }
 
   // Get unique characters matched
   const uniqueChars = new Set(matches.map(m => m.character));

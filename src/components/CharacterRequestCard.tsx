@@ -35,6 +35,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
   const r = request;
   const portrait = r.type === 'killer' && r.character ? getKillerPortrait(r.character) : null;
   const isIdentifying = r.needsIdentification || r.character === 'Identificando...';
+  const isValidating = r.validating;
   const charDisplay = isIdentifying ? 'Identificando...' :
                       (!r.character || r.type === 'unknown') ? 'Não identificado' :
                       r.character;
@@ -133,7 +134,9 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
         </button>
       </div>
       <div className="request-card-content">
-        {position && <span className="request-position">{String(position).padStart(2, '0')}</span>}
+        <span className="request-position">{position ? String(position).padStart(2, '0') : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>}</span>
         <CharacterAvatar portrait={portrait ?? undefined} type={r.type} />
         <div className="request-card-info">
           <div className="character">
@@ -145,15 +148,9 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
             <span className={`char-name${isIdentifying ? ' identifying' : ''}${!r.character && r.type !== 'unknown' ? ' type-only' : ''}`}>
               {charDisplay}
             </span>
+            {isValidating && <span className="validating-dot" title="Validando com IA..." />}
           </div>
           <div className="donor">
-            {r.done && (
-              <span className="done-check">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </span>
-            )}
             <span className="donor-name">{r.donor}</span>
             <span className="msg-preview" title={r.message}>{r.message}</span>
           </div>

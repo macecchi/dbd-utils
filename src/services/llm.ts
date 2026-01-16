@@ -38,7 +38,10 @@ ${DEFAULT_CHARACTERS.killers.join('\n')}
 ${message}
 </user_message>
 
-Identify the Dead by Daylight character from the above user message. Return ONLY JSON with character name and type. If exact character unknown, return empty character. If no character mentioned, return type "none".`;
+Identify the Dead by Daylight character from the above user message. Return ONLY JSON with character name and type.
+- If user requests a generic survivor (e.g. "joga de surv", "uma de survivor"), return character "Survivor" with type "survivor".
+- If exact character unknown, return empty character.
+- If no character mentioned, return type "none".`;
 
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -96,21 +99,25 @@ export async function identifyCharacter(
   request: Request,
   config: LLMConfig,
   onError?: (msg: string) => void,
-  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' }) => void
-): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' }> {
+  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown'; validating: false }) => void
+): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown'; validating?: boolean }> {
   const local = tryLocalMatch(request.message);
 
   if (local) {
     // Only validate with AI if match is ambiguous
     if (local.ambiguous && config.apiKey && onLLMUpdate) {
       callLLM(request.message, config, onError).then(llmResult => {
-        if (llmResult.type !== 'none' && llmResult.character && llmResult.character !== local.character) {
+        if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
             character: llmResult.character,
-            type: llmResult.type as 'survivor' | 'killer' | 'unknown'
+            type: llmResult.type as 'survivor' | 'killer' | 'unknown',
+            validating: false
           });
+        } else {
+          onLLMUpdate({ ...local, validating: false });
         }
       });
+      return { ...local, validating: true };
     }
     return local;
   }

@@ -60,20 +60,26 @@ export function CharacterRequestList({ showDone = false }: Props) {
 
   return (
     <ContextMenuProvider>
-      {filtered.map((r, i) => (
-        <CharacterRequestCard
-          key={r.id}
-          request={r}
-          position={r.done ? undefined : i + 1}
-          onToggleDone={handleToggleDone}
-          showDone={showDone}
-          isDragging={draggedId === r.id}
-          isDragOver={dragOverId === r.id}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        />
-      ))}
+      {(() => {
+        let activeIndex = 0;
+        return filtered.map((r) => {
+          const position = r.done ? undefined : ++activeIndex;
+          return (
+            <CharacterRequestCard
+              key={r.id}
+              request={r}
+              position={position}
+              onToggleDone={handleToggleDone}
+              showDone={showDone}
+              isDragging={draggedId === r.id}
+              isDragOver={dragOverId === r.id}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            />
+          );
+        });
+      })()}
       <ContextMenu
         onToggleDone={handleToggleDone}
         onRerun={rerunExtraction}

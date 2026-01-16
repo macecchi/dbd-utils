@@ -19,14 +19,14 @@ interface SourcesStore {
   setSortMode: (mode: SortMode) => void;
 }
 
-const DEFAULTS = {
+export const DEFAULTS = {
   sources: {
     donation: true,
     chat: true,
     resub: false,
     manual: true,
   },
-  chatCommand: '!request',
+  chatCommand: '!fila',
   chatTiers: [2, 3],
   priority: ['donation', 'chat', 'resub', 'manual'] as SourceType[],
   sortMode: 'fifo' as SortMode,
