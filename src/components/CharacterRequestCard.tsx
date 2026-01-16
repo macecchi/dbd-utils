@@ -34,7 +34,10 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
   const [exiting, setExiting] = useState(false);
   const r = request;
   const portrait = r.type === 'killer' && r.character ? getKillerPortrait(r.character) : null;
-  const charDisplay = r.character || r.type;
+  const isIdentifying = r.needsIdentification || r.character === 'Identificando...';
+  const charDisplay = isIdentifying ? 'Identificando...' :
+                      (!r.character || r.type === 'unknown') ? 'Não identificado' :
+                      r.character;
   const isCollapsed = r.done;
 
   const handleClick = () => {
@@ -130,7 +133,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
         </button>
       </div>
       <div className="request-card-content">
-        {position && <span className="request-position">{position}</span>}
+        {position && <span className="request-position">{String(position).padStart(2, '0')}</span>}
         <CharacterAvatar portrait={portrait ?? undefined} type={r.type} />
         <div className="request-card-info">
           <div className="character">
@@ -139,7 +142,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
               alt=""
               className="char-type-icon"
             />
-            <span className={`char-name${r.character === 'Identificando...' ? ' identifying' : ''}${!r.character && r.type !== 'unknown' ? ' type-only' : ''}`}>
+            <span className={`char-name${isIdentifying ? ' identifying' : ''}${!r.character && r.type !== 'unknown' ? ' type-only' : ''}`}>
               {charDisplay}
             </span>
           </div>

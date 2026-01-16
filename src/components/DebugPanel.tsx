@@ -8,7 +8,8 @@ import { useRequests, useChat, useSettings, useSources, useToasts } from '../sto
 export function DebugPanel() {
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
-  const { apiKey, models, botName, minDonation } = useSettings();
+  const { apiKey, models, botName, minDonation, isLLMEnabled } = useSettings();
+  const llmEnabled = isLLMEnabled();
   const { enabled: sourcesEnabled, chatTiers, chatCommand } = useSources();
   const { show: showToast } = useToasts();
 
@@ -63,7 +64,7 @@ export function DebugPanel() {
   };
 
   const [input, setInput] = useState('');
-  const [addToQueue, setAddToQueue] = useState(false);
+  const [addToQueue, setAddToQueue] = useState(true);
   const [result, setResult] = useState<{ text: string; show: boolean }>({ text: '', show: false });
   const [simResult, setSimResult] = useState<{ text: string; show: boolean }>({ text: '', show: false });
   const [vodId, setVodId] = useState('');
@@ -78,6 +79,27 @@ export function DebugPanel() {
     e.preventDefault();
     if (!input.trim()) return;
 
+    const requestId = Date.now();
+    const message = input;
+
+    // Add to queue immediately if enabled
+    if (addToQueue) {
+      const request: Request = {
+        id: requestId,
+        timestamp: new Date(),
+        donor: 'Teste',
+        amount: 'R$ 0,00',
+        amountVal: 0,
+        message,
+        character: 'Identificando...',
+        type: 'unknown',
+        source: 'manual',
+        needsIdentification: true
+      };
+      addRequest(request);
+      setInput('');
+    }
+
     setResult({ text: 'Identificando...', show: true });
 
     const formatResult = (res: { character: string; type: string }, isLocal: boolean, llmSuffix = '') => {
@@ -88,7 +110,7 @@ export function DebugPanel() {
     };
 
     const res = await testExtraction(
-      input,
+      message,
       llmConfig,
       (msg) => showToast(msg, 'Erro LLM', 'red'),
       (llmRes) => {
@@ -98,26 +120,20 @@ export function DebugPanel() {
           ? ` <span style="color:var(--text-muted)">→ [IA]</span> <span style="color:${llmColor}">${llmRes.type}</span> → <strong>${llmRes.character}</strong>`
           : ' <span style="color:var(--green)">✓ IA confirmou</span>';
         setResult({ text: formatResult(res, res.isLocal, llmSuffix), show: true });
+        if (addToQueue && isDiff) {
+          update(requestId, { character: llmRes.character, type: llmRes.type, needsIdentification: false });
+        }
       }
     );
 
-    setResult({ text: formatResult(res, res.isLocal, llmConfig.apiKey ? ' <span style="color:var(--text-muted)">⏳ validando...</span>' : ''), show: true });
-
-    if (addToQueue && res.type !== 'unknown') {
-      const request: Request = {
-        id: Date.now(),
-        timestamp: new Date(),
-        donor: 'Teste',
-        amount: 'R$ 0,00',
-        amountVal: 0,
-        message: input,
-        character: res.character,
-        type: res.type,
-        source: 'manual'
-      };
-      addRequest(request);
-      setInput('');
+    // Update the request with identification result
+    if (addToQueue) {
+      update(requestId, { character: res.character || '', type: res.type, needsIdentification: false });
     }
+
+    // Only show "validando" for ambiguous local matches that will get AI validation
+    const showValidating = res.isLocal && res.ambiguous && llmEnabled;
+    setResult({ text: formatResult(res, res.isLocal, showValidating ? ' <span style="color:var(--text-muted)">⏳ validando...</span>' : ''), show: true });
   };
 
   const handleReidentifyAll = async () => {

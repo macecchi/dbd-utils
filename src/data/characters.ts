@@ -104,9 +104,9 @@ export const DEFAULT_CHARACTERS = {
   killers: CHARACTERS.killers.map(c => [c.name, ...c.aliases].join('/'))
 };
 
-export function tryLocalMatch(message: string): { character: string; type: 'killer' | 'survivor' } | null {
+export function tryLocalMatch(message: string): { character: string; type: 'killer' | 'survivor'; ambiguous?: boolean } | null {
   const lower = message.toLowerCase();
-  let lastMatch: { character: string; type: 'killer' | 'survivor'; position: number } | null = null;
+  const matches: { character: string; type: 'killer' | 'survivor'; position: number }[] = [];
 
   for (const type of ['killers', 'survivors'] as const) {
     for (const char of CHARACTERS[type]) {
@@ -114,19 +114,27 @@ export function tryLocalMatch(message: string): { character: string; type: 'kill
         const regex = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
         let match;
         while ((match = regex.exec(lower)) !== null) {
-          if (!lastMatch || match.index > lastMatch.position) {
-            lastMatch = {
-              character: char.name,
-              type: type === 'killers' ? 'killer' : 'survivor',
-              position: match.index
-            };
-          }
+          matches.push({
+            character: char.name,
+            type: type === 'killers' ? 'killer' : 'survivor',
+            position: match.index
+          });
         }
       }
     }
   }
 
-  return lastMatch ? { character: lastMatch.character, type: lastMatch.type } : null;
+  if (matches.length === 0) return null;
+
+  // Get unique characters matched
+  const uniqueChars = new Set(matches.map(m => m.character));
+  const lastMatch = matches.reduce((a, b) => b.position > a.position ? b : a);
+
+  return {
+    character: lastMatch.character,
+    type: lastMatch.type,
+    ambiguous: uniqueChars.size > 1
+  };
 }
 
 export function getKillerPortrait(name: string): string | undefined {

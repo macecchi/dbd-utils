@@ -6,8 +6,9 @@ interface Props {
 }
 
 export function ControlPanel({ onOpenSettings }: Props) {
-  const { channel, status, statusText, setChannel } = useSettings();
+  const { channel, status, statusText, setChannel, isLLMEnabled } = useSettings();
   const isConnected = status === 'connected';
+  const llmEnabled = isLLMEnabled();
 
   const handleConnect = () => {
     if (isConnected) {
@@ -46,8 +47,8 @@ export function ControlPanel({ onOpenSettings }: Props) {
           <span>{statusText}</span>
         </div>
         <div className="status-row">
-          <span className="status-dot" id="llmStatusDot" />
-          <span id="llmStatusText">IA não configurada</span>
+          <span className={`status-dot ${llmEnabled ? 'connected' : ''}`} />
+          <span>{llmEnabled ? 'IA configurada' : 'IA não configurada'}</span>
         </div>
       </div>
     </section>

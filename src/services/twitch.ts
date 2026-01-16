@@ -55,9 +55,10 @@ function getSubTierFromBadges(badges: string): number {
 
 export function handleUserNotice(raw: string) {
   const { enabled } = useSources.getState();
-  const { apiKey } = useSettings.getState();
+  const { isLLMEnabled } = useSettings.getState();
   const { add: addRequest } = useRequests.getState();
   const { add: addChat } = useChat.getState();
+  const llmEnabled = isLLMEnabled();
 
   const tags = parseIrcTags(raw);
   if (tags['msg-id'] !== 'resub' && tags['msg-id'] !== 'sub') return;
@@ -71,7 +72,6 @@ export function handleUserNotice(raw: string) {
   addChat({ user: displayName, message: `[${tags['msg-id']}] ${message}`, isDonate: false, color: null });
 
   const local = tryLocalMatch(message);
-  if (!local && !apiKey) return;
 
   const request: Request = {
     id: Date.now() + Math.random(),
@@ -80,18 +80,19 @@ export function handleUserNotice(raw: string) {
     amount: '',
     amountVal: 0,
     message,
-    character: local?.character || 'Identificando...',
+    character: local?.character || (llmEnabled ? 'Identificando...' : ''),
     type: local?.type || 'unknown',
     source: 'resub',
-    needsIdentification: !local
+    needsIdentification: !local && llmEnabled
   };
   addRequest(request);
 }
 
 function handleChatCommand(tags: Record<string, string>, displayName: string, _username: string, requestText: string) {
   const { enabled, chatTiers } = useSources.getState();
-  const { apiKey } = useSettings.getState();
+  const { isLLMEnabled } = useSettings.getState();
   const { add: addRequest } = useRequests.getState();
+  const llmEnabled = isLLMEnabled();
 
   if (!enabled.chat || !requestText) return;
 
@@ -100,7 +101,6 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
   if (!isSub || !chatTiers.includes(subTier)) return;
 
   const local = tryLocalMatch(requestText);
-  if (!local && !apiKey) return;
 
   const request: Request = {
     id: Date.now() + Math.random(),
@@ -109,20 +109,21 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
     amount: '',
     amountVal: 0,
     message: requestText,
-    character: local?.character || 'Identificando...',
+    character: local?.character || (llmEnabled ? 'Identificando...' : ''),
     type: local?.type || 'unknown',
     source: 'chat',
     subTier,
-    needsIdentification: !local
+    needsIdentification: !local && llmEnabled
   };
   addRequest(request);
 }
 
 export function handleMessage(raw: string) {
-  const { botName, apiKey, minDonation } = useSettings.getState();
+  const { botName, minDonation, isLLMEnabled } = useSettings.getState();
   const { enabled, chatCommand } = useSources.getState();
   const { add: addRequest } = useRequests.getState();
   const { add: addChat } = useChat.getState();
+  const llmEnabled = isLLMEnabled();
 
   const tags = parseIrcTags(raw);
   const userMatch = raw.match(/display-name=([^;]*)/i);
@@ -151,7 +152,6 @@ export function handleMessage(raw: string) {
   if (amountVal < minDonation) return;
 
   const local = tryLocalMatch(parsed.message);
-  if (!local && !apiKey) return;
 
   const request: Request = {
     id: Date.now(),
@@ -160,10 +160,10 @@ export function handleMessage(raw: string) {
     amount: parsed.amount,
     amountVal,
     message: parsed.message,
-    character: local?.character || 'Identificando...',
+    character: local?.character || (llmEnabled ? 'Identificando...' : ''),
     type: local?.type || 'unknown',
     source: 'donation',
-    needsIdentification: !local
+    needsIdentification: !local && llmEnabled
   };
   addRequest(request);
 }

@@ -101,7 +101,8 @@ export async function identifyCharacter(
   const local = tryLocalMatch(request.message);
 
   if (local) {
-    if (config.apiKey && onLLMUpdate) {
+    // Only validate with AI if match is ambiguous
+    if (local.ambiguous && config.apiKey && onLLMUpdate) {
       callLLM(request.message, config, onError).then(llmResult => {
         if (llmResult.type !== 'none' && llmResult.character && llmResult.character !== local.character) {
           onLLMUpdate({
@@ -129,12 +130,13 @@ export async function testExtraction(
   config: LLMConfig,
   onError?: (msg: string) => void,
   onLLMUpdate?: (result: { character: string; type: 'killer' | 'survivor' | 'unknown' }) => void
-): Promise<{ character: string; type: 'killer' | 'survivor' | 'unknown'; isLocal: boolean }> {
+): Promise<{ character: string; type: 'killer' | 'survivor' | 'unknown'; isLocal: boolean; ambiguous?: boolean }> {
   if (!input) return { character: '', type: 'unknown', isLocal: false };
 
   const localResult = tryLocalMatch(input);
   if (localResult) {
-    if (config.apiKey && onLLMUpdate) {
+    // Only validate with AI if match is ambiguous
+    if (localResult.ambiguous && config.apiKey && onLLMUpdate) {
       callLLM(input, config, onError).then(llmResult => {
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({

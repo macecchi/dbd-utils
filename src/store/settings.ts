@@ -13,6 +13,7 @@ interface SettingsState {
   status: ConnectionState;
   statusText: string;
   chatHidden: boolean;
+  isLLMEnabled: () => boolean;
   setApiKey: (key: string) => void;
   setModels: (models: string[]) => void;
   setBotName: (name: string) => void;
@@ -24,7 +25,7 @@ interface SettingsState {
 
 export const useSettings = create<SettingsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       apiKey: '',
       models: DEFAULT_MODELS,
       botName: 'livepix',
@@ -33,6 +34,7 @@ export const useSettings = create<SettingsState>()(
       status: 'disconnected',
       statusText: 'Desconectado',
       chatHidden: true,
+      isLLMEnabled: () => !!get().apiKey,
       setApiKey: (apiKey) => set({ apiKey: apiKey.trim() }),
       setModels: (models) => set({ models }),
       setBotName: (botName) => set({ botName: botName.trim() || 'livepix' }),
