@@ -90,7 +90,7 @@ export function SettingsModal({ isOpen, onClose }: Props) {
               </button>
             </div>
             <div className={`api-status ${hasKey ? 'set' : 'missing'}`} style={{ marginTop: '0.5rem' }}>
-              {hasKey ? '\u2713 Configurado' : '\u26A0 Sem API key'}
+              {hasKey ? '\u2713 Configurado' : '\u26A0 Sem API key: alguns pedidos podem não ser identificados'}
             </div>
           </div>
           <div className="modal-field">
