@@ -97,7 +97,7 @@ export function SourcesPanel() {
 
         <span className="source-section-desc">{SOURCE_DESCRIPTIONS[source]}</span>
 
-        {source === 'donation' && isEnabled && (
+        {source === 'donation' && (
           <div className="source-section-body">
             <div className="source-field">
               <label htmlFor="donation-bot">Bot</label>
@@ -128,7 +128,7 @@ export function SourcesPanel() {
           </div>
         )}
 
-        {source === 'chat' && isEnabled && (
+        {source === 'chat' && (
           <div className="source-section-body">
             <div className="source-field">
               <label htmlFor="chat-command">Comando</label>

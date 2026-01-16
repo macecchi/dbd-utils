@@ -139,12 +139,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
             </span>
           )}
           <span className="donor-name">{r.donor}</span>
-          {isCollapsed && showChar && <span className="char-name-inline">{charDisplay}</span>}
-          {isCollapsed && (
-            <span className="msg-preview">
-              {r.message.slice(0, 40)}{r.message.length > 40 ? '…' : ''}
-            </span>
-          )}
+          <span className="msg-preview" title={r.message}>{r.message}</span>
           {badgeText && (
             <span className={`amount source-${r.source}`}>
               {badgeText}
@@ -153,7 +148,6 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
         </div>
         <span className="time">{formatRelativeTime(r.timestamp)}</span>
       </div>
-      <p className="message">{r.message}</p>
       {showChar && (
         <div className="character">
           <CharacterAvatar portrait={portrait ?? undefined} type={r.type} />

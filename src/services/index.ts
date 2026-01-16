@@ -1,4 +1,4 @@
-export { connect, disconnect } from './twitch';
+export { connect, disconnect, handleMessage, handleUserNotice } from './twitch';
 export { identifyCharacter, testExtraction, callLLM } from './llm';
 export type { LLMConfig } from './llm';
 export { loadAndReplayVOD, cancelVODReplay } from './vod';

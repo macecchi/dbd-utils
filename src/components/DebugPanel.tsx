@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } from '../services';
+import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter, handleMessage, handleUserNotice } from '../services';
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
@@ -9,13 +9,64 @@ export function DebugPanel() {
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
   const { apiKey, models, botName, minDonation } = useSettings();
-  const { enabled: sourcesEnabled } = useSources();
+  const { enabled: sourcesEnabled, chatTiers, chatCommand } = useSources();
   const { show: showToast } = useToasts();
+
+  const testMessages = ['Trapper', 'Nurse', 'Huntress', 'Wraith', 'Hillbilly'];
+  const randomMsg = () => testMessages[Math.floor(Math.random() * testMessages.length)];
+  const randomDonor = () => `TestUser${Math.floor(Math.random() * 1000)}`;
+
+  const simulateIRC = (type: 'donation-above' | 'donation-below' | 'resub' | 'chat-sub' | 'chat-nosub') => {
+    const msg = randomMsg();
+    const donor = randomDonor();
+    const channel = 'testchannel';
+    const before = useRequests.getState().requests.length;
+
+    switch (type) {
+      case 'donation-above': {
+        const amount = minDonation + 10;
+        const raw = `@display-name=${botName};color=#FF0000 :${botName.toLowerCase()}!${botName.toLowerCase()}@${botName.toLowerCase()}.tmi.twitch.tv PRIVMSG #${channel} :${donor} doou R$ ${amount},00: ${msg}`;
+        handleMessage(raw);
+        break;
+      }
+      case 'donation-below': {
+        const amount = Math.max(minDonation - 5, 1);
+        const raw = `@display-name=${botName};color=#FF0000 :${botName.toLowerCase()}!${botName.toLowerCase()}@${botName.toLowerCase()}.tmi.twitch.tv PRIVMSG #${channel} :${donor} doou R$ ${amount},00: ${msg}`;
+        handleMessage(raw);
+        break;
+      }
+      case 'resub': {
+        const raw = `@display-name=${donor};msg-id=resub :tmi.twitch.tv USERNOTICE #${channel} :${msg}`;
+        handleUserNotice(raw);
+        break;
+      }
+      case 'chat-sub': {
+        const tier = chatTiers.length > 0 ? Math.min(...chatTiers) : 1;
+        const badge = tier === 3 ? 3000 : tier === 2 ? 2000 : 1;
+        const raw = `@display-name=${donor};subscriber=1;badges=subscriber/${badge} :${donor.toLowerCase()}!${donor.toLowerCase()}@${donor.toLowerCase()}.tmi.twitch.tv PRIVMSG #${channel} :${chatCommand} ${msg}`;
+        handleMessage(raw);
+        break;
+      }
+      case 'chat-nosub': {
+        const raw = `@display-name=${donor};subscriber=0;badges= :${donor.toLowerCase()}!${donor.toLowerCase()}@${donor.toLowerCase()}.tmi.twitch.tv PRIVMSG #${channel} :${chatCommand} ${msg}`;
+        handleMessage(raw);
+        break;
+      }
+    }
+
+    const after = useRequests.getState().requests.length;
+    const added = after > before;
+    setSimResult({
+      text: `<span style="color:${added ? 'var(--green)' : 'var(--text-muted)'}">${type}: ${added ? 'added' : 'filtered'}</span> <span style="color:var(--text-muted)">(${msg})</span>`,
+      show: true
+    });
+  };
 
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [addToQueue, setAddToQueue] = useState(false);
   const [result, setResult] = useState<{ text: string; show: boolean }>({ text: '', show: false });
+  const [simResult, setSimResult] = useState<{ text: string; show: boolean }>({ text: '', show: false });
   const [vodId, setVodId] = useState('');
   const [speed, setSpeed] = useState(0);
   const [vodStatus, setVodStatus] = useState('');
@@ -140,6 +191,29 @@ export function DebugPanel() {
         {result.show && (
           <div className="debug-result show" dangerouslySetInnerHTML={{ __html: result.text }} />
         )}
+        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Simular pedido</div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button className="btn btn-ghost" onClick={() => simulateIRC('donation-above')}>
+              Donate ≥ min
+            </button>
+            <button className="btn btn-ghost" onClick={() => simulateIRC('donation-below')}>
+              Donate &lt; min
+            </button>
+            <button className="btn btn-ghost" onClick={() => simulateIRC('resub')}>
+              Resub
+            </button>
+            <button className="btn btn-ghost" onClick={() => simulateIRC('chat-sub')}>
+              Chat (sub)
+            </button>
+            <button className="btn btn-ghost" onClick={() => simulateIRC('chat-nosub')}>
+              Chat (no sub)
+            </button>
+          </div>
+          {simResult.show && (
+            <div className="debug-result show" style={{ marginTop: '0.5rem' }} dangerouslySetInnerHTML={{ __html: simResult.text }} />
+          )}
+        </div>
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button className="btn btn-ghost" onClick={handleReidentifyAll}>
             Re-identificar todos

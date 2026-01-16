@@ -53,7 +53,7 @@ function getSubTierFromBadges(badges: string): number {
   return t >= 3000 ? 3 : t >= 2000 ? 2 : 1;
 }
 
-function handleUserNotice(raw: string) {
+export function handleUserNotice(raw: string) {
   const { enabled } = useSources.getState();
   const { apiKey } = useSettings.getState();
   const { add: addRequest } = useRequests.getState();
@@ -118,7 +118,7 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
   addRequest(request);
 }
 
-function handleMessage(raw: string) {
+export function handleMessage(raw: string) {
   const { botName, apiKey, minDonation } = useSettings.getState();
   const { enabled, chatCommand } = useSources.getState();
   const { add: addRequest } = useRequests.getState();

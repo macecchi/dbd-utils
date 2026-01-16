@@ -16,8 +16,8 @@ interface SourcesStore {
   setPriority: (priority: SourceType[]) => void;
 }
 
-const DEFAULT_ENABLED: SourcesEnabled = { donation: true, resub: true, chat: true, manual: true };
-const DEFAULT_PRIORITY: SourceType[] = ['donation', 'resub', 'chat', 'manual'];
+const DEFAULT_ENABLED: SourcesEnabled = { donation: true, resub: false, chat: false, manual: true };
+const DEFAULT_PRIORITY: SourceType[] = ['donation', 'chat', 'resub', 'manual'];
 
 export const useSources = create<SourcesStore>()(
   persist(
