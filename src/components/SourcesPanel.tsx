@@ -36,7 +36,7 @@ const SOURCE_ICONS: Record<SourceType, JSX.Element> = {
 
 export function SourcesPanel() {
   const {
-    enabled, chatCommand, chatTiers, priority,
+    enabled, chatCommand, chatTiers, priority, sortMode,
     setEnabled, setChatCommand, setChatTiers, setPriority
   } = useSources();
   const { minDonation, setMinDonation, botName, setBotName } = useSettings();
@@ -179,8 +179,16 @@ export function SourcesPanel() {
           {(['donation', 'resub', 'chat'] as SourceType[]).map(renderSourceSection)}
         </div>
 
-        <div className="priority-section">
-          <div className="priority-header">Prioridade</div>
+        <div className={`priority-section${sortMode === 'fifo' ? ' disabled' : ''}`}>
+          <div className="priority-header">Ordenação dos pedidos</div>
+          <p className="priority-desc">
+            Ordenação atual: {sortMode === 'fifo'
+              ? 'novos pedidos entram no final da fila (ordem de chegada)'
+              : 'novos pedidos entram ordenados de acordo com a prioridade'}.
+          </p>
+          <p className="priority-desc">
+            Prioridade
+          </p>
           <div className="priority-pills">
             {filteredPriority.map((source, idx) => (
               <div

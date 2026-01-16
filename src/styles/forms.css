@@ -88,6 +88,9 @@ textarea {
 .btn-small {
   font-size: var(--text-sm);
   padding: 0.4rem var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .btn-small-icon {

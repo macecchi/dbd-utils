@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Request } from '../types';
+import { useSources } from './sources';
 
 interface RequestsStore {
   requests: Request[];
@@ -15,7 +16,26 @@ export const useRequests = create<RequestsStore>()(
   persist(
     (set) => ({
       requests: [],
-      add: (req) => set((s) => ({ requests: [...s.requests, req] })),
+      add: (req) => set((s) => {
+        const { sortMode, priority } = useSources.getState();
+        if (sortMode === 'fifo') {
+          return { requests: [...s.requests, req] };
+        }
+        // Insert by priority: find position among pending items
+        const requests = [...s.requests];
+        const reqPri = priority.indexOf(req.source);
+        let insertIdx = requests.length;
+        for (let i = 0; i < requests.length; i++) {
+          if (requests[i].done) continue;
+          const iPri = priority.indexOf(requests[i].source);
+          if (iPri > reqPri || (iPri === reqPri && requests[i].timestamp > req.timestamp)) {
+            insertIdx = i;
+            break;
+          }
+        }
+        requests.splice(insertIdx, 0, req);
+        return { requests };
+      }),
       update: (id, updates) => set((s) => ({
         requests: s.requests.map((r) => (r.id === id ? { ...r, ...updates } : r)),
       })),

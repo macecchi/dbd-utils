@@ -150,9 +150,10 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: var(--text-sm);
   color: var(--text-muted);
-  padding: 0.2rem 0.6rem;
+  padding: 0.4rem 0.6rem;
   background: var(--bg);
   border-radius: var(--radius-sm);
+  line-height: 1;
 }
 
 .panel-body {

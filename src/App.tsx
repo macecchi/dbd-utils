@@ -9,12 +9,13 @@ import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
 import { connect, identifyCharacter } from './services';
-import { useRequests, useSettings } from './store';
+import { useRequests, useSettings, useSources } from './store';
 
 export function App() {
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
   const { apiKey, models, botName, channel, chatHidden, setChatHidden } = useSettings();
+  const { sortMode, setSortMode } = useSources();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
@@ -74,17 +75,39 @@ export function App() {
                 Fila
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  className="btn btn-ghost btn-small"
+                  onClick={() => setSortMode(sortMode === 'fifo' ? 'priority' : 'fifo')}
+                  title={sortMode === 'fifo' ? 'Novos pedidos entram no final' : 'Novos pedidos entram por prioridade de fonte'}
+                >
+                  {sortMode === 'fifo' ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 5v14M5 12l7 7 7-7" />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M3 12h12M3 18h6" />
+                    </svg>
+                  )}
+                  Ordem de {sortMode === 'fifo' ? 'chegada' : 'prioridade'}
+                </button>
                 <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setManualOpen(true)} title="Adicionar manual">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
                   </svg>
                 </button>
-                <button className={`btn btn-ghost btn-small${showDone ? ' active' : ''}`} onClick={() => setShowDone(v => !v)}>
-                  {showDone ? 'Esconder feitos' : 'Mostrar feitos'}
+                <button className={`btn btn-ghost btn-small btn-small-icon${showDone ? ' active' : ''}`} onClick={() => setShowDone(v => !v)} title={showDone ? 'Esconder feitos' : 'Mostrar feitos'}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {showDone ? <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /> : <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />}
+                    <circle cx="12" cy="12" r="3" style={{ display: showDone ? 'block' : 'none' }} />
+                    {!showDone && <line x1="1" y1="1" x2="23" y2="23" />}
+                  </svg>
                 </button>
                 {chatHidden && (
-                  <button className="btn btn-ghost btn-small" onClick={() => setChatHidden(false)}>
-                    Mostrar chat
+                  <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setChatHidden(false)} title="Mostrar chat">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                    </svg>
                   </button>
                 )}
                 <span className="panel-count">{pendingCount}</span>
@@ -103,8 +126,10 @@ export function App() {
                 </svg>
                 Chat ao Vivo
               </div>
-              <button className="btn btn-ghost btn-small" onClick={() => setChatHidden(true)}>
-                Esconder
+              <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setChatHidden(true)} title="Esconder chat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
             <div className="panel-body chat-body">
