@@ -3,7 +3,8 @@
   "type": "module",
   "scripts": {
     "dev": "bunx @react-grab/claude-code@latest && vite",
-    "build": "vite build"
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "devDependencies": {
     "@types/react": "^19.2.8",

@@ -8,9 +8,9 @@ import { useRequests, useChat, useSettings, useSources, useToasts } from '../sto
 export function DebugPanel() {
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
-  const { apiKey, models, botName, minDonation, isLLMEnabled } = useSettings();
+  const { apiKey, models, botName, isLLMEnabled } = useSettings();
   const llmEnabled = isLLMEnabled();
-  const { enabled: sourcesEnabled, chatTiers, chatCommand } = useSources();
+  const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
   const { show: showToast } = useToasts();
 
   const testMessages = ['Trapper', 'Nurse', 'Huntress', 'Wraith', 'Hillbilly'];
@@ -73,7 +73,7 @@ export function DebugPanel() {
   const [isReplaying, setIsReplaying] = useState(false);
 
   const llmConfig = { apiKey, models };
-  const vodConfig = { botName, minDonation, apiKey, sourcesEnabled };
+  const vodConfig = { botName, minDonation, sourcesEnabled };
 
   const handleTest = async (e: FormEvent) => {
     e.preventDefault();

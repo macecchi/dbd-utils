@@ -37,10 +37,10 @@ const SOURCE_ICONS: Record<SourceType, JSX.Element> = {
 
 export function SourcesPanel() {
   const {
-    enabled, chatCommand, chatTiers, priority, sortMode,
-    setEnabled, setChatCommand, setChatTiers, setPriority
+    enabled, chatCommand, chatTiers, priority, sortMode, minDonation,
+    setEnabled, setChatCommand, setChatTiers, setPriority, setMinDonation
   } = useSources();
-  const { minDonation, setMinDonation, botName, setBotName } = useSettings();
+  const { botName, setBotName } = useSettings();
 
   const [isOpen, setIsOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState<SourceType | null>(null);

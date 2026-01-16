@@ -92,7 +92,7 @@ export function App() {
         <header className="header">
           <div className="brand">
             <div className="brand-icon">
-              <img src="/images/Dead-by-Daylight-Emblem.png" alt="DBD" />
+              <img src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.png`} alt="DBD" />
             </div>
             <h1>DBD Tracker<span>Fila de pedidos</span></h1>
           </div>
@@ -105,14 +105,14 @@ export function App() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">
-                <img src="/images/IconHelpLoading_players.webp" />
+                <img src={`${import.meta.env.BASE_URL}images/IconHelpLoading_players.webp`} />
                 Fila
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button
                   className="btn btn-ghost btn-small"
                   onClick={() => setSortMode(sortMode === 'fifo' ? 'priority' : 'fifo')}
-                  title={sortMode === 'fifo' ? 'Novos pedidos entram no final' : 'Novos pedidos entram por prioridade de fonte'}
+                  title={`${sortMode === 'fifo' ? 'Novos pedidos entram no final' : 'Novos pedidos entram por prioridade de fonte'}. Clique para alternar.`}
                 >
                   {sortMode === 'fifo' ? (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -123,7 +123,7 @@ export function App() {
                       <path d="M3 6h18M3 12h12M3 18h6" />
                     </svg>
                   )}
-                  Ordem de {sortMode === 'fifo' ? 'chegada' : 'prioridade'}
+                  Ordem: {sortMode === 'fifo' ? 'chegada' : 'prioridade'}
                 </button>
                 <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setManualOpen(true)} title="Adicionar manual">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

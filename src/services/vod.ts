@@ -9,7 +9,6 @@ let vodReplayAbort: boolean | null = null;
 export interface VODConfig {
   botName: string;
   minDonation: number;
-  apiKey: string;
   sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
 }
 

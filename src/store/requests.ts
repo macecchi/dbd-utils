@@ -59,17 +59,40 @@ export const useRequests = create<RequestsStore>()(
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name);
-          if (!str) return null;
-          const parsed = JSON.parse(str);
-          return {
-            state: {
-              ...parsed.state,
-              requests: (parsed.state.requests || []).map((r: any) => ({
-                ...r,
-                timestamp: new Date(r.timestamp),
-              })),
-            },
-          };
+          if (str) {
+            const parsed = JSON.parse(str);
+            return {
+              state: {
+                ...parsed.state,
+                requests: (parsed.state.requests || []).map((r: any) => ({
+                  ...r,
+                  timestamp: new Date(r.timestamp),
+                })),
+              },
+            };
+          }
+
+          // Migrate from legacy key
+          const legacyData = localStorage.getItem('dbd_donations');
+          if (!legacyData) return null;
+
+          console.log('Migrating legacy requests');
+          try {
+            const validTypes = ['survivor', 'killer', 'unknown', 'none'];
+            const requests = JSON.parse(legacyData)
+              .filter((d: any) => d.character !== 'Ignorado')
+              .map((d: any) => ({
+                ...d,
+                timestamp: new Date(d.timestamp),
+                type: validTypes.includes(d.type) ? d.type : 'unknown',
+                source: d.source || 'donation',
+              }));
+            localStorage.removeItem('dbd_donations');
+            return { state: { requests } };
+          } catch (e) {
+            console.error('Failed to migrate legacy requests:', e);
+            return null;
+          }
         },
         setItem: (name, value) => localStorage.setItem(name, JSON.stringify(value)),
         removeItem: (name) => localStorage.removeItem(name),

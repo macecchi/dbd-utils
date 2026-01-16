@@ -119,8 +119,8 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
 }
 
 export function handleMessage(raw: string) {
-  const { botName, minDonation, isLLMEnabled } = useSettings.getState();
-  const { enabled, chatCommand } = useSources.getState();
+  const { botName, isLLMEnabled } = useSettings.getState();
+  const { enabled, chatCommand, minDonation } = useSources.getState();
   const { add: addRequest } = useRequests.getState();
   const { add: addChat } = useChat.getState();
   const llmEnabled = isLLMEnabled();

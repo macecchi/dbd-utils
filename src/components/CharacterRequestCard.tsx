@@ -141,7 +141,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
         <div className="request-card-info">
           <div className="character">
             <img
-              src={r.type === 'killer' ? '/images/IconKiller.webp' : r.type === 'survivor' ? '/images/IconSurv.webp' : '/images/IconShuffle.webp'}
+              src={`${import.meta.env.BASE_URL}images/${r.type === 'killer' ? 'IconKiller.webp' : r.type === 'survivor' ? 'IconSurv.webp' : 'IconShuffle.webp'}`}
               alt=""
               className="char-type-icon"
             />

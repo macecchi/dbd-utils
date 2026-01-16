@@ -8,7 +8,7 @@ const RETRY_DELAYS = [2000, 4000, 8000];
 let currentModelIndex = 0;
 
 export interface LLMConfig {
-  apiKey: string;
+  apiKey: string | null;
   models: string[];
 }
 

@@ -16,9 +16,10 @@ export function CharacterAvatar({ portrait, type, size = 'md' }: Props) {
     );
   }
 
-  const placeholder = type === 'killer' ? '/images/IconKiller.webp' :
-                       type === 'survivor' ? '/images/IconSurv.webp' :
-                       '/images/IconShuffle.webp';
+  const placeholderIcon = type === 'killer' ? 'IconKiller.webp' :
+                          type === 'survivor' ? 'IconSurv.webp' :
+                          'IconShuffle.webp';
+  const placeholder = `${import.meta.env.BASE_URL}images/${placeholderIcon}`;
   return (
     <div className={`char-portrait-wrapper char-portrait-placeholder ${sizeClass}`}>
       <img src={placeholder} alt="" className="char-portrait" />
