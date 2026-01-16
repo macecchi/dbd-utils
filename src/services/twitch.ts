@@ -140,7 +140,10 @@ export function handleMessage(raw: string) {
   addChat({ user: displayName, message, isDonate: username === bot, color });
 
   if (message.toLowerCase().startsWith(chatCommand.toLowerCase())) {
-    handleChatCommand(tags, displayName, username, message.slice(chatCommand.length).trim());
+    const requestText = message.slice(chatCommand.length).trim();
+    if (requestText) {
+      handleChatCommand(tags, displayName, username, requestText);
+    }
     return;
   }
 
