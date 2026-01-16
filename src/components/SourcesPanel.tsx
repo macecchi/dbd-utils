@@ -10,11 +10,7 @@ const SOURCE_LABELS: Record<SourceType, string> = {
   chat: 'Chat'
 };
 
-const SOURCE_DESCRIPTIONS: Record<SourceType, string> = {
-  donation: 'Pedidos feitos via donate a partir do valor mínimo definido',
-  resub: 'Mensagens de reinscrição',
-  chat: 'Comando de chat para inscritos'
-};
+
 
 const SOURCE_ICONS: Record<SourceType, JSX.Element> = {
   donation: (
@@ -96,10 +92,9 @@ export function SourcesPanel() {
           </label>
         </div>
 
-        <span className="source-section-desc">{SOURCE_DESCRIPTIONS[source]}</span>
-
         {source === 'donation' && (
           <div className="source-section-body">
+            <span className="source-section-desc">Pedidos feitos via donate a partir do valor mínimo definido</span>
             <div className="source-field">
               <label htmlFor="donation-bot">Bot</label>
               <input
@@ -129,8 +124,15 @@ export function SourcesPanel() {
           </div>
         )}
 
+        {source === 'resub' && (
+          <div className="source-section-body">
+            <span className="source-section-desc">Mensagens de reinscrição</span>
+          </div>
+        )}
+
         {source === 'chat' && (
           <div className="source-section-body">
+            <span className="source-section-desc">Comando de chat para pedidos. Somente inscritos com tier maior ou igual ao definido podem usar. Exemplo: <pre>!fila huntress</pre></span>
             <div className="source-field">
               <label htmlFor="chat-command">Comando</label>
               <input
