@@ -38,7 +38,7 @@ export function SourcesPanel() {
   } = useSources();
   const { botName, setBotName } = useSettings();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [draggedItem, setDraggedItem] = useState<SourceType | null>(null);
 
   const handleDragStart = (source: SourceType) => {
