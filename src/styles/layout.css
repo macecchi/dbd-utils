@@ -203,3 +203,7 @@
 .footer a:hover {
   text-decoration: underline;
 }
+
+.footer-separator {
+  opacity: 0.5;
+}
