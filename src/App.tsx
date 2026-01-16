@@ -9,17 +9,32 @@ import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
 import { connect, identifyCharacter } from './services';
-import { useRequests, useSettings, useSources } from './store';
+import { useRequests, useSettings, useSources, useToasts } from './store';
 
 export function App() {
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
+  const { show } = useToasts();
   const { apiKey, models, botName, channel, chatHidden, setChatHidden } = useSettings();
   const { sortMode, setSortMode } = useSources();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [hash, setHash] = useState(window.location.hash);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize existing requests so they don't trigger toasts on load
+  useEffect(() => {
+    if (!isInitialized && requests.length > 0) {
+      const pendingNotification = requests.filter(r => !r.toastShown && !r.needsIdentification);
+      for (const req of pendingNotification) {
+        update(req.id, { toastShown: true });
+      }
+      setIsInitialized(true);
+    } else if (!isInitialized && requests.length === 0) {
+      setIsInitialized(true);
+    }
+  }, [requests, update, isInitialized]);
 
   useEffect(() => {
     const onHashChange = () => setHash(window.location.hash);
@@ -41,6 +56,25 @@ export function App() {
       });
     }
   }, [requests, apiKey, models, update]);
+
+  // Handle toasts for ready requests
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const readyToToast = requests.filter(r => !r.toastShown && !r.needsIdentification);
+    for (const req of readyToToast) {
+      const title = req.source === 'manual' ? 'Novo pedido' : 
+                    req.source === 'donation' ? 'Novo pedido por donate' :
+                    req.source === 'resub' ? 'Novo pedido por resub' : 'Novo pedido pelo chat';
+      
+      const message = req.character 
+        ? `${req.donor} pediu ${req.character}${req.amount ? ` (${req.amount})` : ''}`
+        : `Novo pedido de ${req.donor}${req.amount ? ` (${req.amount})` : ''}`;
+
+      show(message, title);
+      update(req.id, { toastShown: true });
+    }
+  }, [requests, update, show, isInitialized]);
 
   // Auto-connect on mount if channel is set
   useEffect(() => {

@@ -24,33 +24,18 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
 
   const className = [
     'toast',
-    toast.type === 'info' && 'info-toast',
-    toast.type === 'undo' && 'undo-toast',
     fading && 'fade-out'
   ].filter(Boolean).join(' ');
 
   const style = toast.color ? { borderColor: `var(--${toast.color})` } : undefined;
 
-  if (toast.type === 'undo') {
-    return (
-      <div className={className}>
-        <span>{toast.message}</span>
-        <button className="undo-btn" onClick={handleUndo}>Desfazer</button>
-      </div>
-    );
-  }
-
   return (
     <div className={className} style={style}>
-      {toast.title && (
-        <div
-          className="toast-title"
-          style={toast.color ? { color: `var(--${toast.color})` } : undefined}
-        >
-          {toast.title}
-        </div>
+      {toast.title && <span className="toast-title" style={toast.color ? { color: `var(--${toast.color})` } : undefined}>{toast.title}</span>}
+      <span>{toast.message}</span>
+      {toast.type === 'undo' && (
+        <button className="undo-btn" onClick={handleUndo}>Desfazer</button>
       )}
-      <div className="toast-msg">{toast.message}</div>
     </div>
   );
 }

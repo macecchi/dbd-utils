@@ -23,6 +23,7 @@ export interface Request {
   subTier?: number;
   needsIdentification?: boolean;
   validating?: boolean;
+  toastShown?: boolean;
 }
 
 export type CharacterRequest = Request;
