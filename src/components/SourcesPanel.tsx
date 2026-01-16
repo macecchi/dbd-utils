@@ -108,7 +108,7 @@ export function SourcesPanel() {
                 type="text"
                 value={botName}
                 placeholder="livepix"
-                onChange={e => setBotName(e.target.value.trim() || 'livepix')}
+                onBlur={e => setBotName(e.target.value.trim() || 'livepix')}
               />
             </div>
             <div className="source-field">
@@ -122,7 +122,7 @@ export function SourcesPanel() {
                   value={minDonation}
                   min={0}
                   step={1}
-                  onChange={e => setMinDonation(parseFloat(e.target.value) || 0)}
+                  onBlur={e => setMinDonation(parseFloat(e.target.value) || 0)}
                 />
               </div>
             </div>
@@ -139,7 +139,7 @@ export function SourcesPanel() {
                 type="text"
                 value={chatCommand}
                 placeholder={DEFAULTS.chatCommand}
-                onChange={e => setChatCommand(e.target.value.trim() || DEFAULTS.chatCommand)}
+                onBlur={e => setChatCommand(e.target.value.trim() || DEFAULTS.chatCommand)}
               />
             </div>
             <div className="source-field">
