@@ -101,7 +101,7 @@ export function SourcesPanel() {
                 id="donation-bot"
                 name="donation-bot"
                 type="text"
-                value={botName}
+                defaultValue={botName}
                 placeholder="livepix"
                 onBlur={e => setBotName(e.target.value.trim() || 'livepix')}
               />
@@ -114,7 +114,7 @@ export function SourcesPanel() {
                   id="donation-min"
                   name="donation-min"
                   type="number"
-                  value={minDonation}
+                  defaultValue={minDonation}
                   min={0}
                   step={1}
                   onBlur={e => setMinDonation(parseFloat(e.target.value) || 0)}
@@ -139,7 +139,7 @@ export function SourcesPanel() {
                 id="chat-command"
                 name="chat-command"
                 type="text"
-                value={chatCommand}
+                defaultValue={chatCommand}
                 placeholder={DEFAULTS.chatCommand}
                 onBlur={e => setChatCommand(e.target.value.trim() || DEFAULTS.chatCommand)}
               />
