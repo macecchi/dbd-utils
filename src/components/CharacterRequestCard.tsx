@@ -16,6 +16,7 @@ function formatRelativeTime(date: Date): string {
 
 interface Props {
   request: Request;
+  position?: number;
   onToggleDone: (id: number) => void;
   showDone?: boolean;
   isDragging?: boolean;
@@ -26,13 +27,12 @@ interface Props {
 }
 
 export const CharacterRequestCard = memo(function CharacterRequestCard({
-  request, onToggleDone, showDone = false,
+  request, position, onToggleDone, showDone = false,
   isDragging, isDragOver, onDragStart, onDragOver, onDragEnd
 }: Props) {
   const { show: showContextMenu } = useContextMenu();
   const [exiting, setExiting] = useState(false);
   const r = request;
-  const showChar = r.type === 'survivor' || r.type === 'killer' || r.character === 'Identificando...';
   const portrait = r.type === 'killer' && r.character ? getKillerPortrait(r.character) : null;
   const charDisplay = r.character || r.type;
   const isCollapsed = r.done;
@@ -129,33 +129,41 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
           )}
         </button>
       </div>
-      <div className="request-card-top">
-        <div className="donor">
-          {r.done && (
-            <span className="done-check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
+      <div className="request-card-content">
+        {position && <span className="request-position">{position}</span>}
+        <CharacterAvatar portrait={portrait ?? undefined} type={r.type} />
+        <div className="request-card-info">
+          <div className="character">
+            <img
+              src={r.type === 'killer' ? '/images/IconKiller.webp' : r.type === 'survivor' ? '/images/IconSurv.webp' : '/images/IconShuffle.webp'}
+              alt=""
+              className="char-type-icon"
+            />
+            <span className={`char-name${r.character === 'Identificando...' ? ' identifying' : ''}${!r.character && r.type !== 'unknown' ? ' type-only' : ''}`}>
+              {charDisplay}
             </span>
-          )}
-          <span className="donor-name">{r.donor}</span>
-          <span className="msg-preview" title={r.message}>{r.message}</span>
+          </div>
+          <div className="donor">
+            {r.done && (
+              <span className="done-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </span>
+            )}
+            <span className="donor-name">{r.donor}</span>
+            <span className="msg-preview" title={r.message}>{r.message}</span>
+          </div>
+        </div>
+        <div className="request-card-meta">
           {badgeText && (
             <span className={`amount source-${r.source}`}>
               {badgeText}
             </span>
           )}
+          <span className="time">{formatRelativeTime(r.timestamp)}</span>
         </div>
-        <span className="time">{formatRelativeTime(r.timestamp)}</span>
       </div>
-      {showChar && (
-        <div className="character">
-          <CharacterAvatar portrait={portrait ?? undefined} type={r.type} />
-          <span className={`char-name${r.character === 'Identificando...' ? ' identifying' : ''}${!r.character && r.type !== 'unknown' ? ' type-only' : ''}`}>
-            {charDisplay}
-          </span>
-        </div>
-      )}
     </div>
   );
 });

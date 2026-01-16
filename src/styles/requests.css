@@ -7,6 +7,16 @@
   position: relative;
 }
 
+.request-position {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5em;
+  font-weight: 600;
+  color: #66666642;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
+  min-width: 2ch;
+  text-align: right;
+}
+
 .drag-handle {
   display: flex;
   align-items: center;
@@ -69,9 +79,6 @@
   font-style: italic;
   flex: 1;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Hover action overlay */
@@ -159,21 +166,43 @@
   background: var(--red-bg-hover);
 }
 
+.request-card-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.request-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.request-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
 .request-card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.4rem;
   gap: var(--space-sm);
 }
 
 .donor {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
   flex: 1;
   min-width: 0;
   flex-wrap: wrap;
+  margin-top: 0.5em;
 }
 
 .done-check {
@@ -189,6 +218,7 @@
 
 .donor-name {
   font-weight: 600;
+  font-size: 0.8em;
   color: var(--accent);
 }
 
@@ -227,7 +257,14 @@
 .character {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.char-type-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
 }
 
 .badge.unknown {
@@ -278,6 +315,12 @@
   width: var(--defaultCharPortraitDimensions);
   object-fit: cover;
   filter: drop-shadow(0px 4px 6px #00000050);
+}
+
+.char-portrait-placeholder .char-portrait {
+  transform: scale(0.6);
+  opacity: 0.4;
+  filter: grayscale(1);
 }
 
 .char-portrait-wrapper.char-portrait-sm {

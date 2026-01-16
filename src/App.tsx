@@ -18,12 +18,24 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
+  const [hash, setHash] = useState(window.location.hash);
+
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   // Auto-identify requests that need it
   useEffect(() => {
     const pending = requests.filter(r => r.needsIdentification);
     for (const req of pending) {
-      identifyCharacter(req, { apiKey, models }).then(result => {
+      identifyCharacter(
+        req,
+        { apiKey, models },
+        undefined,
+        (llmResult) => update(req.id, llmResult)
+      ).then(result => {
         update(req.id, { ...result, needsIdentification: false });
       });
     }
@@ -102,7 +114,7 @@ export function App() {
         </main>
 
         <SourcesPanel />
-        <DebugPanel />
+        {hash.includes('debug') && <DebugPanel />}
 
         <footer className="footer">
           <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }}>{botName}</strong></div>

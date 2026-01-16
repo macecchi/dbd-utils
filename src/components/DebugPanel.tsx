@@ -62,7 +62,6 @@ export function DebugPanel() {
     });
   };
 
-  const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [addToQueue, setAddToQueue] = useState(false);
   const [result, setResult] = useState<{ text: string; show: boolean }>({ text: '', show: false });
@@ -81,15 +80,28 @@ export function DebugPanel() {
 
     setResult({ text: 'Identificando...', show: true });
 
-    const res = await testExtraction(input, llmConfig, (msg) => showToast(msg, 'Erro LLM', 'red'));
-    const prefix = res.isLocal ? '[local]' : '[IA]';
-    const color = res.type === 'survivor' ? 'var(--blue)' : res.type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
-    const display = res.character || res.type;
+    const formatResult = (res: { character: string; type: string }, isLocal: boolean, llmSuffix = '') => {
+      const prefix = isLocal ? '[local]' : '[IA]';
+      const color = res.type === 'survivor' ? 'var(--blue)' : res.type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
+      const display = res.character || res.type;
+      return `<span style="color:var(--text-muted)">${prefix}</span> <span style="color:${color}">${res.type}</span> → <strong>${display}</strong>${llmSuffix}`;
+    };
 
-    setResult({
-      text: `<span style="color:var(--text-muted)">${prefix}</span> <span style="color:${color}">${res.type}</span> → <strong>${display}</strong>`,
-      show: true
-    });
+    const res = await testExtraction(
+      input,
+      llmConfig,
+      (msg) => showToast(msg, 'Erro LLM', 'red'),
+      (llmRes) => {
+        const isDiff = llmRes.character !== res.character;
+        const llmColor = llmRes.type === 'survivor' ? 'var(--blue)' : llmRes.type === 'killer' ? 'var(--red)' : 'var(--text-muted)';
+        const llmSuffix = isDiff
+          ? ` <span style="color:var(--text-muted)">→ [IA]</span> <span style="color:${llmColor}">${llmRes.type}</span> → <strong>${llmRes.character}</strong>`
+          : ' <span style="color:var(--green)">✓ IA confirmou</span>';
+        setResult({ text: formatResult(res, res.isLocal, llmSuffix), show: true });
+      }
+    );
+
+    setResult({ text: formatResult(res, res.isLocal, llmConfig.apiKey ? ' <span style="color:var(--text-muted)">⏳ validando...</span>' : ''), show: true });
 
     if (addToQueue && res.type !== 'unknown') {
       const request: Request = {
@@ -159,19 +171,14 @@ export function DebugPanel() {
   };
 
   return (
-    <section className={`settings ${open ? 'open' : ''}`}>
-      <div className="settings-header" onClick={() => setOpen(!open)}>
+    <section className="settings open">
+      <div className="settings-header">
         <span className="settings-title">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 20h9" />
             <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
           </svg>
           Debug
-        </span>
-        <span className="settings-toggle">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
         </span>
       </div>
       <div className="settings-body">

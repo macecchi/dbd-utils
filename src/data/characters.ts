@@ -106,16 +106,27 @@ export const DEFAULT_CHARACTERS = {
 
 export function tryLocalMatch(message: string): { character: string; type: 'killer' | 'survivor' } | null {
   const lower = message.toLowerCase();
+  let lastMatch: { character: string; type: 'killer' | 'survivor'; position: number } | null = null;
+
   for (const type of ['killers', 'survivors'] as const) {
     for (const char of CHARACTERS[type]) {
       for (const name of [char.name, ...char.aliases]) {
-        if (new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(lower)) {
-          return { character: char.name, type: type === 'killers' ? 'killer' : 'survivor' };
+        const regex = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+        let match;
+        while ((match = regex.exec(lower)) !== null) {
+          if (!lastMatch || match.index > lastMatch.position) {
+            lastMatch = {
+              character: char.name,
+              type: type === 'killers' ? 'killer' : 'survivor',
+              position: match.index
+            };
+          }
         }
       }
     }
   }
-  return null;
+
+  return lastMatch ? { character: lastMatch.character, type: lastMatch.type } : null;
 }
 
 export function getKillerPortrait(name: string): string | undefined {

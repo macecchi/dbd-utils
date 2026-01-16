@@ -95,10 +95,24 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
 export async function identifyCharacter(
   request: Request,
   config: LLMConfig,
-  onError?: (msg: string) => void
+  onError?: (msg: string) => void,
+  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' }) => void
 ): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' }> {
   const local = tryLocalMatch(request.message);
-  if (local) return local;
+
+  if (local) {
+    if (config.apiKey && onLLMUpdate) {
+      callLLM(request.message, config, onError).then(llmResult => {
+        if (llmResult.type !== 'none' && llmResult.character && llmResult.character !== local.character) {
+          onLLMUpdate({
+            character: llmResult.character,
+            type: llmResult.type as 'survivor' | 'killer' | 'unknown'
+          });
+        }
+      });
+    }
+    return local;
+  }
 
   if (!config.apiKey) return { character: '', type: 'unknown' };
 
@@ -113,12 +127,23 @@ export async function identifyCharacter(
 export async function testExtraction(
   input: string,
   config: LLMConfig,
-  onError?: (msg: string) => void
+  onError?: (msg: string) => void,
+  onLLMUpdate?: (result: { character: string; type: 'killer' | 'survivor' | 'unknown' }) => void
 ): Promise<{ character: string; type: 'killer' | 'survivor' | 'unknown'; isLocal: boolean }> {
   if (!input) return { character: '', type: 'unknown', isLocal: false };
 
   const localResult = tryLocalMatch(input);
   if (localResult) {
+    if (config.apiKey && onLLMUpdate) {
+      callLLM(input, config, onError).then(llmResult => {
+        if (llmResult.type !== 'none' && llmResult.character) {
+          onLLMUpdate({
+            character: llmResult.character,
+            type: llmResult.type as 'killer' | 'survivor' | 'unknown'
+          });
+        }
+      });
+    }
     return { ...localResult, isLocal: true };
   }
 

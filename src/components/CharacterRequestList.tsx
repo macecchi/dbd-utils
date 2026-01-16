@@ -60,10 +60,11 @@ export function CharacterRequestList({ showDone = false }: Props) {
 
   return (
     <ContextMenuProvider>
-      {filtered.map(r => (
+      {filtered.map((r, i) => (
         <CharacterRequestCard
           key={r.id}
           request={r}
+          position={r.done ? undefined : i + 1}
           onToggleDone={handleToggleDone}
           showDone={showDone}
           isDragging={draggedId === r.id}
