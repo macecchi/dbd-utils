@@ -11,19 +11,21 @@
   border: 1px solid var(--border);
 }
 
-.controls .channel {
-  flex-grow: 1;
-}
 
 /* Auth info */
-.auth-info {
+.channel-input {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
 }
 
-.auth-info .avatar {
+.channel-input input {
+  flex-grow: 1;
+}
+
+.avatar {
+  display: inline-block;
   width: 28px;
   height: 28px;
   border-radius: 50%;

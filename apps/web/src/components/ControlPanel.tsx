@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettings, useAuth, useChannel } from '../store';
+import { connect, disconnect } from '../services/twitch';
 
 interface Props {
   onOpenSettings: () => void;
@@ -14,10 +15,25 @@ export function ControlPanel({ onOpenSettings }: Props) {
 
   const [channelInput, setChannelInput] = useState(channel);
 
-  const handleChangeChannel = () => {
-    const ch = channelInput.trim().toLowerCase();
-    if (ch && ch !== channel) {
-      window.location.hash = `#/${ch}`;
+  // Sync input when channel changes from elsewhere
+  useEffect(() => {
+    setChannelInput(channel);
+  }, [channel]);
+
+  const inputChannel = channelInput.trim().toLowerCase();
+  const isSameChannel = inputChannel === channel;
+  const isConnected = status === 'connected' && isSameChannel;
+  const isConnecting = status === 'connecting';
+
+  const handleConnect = () => {
+    if (isConnected) {
+      disconnect();
+    } else if (inputChannel) {
+      if (inputChannel !== channel) {
+        window.location.hash = `#/${inputChannel}`;
+      } else {
+        connect(channel);
+      }
     }
   };
 
@@ -33,19 +49,28 @@ export function ControlPanel({ onOpenSettings }: Props) {
     <section className="controls">
       <div className="field grow channel">
         <label>Canal Twitch</label>
-        <input
-          type="text"
-          value={channelInput}
-          placeholder="canal"
-          onChange={e => setChannelInput(e.target.value)}
-          onBlur={handleChangeChannel}
-          onKeyDown={e => e.key === 'Enter' && handleChangeChannel()}
-        />
+        <div className="channel-input">
+          {isOwnChannel && (
+            <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
+          )}
+          <input
+            type="text"
+            value={channelInput}
+            placeholder="canal"
+            onChange={e => setChannelInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleConnect()}
+          />
+        </div>
       </div>
+      <button
+        className={`btn ${isConnected ? 'btn-connected' : 'btn-primary'}`}
+        onClick={handleConnect}
+        disabled={isConnecting || !inputChannel}
+      >
+        {isConnecting ? 'Conectando...' : isConnected ? 'Desconectar' : 'Conectar'}
+      </button>
       {isOwnChannel ? (
         <div className="channel auth-info">
-          <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
-          <span>{user.display_name}</span>
           <button className="btn btn-ghost" onClick={logout}>Sair</button>
         </div>
       ) : (
