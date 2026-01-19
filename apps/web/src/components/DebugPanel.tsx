@@ -3,9 +3,10 @@ import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter, h
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
-import { useRequests, useChat, useSettings, useSources, useToasts } from '../store';
+import { useChannel, useChat, useSettings, useToasts, SOURCES_DEFAULTS } from '../store';
 
 export function DebugPanel() {
+  const { useRequests, useSources } = useChannel();
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
   const { apiKey, models, botName, isLLMEnabled } = useSettings();

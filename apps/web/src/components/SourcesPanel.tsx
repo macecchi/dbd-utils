@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useSources, useSettings } from '../store';
-import { DEFAULTS } from '../store/sources';
+import { useChannel, useSettings, SOURCES_DEFAULTS } from '../store';
 
 type SourceType = 'donation' | 'resub' | 'chat';
 
@@ -32,6 +31,7 @@ const SOURCE_ICONS: Record<SourceType, React.ReactNode> = {
 };
 
 export function SourcesPanel() {
+  const { useSources } = useChannel();
   const {
     enabled, chatCommand, chatTiers, priority, sortMode, minDonation,
     setEnabled, setChatCommand, setChatTiers, setPriority, setMinDonation
@@ -140,8 +140,8 @@ export function SourcesPanel() {
                 name="chat-command"
                 type="text"
                 defaultValue={chatCommand}
-                placeholder={DEFAULTS.chatCommand}
-                onBlur={e => setChatCommand(e.target.value.trim() || DEFAULTS.chatCommand)}
+                placeholder={SOURCES_DEFAULTS.chatCommand}
+                onBlur={e => setChatCommand(e.target.value.trim() || SOURCES_DEFAULTS.chatCommand)}
               />
             </div>
             <div className="source-field">
@@ -193,7 +193,7 @@ export function SourcesPanel() {
             Prioridade
           </p>
           <div className="priority-pills">
-            {filteredPriority.map((source, idx) => (
+            {filteredPriority.map((source: SourceType, idx: number) => (
               <div
                 key={source}
                 className={`priority-pill ${source} ${draggedItem === source ? 'dragging' : ''}`}

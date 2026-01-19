@@ -3,13 +3,14 @@ import { identifyCharacter } from '../services';
 import { CharacterRequestCard } from './CharacterRequestCard';
 import { ContextMenu } from './ContextMenu';
 import { ContextMenuProvider } from '../context/ContextMenuContext';
-import { useRequests, useSettings, useToasts } from '../store';
+import { useChannel, useSettings, useToasts } from '../store';
 
 interface Props {
   showDone?: boolean;
 }
 
 export function CharacterRequestList({ showDone = false }: Props) {
+  const { useRequests } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
   const { apiKey, models } = useSettings();
   const { showUndo } = useToasts();

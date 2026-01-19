@@ -1,6 +1,7 @@
-import { useRequests } from '../store';
+import { useChannel } from '../store';
 
 export function Stats() {
+  const { useRequests } = useChannel();
   const requests = useRequests((s) => s.requests);
   const pending = requests.filter(d => !d.done);
   const survivorCount = pending.filter(d => d.type === 'survivor').length;

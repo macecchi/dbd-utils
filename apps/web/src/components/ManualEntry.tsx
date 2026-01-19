@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { CHARACTERS } from '../data/characters';
-import { useRequests } from '../store';
+import { useChannel } from '../store';
 import { CharacterAvatar } from './CharacterAvatar';
 import type { Request } from '../types';
 
@@ -33,6 +33,7 @@ interface Props {
 }
 
 export function ManualEntry({ isOpen, onClose }: Props) {
+  const { useRequests } = useChannel();
   const addRequest = useRequests((s) => s.add);
   const [input, setInput] = useState('');
   const [autocompleteItems, setAutocompleteItems] = useState<CharacterOption[]>([]);
