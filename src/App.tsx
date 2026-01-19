@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChatLog } from './components/ChatLog';
 import { ControlPanel } from './components/ControlPanel';
 import { DebugPanel } from './components/DebugPanel';
@@ -8,20 +8,46 @@ import { SettingsModal } from './components/SettingsModal';
 import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
-import { connect, identifyCharacter } from './services';
-import { useRequests, useSettings, useSources, useToasts } from './store';
+import { connect, disconnect, identifyCharacter } from './services';
+import { useRequests, useSettings, useSources, useToasts, useAuth } from './store';
+
+const getChannelFromHash = (hash: string) => hash.replace(/^#\/?/, '') || null;
 
 export function App() {
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
   const { show } = useToasts();
-  const { apiKey, models, botName, channel, chatHidden, setChatHidden } = useSettings();
+  const { apiKey, models, botName, channel, setChannel, chatHidden, setChatHidden } = useSettings();
   const { sortMode, setSortMode } = useSources();
+  const { user, handleCallback } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [hash, setHash] = useState(window.location.hash);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Connect to channel from hash
+  const connectToHashChannel = useCallback((hashValue: string) => {
+    const hashChannel = getChannelFromHash(hashValue);
+    if (hashChannel) {
+      setChannel(hashChannel);
+      setTimeout(() => connect(), 100);
+    } else {
+      disconnect();
+    }
+  }, [setChannel]);
+
+  // Handle OAuth callback - auto-connect to user's channel
+  useEffect(() => {
+    const success = handleCallback();
+    if (success) {
+      // user state is updated synchronously by handleCallback, get fresh value
+      const freshUser = useAuth.getState().user;
+      if (freshUser?.login) {
+        window.location.hash = `#/${freshUser.login}`;
+      }
+    }
+  }, [handleCallback]);
 
   // Initialize existing requests so they don't trigger toasts on load
   useEffect(() => {
@@ -36,11 +62,21 @@ export function App() {
     }
   }, [requests, update, isInitialized]);
 
+  // On mount: connect to channel from hash
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash);
+    connectToHashChannel(window.location.hash);
+  }, [connectToHashChannel]);
+
+  // Handle hashchange for browser back/forward
+  useEffect(() => {
+    const onHashChange = () => {
+      const newHash = window.location.hash;
+      setHash(newHash);
+      connectToHashChannel(newHash);
+    };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+  }, [connectToHashChannel]);
 
   // Auto-identify requests that need it
   useEffect(() => {
@@ -75,14 +111,6 @@ export function App() {
       update(req.id, { toastShown: true });
     }
   }, [requests, update, show, isInitialized]);
-
-  // Auto-connect on mount if channel is set
-  useEffect(() => {
-    if (channel) {
-      const timer = setTimeout(() => connect(), 500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
 
   const pendingCount = requests.filter(d => !d.done).length;
 
