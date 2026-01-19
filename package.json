@@ -1,11 +1,12 @@
 {
   "name": "dbd-utils",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "bun run --filter @dbd-utils/web dev",
-    "dev:api": "bun run --filter @dbd-utils/api dev",
-    "build": "bun run --filter @dbd-utils/web build",
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
     "deploy:api": "bun run --filter @dbd-utils/api deploy"
   },
   "devDependencies": {
