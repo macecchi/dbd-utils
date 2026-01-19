@@ -9,7 +9,7 @@ import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
 import { connect, disconnect, identifyCharacter } from './services';
-import { useSettings, useAuth, ChannelProvider, useChannel, useToasts } from './store';
+import { useSettings, useAuth, ChannelProvider, useChannel, useToasts, useLastChannel } from './store';
 import { migrateGlobalToChannel } from './utils/migrate';
 
 const getChannelFromHash = (hash: string) => hash.replace(/^#\/?/, '') || null;
@@ -183,7 +183,8 @@ function ChannelApp() {
 }
 
 function LandingPage({ onConnect }: { onConnect: (channel: string) => void }) {
-  const [channelInput, setChannelInput] = useState('');
+  const { lastChannel } = useLastChannel();
+  const [channelInput, setChannelInput] = useState(lastChannel);
   const { user, isAuthenticated, login, logout, handleCallback } = useAuth();
   const { status, statusText, isLLMEnabled } = useSettings();
   const llmEnabled = isLLMEnabled();
@@ -322,6 +323,7 @@ export function App() {
 
   const handleConnect = (ch: string) => {
     const normalized = ch.toLowerCase();
+    useLastChannel.getState().setLastChannel(normalized);
     window.location.hash = `#/${normalized}`;
     setChannel(normalized);
   };
