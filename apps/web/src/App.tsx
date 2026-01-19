@@ -99,11 +99,11 @@ export function App() {
 
     const readyToToast = requests.filter(r => !r.toastShown && !r.needsIdentification);
     for (const req of readyToToast) {
-      const title = req.source === 'manual' ? 'Novo pedido' : 
-                    req.source === 'donation' ? 'Novo pedido por donate' :
-                    req.source === 'resub' ? 'Novo pedido por resub' : 'Novo pedido pelo chat';
-      
-      const message = req.character 
+      const title = req.source === 'manual' ? 'Novo pedido' :
+        req.source === 'donation' ? 'Novo pedido por donate' :
+          req.source === 'resub' ? 'Novo pedido por resub' : 'Novo pedido pelo chat';
+
+      const message = req.character
         ? `${req.donor} pediu ${req.character}${req.amount ? ` (${req.amount})` : ''}`
         : `Novo pedido de ${req.donor}${req.amount ? ` (${req.amount})` : ''}`;
 
@@ -133,7 +133,7 @@ export function App() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">
-                <img src={`${import.meta.env.BASE_URL}images/IconHelpLoading_players.webp`} />
+                <img src={`${import.meta.env.BASE_URL}images/IconPlayers.webp`} />
                 Fila
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
