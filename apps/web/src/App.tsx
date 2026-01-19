@@ -224,34 +224,32 @@ function LandingPage({ onConnect }: { onConnect: (channel: string) => void }) {
         </div>
       </header>
       <section className="controls">
+        <div className="field grow channel">
+          <label>Canal Twitch</label>
+          <input
+            type="text"
+            value={channelInput}
+            placeholder="canal"
+            onChange={e => setChannelInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleConnect()}
+          />
+        </div>
+        <button className="btn btn-primary" onClick={handleConnect}>
+          Conectar
+        </button>
         {isAuthenticated && user ? (
           <div className="channel auth-info">
             <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
             <span>{user.display_name}</span>
-            <button className="btn btn-primary" onClick={() => onConnect(user.login)}>
-              Abrir minha fila
+            <button className="btn" onClick={() => onConnect(user.login)}>
+              Minha fila
             </button>
             <button className="btn btn-ghost" onClick={logout}>Sair</button>
           </div>
         ) : (
-          <>
-            <div className="field grow channel">
-              <label>Canal Twitch</label>
-              <input
-                type="text"
-                value={channelInput}
-                placeholder="canal"
-                onChange={e => setChannelInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleConnect()}
-              />
-            </div>
-            <button className="btn btn-primary" onClick={handleConnect}>
-              Conectar
-            </button>
-            <button className="btn" onClick={handleCreateQueue}>
-              Criar minha fila
-            </button>
-          </>
+          <button className="btn" onClick={handleCreateQueue}>
+            Criar minha fila
+          </button>
         )}
         <div className="status-block">
           <div className="status-row">
