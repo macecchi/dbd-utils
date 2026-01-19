@@ -1,5 +1,5 @@
 {
-  "name": "dbd-api",
+  "name": "@dbd-utils/api",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
