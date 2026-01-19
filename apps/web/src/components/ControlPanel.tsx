@@ -1,5 +1,5 @@
+import { useState } from 'react';
 import { useSettings, useAuth, useChannel } from '../store';
-import { disconnect } from '../services';
 
 interface Props {
   onOpenSettings: () => void;
@@ -8,18 +8,40 @@ interface Props {
 export function ControlPanel({ onOpenSettings }: Props) {
   const { channel } = useChannel();
   const { status, statusText, isLLMEnabled } = useSettings();
-  const { user, isAuthenticated, logout } = useAuth();
-  const isConnected = status === 'connected';
+  const { user, isAuthenticated, login, logout } = useAuth();
   const llmEnabled = isLLMEnabled();
   const isOwnChannel = isAuthenticated && user && channel.toLowerCase() === user.login.toLowerCase();
 
-  const handleDisconnect = () => {
-    window.location.hash = '';
-    disconnect();
+  const [channelInput, setChannelInput] = useState(channel);
+
+  const handleChangeChannel = () => {
+    const ch = channelInput.trim().toLowerCase();
+    if (ch && ch !== channel) {
+      window.location.hash = `#/${ch}`;
+    }
+  };
+
+  const handleMyQueue = () => {
+    if (!isAuthenticated) {
+      login();
+    } else if (user) {
+      window.location.hash = `#/${user.login.toLowerCase()}`;
+    }
   };
 
   return (
     <section className="controls">
+      <div className="field grow channel">
+        <label>Canal Twitch</label>
+        <input
+          type="text"
+          value={channelInput}
+          placeholder="canal"
+          onChange={e => setChannelInput(e.target.value)}
+          onBlur={handleChangeChannel}
+          onKeyDown={e => e.key === 'Enter' && handleChangeChannel()}
+        />
+      </div>
       {isOwnChannel ? (
         <div className="channel auth-info">
           <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
@@ -27,17 +49,9 @@ export function ControlPanel({ onOpenSettings }: Props) {
           <button className="btn btn-ghost" onClick={logout}>Sair</button>
         </div>
       ) : (
-        <>
-          <div className="channel auth-info">
-            <span>Canal: <strong>{channel}</strong></span>
-          </div>
-          <button
-            className={`btn${isConnected ? ' btn-ghost' : ' btn-primary'}`}
-            onClick={handleDisconnect}
-          >
-            Desconectar
-          </button>
-        </>
+        <button className="btn" onClick={handleMyQueue}>
+          {isAuthenticated ? 'Minha fila' : 'Criar minha fila'}
+        </button>
       )}
       <button className="btn btn-icon" onClick={onOpenSettings} title="Configurações IA">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

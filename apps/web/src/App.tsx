@@ -8,9 +8,11 @@ import { SettingsModal } from './components/SettingsModal';
 import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
-import { connect, disconnect, identifyCharacter } from './services';
+import { connect, identifyCharacter } from './services';
 import { useSettings, useAuth, ChannelProvider, useChannel, useToasts, useLastChannel } from './store';
 import { migrateGlobalToChannel } from './utils/migrate';
+
+const DEFAULT_CHANNEL = 'mandymess';
 
 const getChannelFromHash = (hash: string) => hash.replace(/^#\/?/, '') || null;
 
@@ -182,93 +184,9 @@ function ChannelApp() {
   );
 }
 
-function LandingPage({ onConnect }: { onConnect: (channel: string) => void }) {
-  const { lastChannel } = useLastChannel();
-  const [channelInput, setChannelInput] = useState(lastChannel);
-  const { user, isAuthenticated, login, logout, handleCallback } = useAuth();
-  const { status, statusText, isLLMEnabled } = useSettings();
-  const llmEnabled = isLLMEnabled();
-
-  // Handle OAuth callback
-  useEffect(() => {
-    const success = handleCallback();
-    if (success) {
-      const freshUser = useAuth.getState().user;
-      if (freshUser?.login) {
-        onConnect(freshUser.login);
-      }
-    }
-  }, [handleCallback, onConnect]);
-
-  const handleConnect = () => {
-    const ch = channelInput.trim();
-    if (ch) onConnect(ch);
-  };
-
-  const handleCreateQueue = () => {
-    if (!isAuthenticated) {
-      login();
-    } else if (user) {
-      onConnect(user.login);
-    }
-  };
-
-  return (
-    <div className="app">
-      <header className="header">
-        <div className="brand">
-          <div className="brand-icon">
-            <img src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.png`} alt="DBD" />
-          </div>
-          <h1>DBD Tracker<span>Fila de pedidos</span></h1>
-        </div>
-      </header>
-      <section className="controls">
-        <div className="field grow channel">
-          <label>Canal Twitch</label>
-          <input
-            type="text"
-            value={channelInput}
-            placeholder="canal"
-            onChange={e => setChannelInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleConnect()}
-          />
-        </div>
-        <button className="btn btn-primary" onClick={handleConnect}>
-          Conectar
-        </button>
-        {isAuthenticated && user ? (
-          <div className="channel auth-info">
-            <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
-            <span>{user.display_name}</span>
-            <button className="btn" onClick={() => onConnect(user.login)}>
-              Minha fila
-            </button>
-            <button className="btn btn-ghost" onClick={logout}>Sair</button>
-          </div>
-        ) : (
-          <button className="btn" onClick={handleCreateQueue}>
-            Criar minha fila
-          </button>
-        )}
-        <div className="status-block">
-          <div className="status-row">
-            <span className={`status-dot ${status}`} />
-            <span>{statusText}</span>
-          </div>
-          <div className="status-row">
-            <span className={`status-dot ${llmEnabled ? 'connected' : ''}`} />
-            <span>{llmEnabled ? 'IA configurada' : 'IA não configurada'}</span>
-          </div>
-        </div>
-      </section>
-      <ToastContainer />
-    </div>
-  );
-}
-
 export function App() {
   const { handleCallback } = useAuth();
+  const { lastChannel, setLastChannel } = useLastChannel();
   const [channel, setChannel] = useState<string | null>(null);
 
   // Handle migration and initial channel on mount
@@ -281,36 +199,40 @@ export function App() {
     if (success) {
       const freshUser = useAuth.getState().user;
       if (freshUser?.login) {
-        window.location.hash = `#/${freshUser.login}`;
-        setChannel(freshUser.login.toLowerCase());
+        const ch = freshUser.login.toLowerCase();
+        setLastChannel(ch);
+        window.location.hash = `#/${ch}`;
+        setChannel(ch);
         return;
       }
     }
 
-    // Set channel from hash or migration
+    // Set channel from hash, lastChannel, migration, or default
     const hashChannel = getChannelFromHash(window.location.hash);
     if (hashChannel) {
       setChannel(hashChannel.toLowerCase());
-    } else if (migratedChannel) {
-      window.location.hash = `#/${migratedChannel}`;
-      setChannel(migratedChannel);
+      setLastChannel(hashChannel.toLowerCase());
+    } else {
+      const ch = migratedChannel || lastChannel || DEFAULT_CHANNEL;
+      window.location.hash = `#/${ch}`;
+      setChannel(ch);
+      setLastChannel(ch);
     }
-  }, [handleCallback]);
+  }, [handleCallback, lastChannel, setLastChannel]);
 
   // Handle hashchange
   useEffect(() => {
     const onHashChange = () => {
       const hashChannel = getChannelFromHash(window.location.hash);
       if (hashChannel) {
-        setChannel(hashChannel.toLowerCase());
-      } else {
-        setChannel(null);
-        disconnect();
+        const ch = hashChannel.toLowerCase();
+        setChannel(ch);
+        setLastChannel(ch);
       }
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+  }, [setLastChannel]);
 
   // Connect when channel is set
   useEffect(() => {
@@ -319,15 +241,8 @@ export function App() {
     }
   }, [channel]);
 
-  const handleConnect = (ch: string) => {
-    const normalized = ch.toLowerCase();
-    useLastChannel.getState().setLastChannel(normalized);
-    window.location.hash = `#/${normalized}`;
-    setChannel(normalized);
-  };
-
   if (!channel) {
-    return <LandingPage onConnect={handleConnect} />;
+    return null;
   }
 
   return (
