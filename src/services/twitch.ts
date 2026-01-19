@@ -10,6 +10,7 @@ export function disconnect() {
     ws.close();
     ws = null;
     useSettings.getState().setStatus('disconnected', 'Desconectado');
+    window.location.hash = '';
   }
 }
 
@@ -29,7 +30,10 @@ export function connect() {
   ws.onmessage = (e) => {
     for (const line of e.data.split('\r\n')) {
       if (line.startsWith('PING')) ws!.send('PONG :tmi.twitch.tv');
-      else if (line.includes('366')) useSettings.getState().setStatus('connected', `t.tv/${ch}`);
+      else if (line.includes('366')) {
+        useSettings.getState().setStatus('connected', `t.tv/${ch}`);
+        window.location.hash = `/${ch}`;
+      }
       else if (line.includes('USERNOTICE')) handleUserNotice(line);
       else if (line.includes('PRIVMSG')) handleMessage(line);
     }
