@@ -57,17 +57,18 @@
 
 /* Source Sections */
 .source-sections {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+  margin-top: var(--space-lg);
 }
 
 .source-section {
-  padding: var(--space-xl) 0 var(--space-lg);
-  border-bottom: 1px solid var(--border);
-}
-
-.source-section:last-child {
-  border-bottom: none;
+  padding: var(--space-lg);
+  background: var(--bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
 }
 
 .source-section.disabled {

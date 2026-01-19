@@ -179,7 +179,7 @@ export function SourcesPanel() {
 
       <div className="sources-panel-body">
         <div className="source-sections">
-          {(['donation', 'resub', 'chat'] as SourceType[]).map(renderSourceSection)}
+          {(['donation', 'chat', 'resub'] as SourceType[]).map(renderSourceSection)}
         </div>
 
         <div className={`priority-section${sortMode === 'fifo' ? ' disabled' : ''}`}>
