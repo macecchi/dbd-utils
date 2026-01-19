@@ -1,0 +1,14 @@
+name = "dbd-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[vars]
+FRONTEND_URL = "http://localhost:5173"
+
+# Secrets (set via `wrangler secret put <NAME>`):
+# - TWITCH_CLIENT_ID
+# - TWITCH_CLIENT_SECRET
+# - JWT_SECRET
+
+[env.production]
+vars = { FRONTEND_URL = "https://your-production-url.com" }
