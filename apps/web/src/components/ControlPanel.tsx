@@ -1,63 +1,43 @@
-import { useSettings, useAuth } from '../store';
-import { connect, disconnect } from '../services';
+import { useSettings, useAuth, useChannel } from '../store';
+import { disconnect } from '../services';
 
 interface Props {
   onOpenSettings: () => void;
 }
 
 export function ControlPanel({ onOpenSettings }: Props) {
-  const { channel, status, statusText, setChannel, isLLMEnabled } = useSettings();
-  const { user, isAuthenticated, login, logout } = useAuth();
+  const { channel } = useChannel();
+  const { status, statusText, isLLMEnabled } = useSettings();
+  const { user, isAuthenticated, logout } = useAuth();
   const isConnected = status === 'connected';
   const llmEnabled = isLLMEnabled();
   const isOwnChannel = isAuthenticated && user && channel.toLowerCase() === user.login.toLowerCase();
 
-  const handleConnect = () => {
-    if (isConnected) {
-      disconnect();
-    } else {
-      connect();
-    }
-  };
-
-  const handleCreateQueue = () => {
-    if (!isAuthenticated) {
-      login();
-    } else if (user) {
-      setChannel(user.login);
-      connect();
-    }
+  const handleDisconnect = () => {
+    window.location.hash = '';
+    disconnect();
   };
 
   return (
     <section className="controls">
-      {!isOwnChannel ? (
-        <>
-          <div className="field grow channel">
-            <label>Canal Twitch</label>
-            <input
-              type="text"
-              value={channel}
-              placeholder="canal"
-              onChange={e => setChannel(e.target.value)}
-            />
-          </div>
-          <button
-            className={`btn btn-primary${isConnected ? ' connected' : ''}`}
-            onClick={handleConnect}
-          >
-            {isConnected ? 'Desconectar' : 'Conectar'}
-          </button>
-          <button className="btn" onClick={handleCreateQueue}>
-            Criar minha fila
-          </button>
-        </>
-      ) : (
+      {isOwnChannel ? (
         <div className="channel auth-info">
           <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
           <span>{user.display_name}</span>
           <button className="btn btn-ghost" onClick={logout}>Sair</button>
         </div>
+      ) : (
+        <>
+          <div className="channel auth-info">
+            <span>Canal: <strong>{channel}</strong></span>
+          </div>
+          <button
+            className={`btn${isConnected ? ' btn-ghost' : ' btn-primary'}`}
+            onClick={handleDisconnect}
+          >
+            Desconectar
+          </button>
+        </>
       )}
       <button className="btn btn-icon" onClick={onOpenSettings} title="Configurações IA">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

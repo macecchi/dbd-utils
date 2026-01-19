@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { ChatLog } from './components/ChatLog';
 import { ControlPanel } from './components/ControlPanel';
 import { DebugPanel } from './components/DebugPanel';
@@ -9,45 +9,23 @@ import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
 import { connect, disconnect, identifyCharacter } from './services';
-import { useRequests, useSettings, useSources, useToasts, useAuth } from './store';
+import { useSettings, useAuth, ChannelProvider, useChannel, useToasts } from './store';
+import { migrateGlobalToChannel } from './utils/migrate';
 
 const getChannelFromHash = (hash: string) => hash.replace(/^#\/?/, '') || null;
 
-export function App() {
+function ChannelApp() {
+  const { useRequests, useSources } = useChannel();
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
+  const { apiKey, models, botName, chatHidden, setChatHidden } = useSettings();
   const { show } = useToasts();
-  const { apiKey, models, botName, channel, setChannel, chatHidden, setChatHidden } = useSettings();
-  const { sortMode, setSortMode } = useSources();
-  const { user, handleCallback } = useAuth();
+  const sortMode = useSources((s) => s.sortMode);
+  const setSortMode = useSources((s) => s.setSortMode);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
-  const [hash, setHash] = useState(window.location.hash);
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // Connect to channel from hash
-  const connectToHashChannel = useCallback((hashValue: string) => {
-    const hashChannel = getChannelFromHash(hashValue);
-    if (hashChannel) {
-      setChannel(hashChannel);
-      setTimeout(() => connect(), 100);
-    } else {
-      disconnect();
-    }
-  }, [setChannel]);
-
-  // Handle OAuth callback - auto-connect to user's channel
-  useEffect(() => {
-    const success = handleCallback();
-    if (success) {
-      // user state is updated synchronously by handleCallback, get fresh value
-      const freshUser = useAuth.getState().user;
-      if (freshUser?.login) {
-        window.location.hash = `#/${freshUser.login}`;
-      }
-    }
-  }, [handleCallback]);
 
   // Initialize existing requests so they don't trigger toasts on load
   useEffect(() => {
@@ -61,22 +39,6 @@ export function App() {
       setIsInitialized(true);
     }
   }, [requests, update, isInitialized]);
-
-  // On mount: connect to channel from hash
-  useEffect(() => {
-    connectToHashChannel(window.location.hash);
-  }, [connectToHashChannel]);
-
-  // Handle hashchange for browser back/forward
-  useEffect(() => {
-    const onHashChange = () => {
-      const newHash = window.location.hash;
-      setHash(newHash);
-      connectToHashChannel(newHash);
-    };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, [connectToHashChannel]);
 
   // Auto-identify requests that need it
   useEffect(() => {
@@ -201,7 +163,7 @@ export function App() {
         </main>
 
         <SourcesPanel />
-        {hash.includes('debug') && <DebugPanel />}
+        {window.location.hash.includes('debug') && <DebugPanel />}
 
         <footer className="footer">
           <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }}>{botName}</strong></div>
@@ -217,5 +179,160 @@ export function App() {
       <ManualEntry isOpen={manualOpen} onClose={() => setManualOpen(false)} />
       <ToastContainer />
     </>
+  );
+}
+
+function LandingPage({ onConnect }: { onConnect: (channel: string) => void }) {
+  const [channelInput, setChannelInput] = useState('');
+  const { user, isAuthenticated, login, logout, handleCallback } = useAuth();
+  const { status, statusText, isLLMEnabled } = useSettings();
+  const llmEnabled = isLLMEnabled();
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const success = handleCallback();
+    if (success) {
+      const freshUser = useAuth.getState().user;
+      if (freshUser?.login) {
+        onConnect(freshUser.login);
+      }
+    }
+  }, [handleCallback, onConnect]);
+
+  const handleConnect = () => {
+    const ch = channelInput.trim();
+    if (ch) onConnect(ch);
+  };
+
+  const handleCreateQueue = () => {
+    if (!isAuthenticated) {
+      login();
+    } else if (user) {
+      onConnect(user.login);
+    }
+  };
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="brand">
+          <div className="brand-icon">
+            <img src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.png`} alt="DBD" />
+          </div>
+          <h1>DBD Tracker<span>Fila de pedidos</span></h1>
+        </div>
+      </header>
+      <section className="controls">
+        {isAuthenticated && user ? (
+          <div className="channel auth-info">
+            <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
+            <span>{user.display_name}</span>
+            <button className="btn btn-primary" onClick={() => onConnect(user.login)}>
+              Abrir minha fila
+            </button>
+            <button className="btn btn-ghost" onClick={logout}>Sair</button>
+          </div>
+        ) : (
+          <>
+            <div className="field grow channel">
+              <label>Canal Twitch</label>
+              <input
+                type="text"
+                value={channelInput}
+                placeholder="canal"
+                onChange={e => setChannelInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleConnect()}
+              />
+            </div>
+            <button className="btn btn-primary" onClick={handleConnect}>
+              Conectar
+            </button>
+            <button className="btn" onClick={handleCreateQueue}>
+              Criar minha fila
+            </button>
+          </>
+        )}
+        <div className="status-block">
+          <div className="status-row">
+            <span className={`status-dot ${status}`} />
+            <span>{statusText}</span>
+          </div>
+          <div className="status-row">
+            <span className={`status-dot ${llmEnabled ? 'connected' : ''}`} />
+            <span>{llmEnabled ? 'IA configurada' : 'IA não configurada'}</span>
+          </div>
+        </div>
+      </section>
+      <ToastContainer />
+    </div>
+  );
+}
+
+export function App() {
+  const { handleCallback } = useAuth();
+  const [channel, setChannel] = useState<string | null>(null);
+
+  // Handle migration and initial channel on mount
+  useEffect(() => {
+    // Run migration first
+    const migratedChannel = migrateGlobalToChannel();
+
+    // Handle OAuth callback
+    const success = handleCallback();
+    if (success) {
+      const freshUser = useAuth.getState().user;
+      if (freshUser?.login) {
+        window.location.hash = `#/${freshUser.login}`;
+        setChannel(freshUser.login.toLowerCase());
+        return;
+      }
+    }
+
+    // Set channel from hash or migration
+    const hashChannel = getChannelFromHash(window.location.hash);
+    if (hashChannel) {
+      setChannel(hashChannel.toLowerCase());
+    } else if (migratedChannel) {
+      window.location.hash = `#/${migratedChannel}`;
+      setChannel(migratedChannel);
+    }
+  }, [handleCallback]);
+
+  // Handle hashchange
+  useEffect(() => {
+    const onHashChange = () => {
+      const hashChannel = getChannelFromHash(window.location.hash);
+      if (hashChannel) {
+        setChannel(hashChannel.toLowerCase());
+      } else {
+        setChannel(null);
+        disconnect();
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Connect when channel is set
+  useEffect(() => {
+    if (channel) {
+      connect(channel);
+    }
+  }, [channel]);
+
+  const handleConnect = (ch: string) => {
+    const normalized = ch.toLowerCase();
+    window.location.hash = `#/${normalized}`;
+    setChannel(normalized);
+  };
+
+  if (!channel) {
+    return <LandingPage onConnect={handleConnect} />;
+  }
+
+  return (
+    <ChannelProvider channel={channel}>
+      <ChannelApp />
+    </ChannelProvider>
   );
 }
