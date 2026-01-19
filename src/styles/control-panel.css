@@ -68,3 +68,21 @@
 .api-status.missing {
   color: var(--yellow);
 }
+
+/* Auth info */
+.auth-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.auth-info .avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.auth-info span {
+  font-size: var(--text-sm);
+  color: var(--text);
+}
