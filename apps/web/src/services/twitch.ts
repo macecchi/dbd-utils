@@ -1,9 +1,20 @@
 import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage } from '../utils/helpers';
-import { useSettings, useSources, useRequests, useChat } from '../store';
+import { useSettings, useChat } from '../store';
 import type { Request } from '../types';
+import type { ChannelStores } from '../store/channel';
 
 let ws: WebSocket | null = null;
+let activeStores: ChannelStores | null = null;
+
+export function setActiveStores(stores: ChannelStores | null) {
+  activeStores = stores;
+}
+
+function getStores() {
+  if (!activeStores) throw new Error('No active channel stores');
+  return activeStores;
+}
 
 export function disconnect() {
   if (ws) {
@@ -14,8 +25,7 @@ export function disconnect() {
   }
 }
 
-export function connect() {
-  const { channel } = useSettings.getState();
+export function connect(channel: string) {
   const ch = channel.trim().toLowerCase();
   if (!ch) return;
 
@@ -58,6 +68,7 @@ function getSubTierFromBadges(badges: string): number {
 }
 
 export function handleUserNotice(raw: string) {
+  const { useSources, useRequests } = getStores();
   const { enabled } = useSources.getState();
   const { isLLMEnabled } = useSettings.getState();
   const { add: addRequest } = useRequests.getState();
@@ -93,6 +104,7 @@ export function handleUserNotice(raw: string) {
 }
 
 function handleChatCommand(tags: Record<string, string>, displayName: string, _username: string, requestText: string) {
+  const { useSources, useRequests } = getStores();
   const { enabled, chatTiers } = useSources.getState();
   const { isLLMEnabled } = useSettings.getState();
   const { add: addRequest } = useRequests.getState();
@@ -123,6 +135,7 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
 }
 
 export function handleMessage(raw: string) {
+  const { useSources, useRequests } = getStores();
   const { botName, isLLMEnabled } = useSettings.getState();
   const { enabled, chatCommand, minDonation } = useSources.getState();
   const { add: addRequest } = useRequests.getState();
