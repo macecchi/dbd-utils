@@ -22,11 +22,21 @@ bun install
 
 ### 3. Configure secrets
 
-```bash
-# Generate a random JWT secret
-openssl rand -base64 32
+#### Local development
 
-# Set secrets in Cloudflare
+Create `.dev.vars` file in the `api/` directory:
+
+```bash
+TWITCH_CLIENT_ID=your_client_id
+TWITCH_CLIENT_SECRET=your_client_secret
+JWT_SECRET=your_random_secret_here
+```
+
+Generate a JWT secret with: `openssl rand -base64 32`
+
+#### Production (Cloudflare)
+
+```bash
 wrangler secret put TWITCH_CLIENT_ID
 wrangler secret put TWITCH_CLIENT_SECRET
 wrangler secret put JWT_SECRET
