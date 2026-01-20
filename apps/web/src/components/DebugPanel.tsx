@@ -3,14 +3,14 @@ import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } 
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
-import { useChannel, useChat, useSettings, useToasts, SOURCES_DEFAULTS } from '../store';
+import { useChannel, useChat, useSettings, useToasts, useAuth } from '../store';
 
 export function DebugPanel() {
   const { useRequests, useSources } = useChannel();
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
-  const { apiKey, models, isLLMEnabled, botName } = useSettings();
-  const llmEnabled = isLLMEnabled();
+  const { botName } = useSettings();
+  const { isAuthenticated } = useAuth();
   const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
   const { show: showToast } = useToasts();
 
@@ -60,7 +60,6 @@ export function DebugPanel() {
   const [vodStatus, setVodStatus] = useState('');
   const [isReplaying, setIsReplaying] = useState(false);
 
-  const llmConfig = { apiKey, models };
   const vodConfig = { botName, minDonation, sourcesEnabled };
 
   const handleTest = async (e: FormEvent) => {
@@ -99,7 +98,6 @@ export function DebugPanel() {
 
     const res = await testExtraction(
       message,
-      llmConfig,
       (msg) => showToast(msg, 'Erro LLM', 'red'),
       (llmRes) => {
         const isDiff = llmRes.character !== res.character;
@@ -120,7 +118,7 @@ export function DebugPanel() {
     }
 
     // Only show "validando" for ambiguous local matches that will get AI validation
-    const showValidating = res.isLocal && res.ambiguous && llmEnabled;
+    const showValidating = res.isLocal && res.ambiguous && isAuthenticated;
     setResult({ text: formatResult(res, res.isLocal, showValidating ? ' <span style="color:var(--text-muted)">⏳ validando...</span>' : ''), show: true });
   };
 
@@ -129,7 +127,7 @@ export function DebugPanel() {
       update(d.id, { character: 'Identificando...', type: 'unknown' });
     }
     for (const d of requests) {
-      const result = await identifyCharacter(d, llmConfig, (msg) => showToast(msg, 'Erro LLM', 'red'));
+      const result = await identifyCharacter(d, (msg) => showToast(msg, 'Erro LLM', 'red'));
       update(d.id, result);
     }
   };

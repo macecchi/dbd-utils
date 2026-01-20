@@ -3,7 +3,7 @@ import { identifyCharacter } from '../services';
 import { CharacterRequestCard } from './CharacterRequestCard';
 import { ContextMenu } from './ContextMenu';
 import { ContextMenuProvider } from '../context/ContextMenuContext';
-import { useChannel, useSettings, useToasts } from '../store';
+import { useChannel, useToasts } from '../store';
 
 interface Props {
   showDone?: boolean;
@@ -13,13 +13,10 @@ export function CharacterRequestList({ showDone = false }: Props) {
   const { useRequests, useSources, isOwnChannel } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
   const ircConnected = useSources((s) => s.ircConnected);
-  const { apiKey, models } = useSettings();
   const { showUndo } = useToasts();
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const readOnly = !isOwnChannel;
-
-  const llmConfig = { apiKey, models };
   const filtered = showDone ? requests : requests.filter(r => !r.done);
 
   const handleToggleDone = useCallback((id: number) => {
@@ -35,10 +32,10 @@ export function CharacterRequestList({ showDone = false }: Props) {
     const request = requests.find(r => r.id === id);
     if (request) {
       update(id, { character: 'Identificando...', type: 'unknown' });
-      const result = await identifyCharacter(request, llmConfig);
+      const result = await identifyCharacter(request);
       update(id, result);
     }
-  }, [requests, update, llmConfig]);
+  }, [requests, update]);
 
   const handleDragStart = useCallback((id: number) => {
     if (readOnly) return;

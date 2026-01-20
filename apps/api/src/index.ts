@@ -3,12 +3,14 @@ import { cors } from "hono/cors";
 import { sign } from "hono/jwt";
 import { Twitch } from "arctic";
 import { verifyJwt, type JwtPayload } from "./jwt";
+import { extractCharacter } from "./gemini";
 
 type Bindings = {
   TWITCH_CLIENT_ID: string;
   TWITCH_CLIENT_SECRET: string;
   JWT_SECRET: string;
   FRONTEND_URL: string;
+  GEMINI_API_KEY: string;
 };
 
 type Variables = {
@@ -190,21 +192,23 @@ api.use("*", async (c, next) => {
   await next();
 });
 
-// Example protected endpoint
 api.post("/extract-character", async (c) => {
   const user = c.get("jwtPayload");
-  const { message } = await c.req.json<{ message: string }>();
+  const body = await c.req.json<{ message: string }>();
 
-  console.log(`Request from ${user.login} (${user.sub}): ${message}`);
+  if (!body.message || typeof body.message !== "string") {
+    return c.json({ error: "invalid_input" }, 400);
+  }
 
-  // TODO: Call your LLM here
-  // const character = await callGemini(message, c.env.GEMINI_API_KEY);
+  console.log(`Extract request from ${user.login}: ${body.message.slice(0, 100)}`);
 
-  return c.json({
-    user: user.login,
-    message,
-    character: null, // placeholder
-  });
+  try {
+    const result = await extractCharacter(body.message, c.env.GEMINI_API_KEY);
+    return c.json(result);
+  } catch (e: any) {
+    console.error("Gemini error:", e.message);
+    return c.json({ error: "llm_error", message: e.message }, 502);
+  }
 });
 
 app.route("/api", api);

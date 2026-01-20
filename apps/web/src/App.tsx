@@ -4,7 +4,6 @@ import { ControlPanel } from './components/ControlPanel';
 import { DebugPanel } from './components/DebugPanel';
 import { CharacterRequestList } from './components/CharacterRequestList';
 import { ManualEntry } from './components/ManualEntry';
-import { SettingsModal } from './components/SettingsModal';
 import { SourcesBadges } from './components/SourcesBadges';
 import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
@@ -26,11 +25,10 @@ function ChannelApp() {
   const { useRequests, useSources, isOwnChannel } = useChannel();
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
-  const { apiKey, models, botName, chatHidden, setChatHidden } = useSettings();
+  const { botName, chatHidden, setChatHidden } = useSettings();
   const { show } = useToasts();
   const sortMode = useSources((s) => s.sortMode);
   const setSortMode = useSources((s) => s.setSortMode);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -55,14 +53,13 @@ function ChannelApp() {
     for (const req of pending) {
       identifyCharacter(
         req,
-        { apiKey, models },
         undefined,
         (llmResult) => update(req.id, llmResult)
       ).then(result => {
         update(req.id, { ...result, needsIdentification: false });
       });
     }
-  }, [requests, apiKey, models, update]);
+  }, [requests, update]);
 
   // Handle toasts for ready requests
   useEffect(() => {
@@ -98,7 +95,7 @@ function ChannelApp() {
           <Stats />
         </header>
 
-        <ControlPanel onOpenSettings={() => setSettingsOpen(true)} />
+        <ControlPanel />
 
         <main className={`grid${chatHidden ? ' chat-hidden' : ''}`}>
           <div className="panel">
@@ -186,7 +183,6 @@ function ChannelApp() {
         </footer>
       </div>
 
-      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ManualEntry isOpen={manualOpen} onClose={() => setManualOpen(false)} />
       <ToastContainer />
     </>

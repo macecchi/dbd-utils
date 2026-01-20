@@ -1,112 +1,53 @@
-import { DEFAULT_CHARACTERS, tryLocalMatch } from '../data/characters';
+import { tryLocalMatch } from '../data/characters';
+import { useAuth } from '../store/auth';
 import type { Request } from '../types';
 
-const RETRIABLE_CODES = [429, 500, 502, 503, 504];
-const MAX_RETRIES = 3;
-const RETRY_DELAYS = [2000, 4000, 8000];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
-let currentModelIndex = 0;
-
-export interface LLMConfig {
-  apiKey: string | null;
-  models: string[];
-}
-
-export async function callLLM(
+async function callAPI(
   message: string,
-  config: LLMConfig,
-  onError?: (msg: string) => void,
-  attempt = 0,
-  modelIdx = currentModelIndex,
-  startIdx = currentModelIndex
+  onError?: (msg: string) => void
 ): Promise<{ character: string; type: string }> {
-  const { apiKey, models } = config;
-  const model = models[modelIdx];
-  if (!apiKey) return { character: 'Sem API key', type: 'unknown' };
-
-  const prompt = `Identify the Dead by Daylight character from the user message. This is the list of valid characters, although the user might not specify them exactly as on this list.
-
-<survivors>
-${DEFAULT_CHARACTERS.survivors.join('\n')}
-</survivors>
-
-<killers>
-${DEFAULT_CHARACTERS.killers.join('\n')}
-</killers>
-
-<user_message>
-${message}
-</user_message>
-
-Identify the Dead by Daylight character from the above user message. Return ONLY JSON with character name and type.
-- If user requests a generic survivor (e.g. "joga de surv", "uma de survivor"), return character "Survivor" with type "survivor".
-- If exact character unknown, return empty character.
-- If no character mentioned, return type "none".`;
+  const token = await useAuth.getState().getAccessToken();
+  if (!token) {
+    return { character: '', type: 'none' };
+  }
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const res = await fetch(`${API_URL}/api/extract-character`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: 1000,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'object',
-            properties: {
-              character: { type: 'string' },
-              type: { type: 'string', enum: ['survivor', 'killer', 'none'] }
-            },
-            required: ['character', 'type']
-          }
-        }
-      })
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ message }),
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      const msg = err.error?.message || `HTTP ${res.status}`;
-      if (RETRIABLE_CODES.includes(res.status)) {
-        const nextIdx = (modelIdx + 1) % models.length;
-        if (nextIdx !== startIdx) {
-          currentModelIndex = nextIdx;
-          return callLLM(message, config, onError, 0, nextIdx, startIdx);
-        }
-        if (attempt < MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
-          return callLLM(message, config, onError, attempt + 1, modelIdx, startIdx);
-        }
-      }
+      const msg = (err as any).message || (err as any).error || `HTTP ${res.status}`;
       onError?.(msg);
       return { character: 'Erro na API', type: 'unknown' };
     }
 
-    currentModelIndex = modelIdx;
-    const data = await res.json();
-    return JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+    return await res.json();
   } catch (e: any) {
-    if (attempt < MAX_RETRIES) {
-      await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
-      return callLLM(message, config, onError, attempt + 1, modelIdx, startIdx);
-    }
-    onError?.(e.message || 'Erro');
+    onError?.(e.message || 'Erro de rede');
     return { character: 'Erro', type: 'unknown' };
   }
 }
 
 export async function identifyCharacter(
   request: Request,
-  config: LLMConfig,
   onError?: (msg: string) => void,
   onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown'; validating: false }) => void
 ): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown'; validating?: boolean }> {
   const local = tryLocalMatch(request.message);
+  const isAuthenticated = useAuth.getState().isAuthenticated;
 
   if (local) {
-    // Only validate with AI if match is ambiguous
-    if (local.ambiguous && config.apiKey && onLLMUpdate) {
-      callLLM(request.message, config, onError).then(llmResult => {
+    if (local.ambiguous && isAuthenticated && onLLMUpdate) {
+      callAPI(request.message, onError).then(llmResult => {
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
             character: llmResult.character,
@@ -122,9 +63,9 @@ export async function identifyCharacter(
     return local;
   }
 
-  if (!config.apiKey) return { character: '', type: 'unknown' };
+  if (!isAuthenticated) return { character: '', type: 'unknown' };
 
-  const result = await callLLM(request.message, config, onError);
+  const result = await callAPI(request.message, onError);
   const type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
   return {
     character: result.character || '',
@@ -134,17 +75,17 @@ export async function identifyCharacter(
 
 export async function testExtraction(
   input: string,
-  config: LLMConfig,
   onError?: (msg: string) => void,
   onLLMUpdate?: (result: { character: string; type: 'killer' | 'survivor' | 'unknown' }) => void
 ): Promise<{ character: string; type: 'killer' | 'survivor' | 'unknown'; isLocal: boolean; ambiguous?: boolean }> {
   if (!input) return { character: '', type: 'unknown', isLocal: false };
 
   const localResult = tryLocalMatch(input);
+  const isAuthenticated = useAuth.getState().isAuthenticated;
+
   if (localResult) {
-    // Only validate with AI if match is ambiguous
-    if (localResult.ambiguous && config.apiKey && onLLMUpdate) {
-      callLLM(input, config, onError).then(llmResult => {
+    if (localResult.ambiguous && isAuthenticated && onLLMUpdate) {
+      callAPI(input, onError).then(llmResult => {
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
             character: llmResult.character,
@@ -156,7 +97,11 @@ export async function testExtraction(
     return { ...localResult, isLocal: true };
   }
 
-  const llm = await callLLM(input, config, onError);
+  if (!isAuthenticated) {
+    return { character: '', type: 'unknown', isLocal: false };
+  }
+
+  const llm = await callAPI(input, onError);
   return {
     character: llm.character || '',
     type: llm.type === 'none' ? 'unknown' : (llm.type as 'killer' | 'survivor' | 'unknown') || 'unknown',
