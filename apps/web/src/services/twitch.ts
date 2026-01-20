@@ -29,6 +29,11 @@ export function connect(channel: string) {
   const ch = channel.trim().toLowerCase();
   if (!ch) return;
 
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+
   useSettings.getState().setStatus('connecting', 'Conectando...');
 
   ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');

@@ -63,7 +63,7 @@ export function ControlPanel({ onOpenSettings }: Props) {
         </div>
       </div>
       <button
-        className={`btn ${isConnected ? 'btn-connected' : 'btn-primary'}`}
+        className={`btn btn-primary ${isConnected ? 'connected' : ''}`}
         onClick={handleConnect}
         disabled={isConnecting || !inputChannel}
       >
