@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChatLog } from './components/ChatLog';
 import { ControlPanel } from './components/ControlPanel';
 import { DebugPanel } from './components/DebugPanel';
@@ -31,21 +31,9 @@ function ChannelApp() {
   const setSortMode = useSources((s) => s.setSortMode);
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [shownToasts] = useState(() => new Set<number>());
+  const isFirstLoad = useRef(true);
   const readOnly = !isOwnChannel;
-
-  // Initialize existing requests so they don't trigger toasts on load
-  useEffect(() => {
-    if (!isInitialized && requests.length > 0) {
-      const pendingNotification = requests.filter(r => !r.toastShown && !r.needsIdentification);
-      for (const req of pendingNotification) {
-        update(req.id, { toastShown: true });
-      }
-      setIsInitialized(true);
-    } else if (!isInitialized && requests.length === 0) {
-      setIsInitialized(true);
-    }
-  }, [requests, update, isInitialized]);
 
   // Auto-identify requests that need it
   useEffect(() => {
@@ -61,24 +49,27 @@ function ChannelApp() {
     }
   }, [requests, update]);
 
-  // Handle toasts for ready requests
+  // Handle toasts for ready requests (skip on first load)
   useEffect(() => {
-    if (!isInitialized) return;
-
-    const readyToToast = requests.filter(r => !r.toastShown && !r.needsIdentification);
-    for (const req of readyToToast) {
+    const ready = requests.filter(r => !shownToasts.has(r.id) && !r.needsIdentification);
+    console.log('[toast] effect run', { isFirstLoad: isFirstLoad.current, total: requests.length, ready: ready.length, shownSize: shownToasts.size });
+    for (const req of ready) {
+      shownToasts.add(req.id);
+      if (isFirstLoad.current) {
+        console.log('[toast] skip (first load)', req.id);
+        continue;
+      }
+      console.log('[toast] SHOW', req.id, req.character);
       const title = req.source === 'manual' ? 'Novo pedido' :
         req.source === 'donation' ? 'Novo pedido por donate' :
           req.source === 'resub' ? 'Novo pedido por resub' : 'Novo pedido pelo chat';
-
       const message = req.character
         ? `${req.donor} pediu ${req.character}${req.amount ? ` (${req.amount})` : ''}`
         : `Novo pedido de ${req.donor}${req.amount ? ` (${req.amount})` : ''}`;
-
       show(message, title);
-      update(req.id, { toastShown: true });
     }
-  }, [requests, update, show, isInitialized]);
+    if (ready.length > 0) isFirstLoad.current = false;
+  }, [requests, show, shownToasts]);
 
   const pendingCount = requests.filter(d => !d.done).length;
 

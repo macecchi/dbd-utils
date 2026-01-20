@@ -24,7 +24,6 @@ export interface SerializedRequest {
   subTier?: number;
   needsIdentification?: boolean;
   validating?: boolean;
-  toastShown?: boolean;
 }
 
 export type PartyMessage =
