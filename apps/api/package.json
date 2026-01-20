@@ -4,7 +4,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --env production",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "dev:party": "partykit dev",
+    "deploy:party": "partykit deploy"
   },
   "dependencies": {
     "arctic": "^3.5.0",
@@ -12,6 +14,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",
+    "partykit": "^0.0.111",
     "typescript": "^5.7.0",
     "wrangler": "^4.0.0"
   }

@@ -16,6 +16,7 @@
     "workbox-window": "^7.4.0"
   },
   "dependencies": {
+    "partysocket": "^1.0.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "zustand": "^5.0.10"

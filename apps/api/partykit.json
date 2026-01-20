@@ -1,0 +1,4 @@
+{
+  "name": "dbd-tracker-party",
+  "main": "src/party.ts"
+}

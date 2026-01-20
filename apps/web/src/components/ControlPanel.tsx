@@ -7,9 +7,10 @@ interface Props {
 }
 
 export function ControlPanel({ onOpenSettings }: Props) {
-  const { channel, isOwnChannel } = useChannel();
+  const { channel, isOwnChannel, useRequests } = useChannel();
   const { status, statusText, isLLMEnabled } = useSettings();
   const { user, isAuthenticated, login, logout } = useAuth();
+  const partyConnected = useRequests((s) => s.partyConnected);
   const llmEnabled = isLLMEnabled();
 
   const [channelInput, setChannelInput] = useState(channel);
@@ -36,6 +37,12 @@ export function ControlPanel({ onOpenSettings }: Props) {
     }
   };
 
+  const handleGoToChannel = () => {
+    if (inputChannel && inputChannel !== channel) {
+      window.location.hash = `#/${inputChannel}`;
+    }
+  };
+
   const handleMyQueue = () => {
     if (!isAuthenticated) {
       login();
@@ -49,7 +56,7 @@ export function ControlPanel({ onOpenSettings }: Props) {
       <div className="field grow channel">
         <label>Canal Twitch</label>
         <div className="channel-input">
-          {isOwnChannel && (
+          {isOwnChannel && user && (
             <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
           )}
           <input
@@ -57,25 +64,34 @@ export function ControlPanel({ onOpenSettings }: Props) {
             value={channelInput}
             placeholder="canal"
             onChange={e => setChannelInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleConnect()}
+            onKeyDown={e => e.key === 'Enter' && (isOwnChannel ? handleConnect() : handleGoToChannel())}
           />
         </div>
       </div>
-      <button
-        className={`btn btn-primary ${isConnected ? 'connected' : ''}`}
-        onClick={handleConnect}
-        disabled={isConnecting || !inputChannel}
-      >
-        {isConnecting ? 'Conectando...' : isConnected ? 'Desconectar' : 'Conectar'}
-      </button>
       {isOwnChannel ? (
-        <div className="channel auth-info">
-          <button className="btn btn-ghost" onClick={logout}>Sair</button>
-        </div>
+        <>
+          <button
+            className={`btn btn-primary ${isConnected ? 'connected' : ''}`}
+            onClick={handleConnect}
+            disabled={isConnecting || !inputChannel}
+          >
+            {isConnecting ? 'Conectando...' : isConnected ? 'Desconectar' : 'Conectar'}
+          </button>
+          <div className="channel auth-info">
+            <button className="btn btn-ghost" onClick={logout}>Sair</button>
+          </div>
+        </>
       ) : (
-        <button className="btn" onClick={handleMyQueue}>
-          {isAuthenticated ? 'Minha fila' : 'Criar minha fila'}
-        </button>
+        <>
+          {inputChannel !== channel && (
+            <button className="btn btn-primary" onClick={handleGoToChannel}>
+              Ir
+            </button>
+          )}
+          <button className="btn" onClick={handleMyQueue}>
+            {isAuthenticated ? 'Minha fila' : 'Criar minha fila'}
+          </button>
+        </>
       )}
       <button className="btn btn-icon" onClick={onOpenSettings} title="Configurações IA">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -84,14 +100,23 @@ export function ControlPanel({ onOpenSettings }: Props) {
         </svg>
       </button>
       <div className="status-block">
-        <div className="status-row">
-          <span className={`status-dot ${status}`} />
-          <span>{statusText}</span>
-        </div>
-        <div className="status-row">
-          <span className={`status-dot ${llmEnabled ? 'connected' : ''}`} />
-          <span>{llmEnabled ? 'IA configurada' : 'IA não configurada'}</span>
-        </div>
+        {isOwnChannel ? (
+          <>
+            <div className="status-row">
+              <span className={`status-dot ${status}`} />
+              <span>{statusText}</span>
+            </div>
+            <div className="status-row">
+              <span className={`status-dot ${llmEnabled ? 'connected' : ''}`} />
+              <span>{llmEnabled ? 'IA configurada' : 'IA não configurada'}</span>
+            </div>
+          </>
+        ) : (
+          <div className="status-row">
+            <span className={`status-dot ${partyConnected ? 'connected' : ''}`} />
+            <span>{partyConnected ? 'Sincronizado' : 'Conectando...'}</span>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { jwt, sign, verify } from "hono/jwt";
+import { sign } from "hono/jwt";
 import { Twitch } from "arctic";
+import { verifyJwt, type JwtPayload } from "./jwt";
 
 type Bindings = {
   TWITCH_CLIENT_ID: string;
@@ -11,13 +12,7 @@ type Bindings = {
 };
 
 type Variables = {
-  jwtPayload: {
-    sub: string;
-    login: string;
-    display_name: string;
-    profile_image_url: string;
-    exp: number;
-  };
+  jwtPayload: JwtPayload;
 };
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -132,26 +127,25 @@ app.post("/auth/refresh", async (c) => {
     return c.json({ error: "missing_refresh_token" }, 400);
   }
 
-  try {
-    const payload = await verify(body.refresh_token, c.env.JWT_SECRET, "HS256");
-
-    const now = Math.floor(Date.now() / 1000);
-    const accessToken = await sign(
-      {
-        sub: payload.sub,
-        login: payload.login,
-        display_name: payload.display_name,
-        profile_image_url: payload.profile_image_url,
-        exp: now + 60 * 60,
-      },
-      c.env.JWT_SECRET,
-      "HS256"
-    );
-
-    return c.json({ access_token: accessToken });
-  } catch {
+  const payload = await verifyJwt(body.refresh_token, c.env.JWT_SECRET);
+  if (!payload) {
     return c.json({ error: "invalid_refresh_token" }, 401);
   }
+
+  const now = Math.floor(Date.now() / 1000);
+  const accessToken = await sign(
+    {
+      sub: payload.sub,
+      login: payload.login,
+      display_name: payload.display_name,
+      profile_image_url: payload.profile_image_url,
+      exp: now + 60 * 60,
+    },
+    c.env.JWT_SECRET,
+    "HS256"
+  );
+
+  return c.json({ access_token: accessToken });
 });
 
 // Get current user from token
@@ -161,18 +155,18 @@ app.get("/auth/me", async (c) => {
     return c.json({ error: "unauthorized" }, 401);
   }
 
-  try {
-    const token = authHeader.slice(7);
-    const payload = await verify(token, c.env.JWT_SECRET, "HS256");
-    return c.json({
-      id: payload.sub,
-      login: payload.login,
-      display_name: payload.display_name,
-      profile_image_url: payload.profile_image_url,
-    });
-  } catch {
+  const token = authHeader.slice(7);
+  const payload = await verifyJwt(token, c.env.JWT_SECRET);
+  if (!payload) {
     return c.json({ error: "invalid_token" }, 401);
   }
+
+  return c.json({
+    id: payload.sub,
+    login: payload.login,
+    display_name: payload.display_name,
+    profile_image_url: payload.profile_image_url,
+  });
 });
 
 // ============ PROTECTED API ROUTES ============
@@ -186,14 +180,14 @@ api.use("*", async (c, next) => {
     return c.json({ error: "unauthorized" }, 401);
   }
 
-  try {
-    const token = authHeader.slice(7);
-    const payload = await verify(token, c.env.JWT_SECRET, "HS256");
-    c.set("jwtPayload", payload as Variables["jwtPayload"]);
-    await next();
-  } catch {
+  const token = authHeader.slice(7);
+  const payload = await verifyJwt(token, c.env.JWT_SECRET);
+  if (!payload) {
     return c.json({ error: "invalid_token" }, 401);
   }
+
+  c.set("jwtPayload", payload);
+  await next();
 });
 
 // Example protected endpoint

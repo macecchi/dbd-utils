@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "build": "bun run --filter '*' build",
-    "deploy:api": "bun run --filter @dbd-utils/api deploy"
+    "deploy:api": "bun run --filter @dbd-utils/api deploy",
+    "dev:party": "bun run --filter @dbd-utils/api dev:party",
+    "deploy:party": "bun run --filter @dbd-utils/api deploy:party"
   },
   "devDependencies": {
     "bun-types": "latest"
