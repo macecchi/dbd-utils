@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter, handleMessage, handleUserNotice } from '../services';
+import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } from '../services';
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
@@ -9,7 +9,7 @@ export function DebugPanel() {
   const { useRequests, useSources } = useChannel();
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
-  const { apiKey, models, botName, isLLMEnabled } = useSettings();
+  const { apiKey, models, isLLMEnabled } = useSettings();
   const llmEnabled = isLLMEnabled();
   const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
   const { show: showToast } = useToasts();
@@ -21,39 +21,26 @@ export function DebugPanel() {
   const simulateIRC = (type: 'donation-above' | 'donation-below' | 'resub' | 'chat-sub' | 'chat-nosub') => {
     const msg = randomMsg();
     const donor = randomDonor();
-    const channel = 'testchannel';
     const before = useRequests.getState().requests.length;
 
     switch (type) {
-      case 'donation-above': {
-        const amount = minDonation + 10;
-        const raw = `@display-name=${botName};color=#FF0000 :${botName.toLowerCase()}!${botName.toLowerCase()}@${botName.toLowerCase()}.tmi.twitch.tv PRIVMSG #${channel} :${donor} doou R$ ${amount},00: ${msg}`;
-        handleMessage(raw);
+      case 'donation-above':
+        window.dbdDebug.donate(donor, minDonation + 10, msg);
         break;
-      }
-      case 'donation-below': {
-        const amount = Math.max(minDonation - 5, 1);
-        const raw = `@display-name=${botName};color=#FF0000 :${botName.toLowerCase()}!${botName.toLowerCase()}@${botName.toLowerCase()}.tmi.twitch.tv PRIVMSG #${channel} :${donor} doou R$ ${amount},00: ${msg}`;
-        handleMessage(raw);
+      case 'donation-below':
+        window.dbdDebug.donate(donor, Math.max(minDonation - 5, 1), msg);
         break;
-      }
-      case 'resub': {
-        const raw = `@display-name=${donor};msg-id=resub :tmi.twitch.tv USERNOTICE #${channel} :${msg}`;
-        handleUserNotice(raw);
+      case 'resub':
+        window.dbdDebug.resub(donor, msg);
         break;
-      }
       case 'chat-sub': {
         const tier = chatTiers.length > 0 ? Math.min(...chatTiers) : 1;
-        const badge = tier === 3 ? 3000 : tier === 2 ? 2000 : 1;
-        const raw = `@display-name=${donor};subscriber=1;badges=subscriber/${badge} :${donor.toLowerCase()}!${donor.toLowerCase()}@${donor.toLowerCase()}.tmi.twitch.tv PRIVMSG #${channel} :${chatCommand} ${msg}`;
-        handleMessage(raw);
+        window.dbdDebug.chat(donor, `${chatCommand} ${msg}`, { sub: true, tier });
         break;
       }
-      case 'chat-nosub': {
-        const raw = `@display-name=${donor};subscriber=0;badges= :${donor.toLowerCase()}!${donor.toLowerCase()}@${donor.toLowerCase()}.tmi.twitch.tv PRIVMSG #${channel} :${chatCommand} ${msg}`;
-        handleMessage(raw);
+      case 'chat-nosub':
+        window.dbdDebug.chat(donor, `${chatCommand} ${msg}`, { sub: false });
         break;
-      }
     }
 
     const after = useRequests.getState().requests.length;

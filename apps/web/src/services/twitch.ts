@@ -192,3 +192,53 @@ export function handleMessage(raw: string) {
   };
   addRequest(request);
 }
+
+// Debug helpers exposed to window for DevTools testing
+declare global {
+  interface Window {
+    dbdDebug: {
+      panel: boolean;
+      chat: (user: string, message: string, opts?: { sub?: boolean; tier?: number }) => void;
+      donate: (donor: string, amount: number, message: string) => void;
+      resub: (user: string, message: string) => void;
+      raw: (ircLine: string) => void;
+    };
+  }
+}
+
+function checkWriteMode(): boolean {
+  const isOwner = activeStores?.useRequests.getState().isOwner;
+  if (!isOwner) {
+    console.warn('dbdDebug: read-only mode, login to your channel to use');
+    return false;
+  }
+  return true;
+}
+
+window.dbdDebug = {
+  panel: false,
+  chat: (user: string, message: string, opts?: { sub?: boolean; tier?: number }) => {
+    if (!checkWriteMode()) return;
+    const sub = opts?.sub ?? true;
+    const tier = opts?.tier ?? 1;
+    const badge = tier === 3 ? 3000 : tier === 2 ? 2000 : 1;
+    const raw = `@display-name=${user};subscriber=${sub ? 1 : 0};badges=${sub ? `subscriber/${badge}` : ''} :${user.toLowerCase()}!${user.toLowerCase()}@${user.toLowerCase()}.tmi.twitch.tv PRIVMSG #test :${message}`;
+    handleMessage(raw);
+  },
+  donate: (donor: string, amount: number, message: string) => {
+    if (!checkWriteMode()) return;
+    const { botName } = useSettings.getState();
+    const raw = `@display-name=${botName};color=#FF0000 :${botName.toLowerCase()}!${botName.toLowerCase()}@${botName.toLowerCase()}.tmi.twitch.tv PRIVMSG #test :${donor} doou R$ ${amount},00: ${message}`;
+    handleMessage(raw);
+  },
+  resub: (user: string, message: string) => {
+    if (!checkWriteMode()) return;
+    const raw = `@display-name=${user};msg-id=resub :tmi.twitch.tv USERNOTICE #test :${message}`;
+    handleUserNotice(raw);
+  },
+  raw: (ircLine: string) => {
+    if (!checkWriteMode()) return;
+    if (ircLine.includes('USERNOTICE')) handleUserNotice(ircLine);
+    else if (ircLine.includes('PRIVMSG')) handleMessage(ircLine);
+  }
+};
