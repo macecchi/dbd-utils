@@ -7,11 +7,10 @@ interface Props {
 }
 
 export function ControlPanel({ onOpenSettings }: Props) {
-  const { channel } = useChannel();
+  const { channel, isOwnChannel } = useChannel();
   const { status, statusText, isLLMEnabled } = useSettings();
   const { user, isAuthenticated, login, logout } = useAuth();
   const llmEnabled = isLLMEnabled();
-  const isOwnChannel = isAuthenticated && user && channel.toLowerCase() === user.login.toLowerCase();
 
   const [channelInput, setChannelInput] = useState(channel);
 

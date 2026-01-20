@@ -2,9 +2,11 @@
 import { createContext, useContext, useMemo, useEffect } from 'react';
 import { createChannelStores, type ChannelStores } from './channel';
 import { setActiveStores } from '../services/twitch';
+import { useAuth } from './auth';
 
 interface ChannelContextValue extends ChannelStores {
   channel: string;
+  isOwnChannel: boolean;
 }
 
 const ChannelContext = createContext<ChannelContextValue | null>(null);
@@ -16,6 +18,8 @@ interface ChannelProviderProps {
 
 export function ChannelProvider({ channel, children }: ChannelProviderProps) {
   const stores = useMemo(() => createChannelStores(channel), [channel]);
+  const { user, isAuthenticated } = useAuth();
+  const isOwnChannel = isAuthenticated && !!user && channel.toLowerCase() === user.login.toLowerCase();
 
   useEffect(() => {
     setActiveStores(stores);
@@ -23,8 +27,8 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
   }, [stores]);
 
   const value = useMemo(
-    () => ({ channel, ...stores }),
-    [channel, stores]
+    () => ({ channel, isOwnChannel, ...stores }),
+    [channel, isOwnChannel, stores]
   );
 
   return (

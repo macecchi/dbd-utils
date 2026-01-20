@@ -146,6 +146,16 @@
   width: 30px;
 }
 
+.readonly-badge {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  margin-left: var(--space-sm);
+}
+
 .panel-count {
   font-family: 'JetBrains Mono', monospace;
   font-size: var(--text-sm);

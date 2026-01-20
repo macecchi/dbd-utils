@@ -17,7 +17,7 @@ const DEFAULT_CHANNEL = 'mandymess';
 const getChannelFromHash = (hash: string) => hash.replace(/^#\/?/, '') || null;
 
 function ChannelApp() {
-  const { useRequests, useSources } = useChannel();
+  const { useRequests, useSources, isOwnChannel } = useChannel();
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
   const { apiKey, models, botName, chatHidden, setChatHidden } = useSettings();
@@ -28,6 +28,7 @@ function ChannelApp() {
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const readOnly = !isOwnChannel;
 
   // Initialize existing requests so they don't trigger toasts on load
   useEffect(() => {
@@ -99,12 +100,14 @@ function ChannelApp() {
               <div className="panel-title">
                 <img src={`${import.meta.env.BASE_URL}images/IconPlayers.webp`} />
                 Fila
+                {readOnly && <span className="readonly-badge">somente leitura</span>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button
                   className="btn btn-ghost btn-small"
-                  onClick={() => setSortMode(sortMode === 'fifo' ? 'priority' : 'fifo')}
+                  onClick={() => !readOnly && setSortMode(sortMode === 'fifo' ? 'priority' : 'fifo')}
                   title={`${sortMode === 'fifo' ? 'Novos pedidos entram no final' : 'Novos pedidos entram por prioridade de fonte'}. Clique para alternar.`}
+                  disabled={readOnly}
                 >
                   {sortMode === 'fifo' ? (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -117,7 +120,7 @@ function ChannelApp() {
                   )}
                   Ordem: {sortMode === 'fifo' ? 'chegada' : 'prioridade'}
                 </button>
-                <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setManualOpen(true)} title="Adicionar novo pedido">
+                <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setManualOpen(true)} title="Adicionar novo pedido" disabled={readOnly}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
                   </svg>
@@ -165,7 +168,7 @@ function ChannelApp() {
         </main>
 
         <SourcesPanel />
-        {window.location.hash.includes('debug') && <DebugPanel />}
+        {!readOnly && window.location.hash.includes('debug') && <DebugPanel />}
 
         <footer className="footer">
           <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }}>{botName}</strong></div>

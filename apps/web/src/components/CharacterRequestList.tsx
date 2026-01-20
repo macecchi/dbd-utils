@@ -10,23 +10,25 @@ interface Props {
 }
 
 export function CharacterRequestList({ showDone = false }: Props) {
-  const { useRequests } = useChannel();
+  const { useRequests, isOwnChannel } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
   const { apiKey, models } = useSettings();
   const { showUndo } = useToasts();
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const readOnly = !isOwnChannel;
 
   const llmConfig = { apiKey, models };
   const filtered = showDone ? requests : requests.filter(r => !r.done);
 
   const handleToggleDone = useCallback((id: number) => {
+    if (readOnly) return;
     const request = requests.find(r => r.id === id);
     if (request && !request.done && !showDone) {
       showUndo('Marcado como feito', () => toggleDone(id));
     }
     toggleDone(id);
-  }, [requests, toggleDone, showDone, showUndo]);
+  }, [requests, toggleDone, showDone, showUndo, readOnly]);
 
   const rerunExtraction = useCallback(async (id: number) => {
     const request = requests.find(r => r.id === id);
@@ -38,8 +40,9 @@ export function CharacterRequestList({ showDone = false }: Props) {
   }, [requests, update, llmConfig]);
 
   const handleDragStart = useCallback((id: number) => {
+    if (readOnly) return;
     setDraggedId(id);
-  }, []);
+  }, [readOnly]);
 
   const handleDragOver = useCallback((id: number) => {
     if (draggedId && draggedId !== id) {
@@ -77,14 +80,17 @@ export function CharacterRequestList({ showDone = false }: Props) {
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
+              readOnly={readOnly}
             />
           );
         });
       })()}
-      <ContextMenu
-        onToggleDone={handleToggleDone}
-        onRerun={rerunExtraction}
-      />
+      {!readOnly && (
+        <ContextMenu
+          onToggleDone={handleToggleDone}
+          onRerun={rerunExtraction}
+        />
+      )}
     </ContextMenuProvider>
   );
 }

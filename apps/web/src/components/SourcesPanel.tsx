@@ -31,17 +31,19 @@ const SOURCE_ICONS: Record<SourceType, React.ReactNode> = {
 };
 
 export function SourcesPanel() {
-  const { useSources } = useChannel();
+  const { useSources, isOwnChannel } = useChannel();
   const {
     enabled, chatCommand, chatTiers, priority, sortMode, minDonation,
     setEnabled, setChatCommand, setChatTiers, setPriority, setMinDonation
   } = useSources();
   const { botName, setBotName } = useSettings();
+  const readOnly = !isOwnChannel;
 
   const [isOpen, setIsOpen] = useState(true);
   const [draggedItem, setDraggedItem] = useState<SourceType | null>(null);
 
   const handleDragStart = (source: SourceType) => {
+    if (readOnly) return;
     setDraggedItem(source);
   };
 
@@ -86,7 +88,8 @@ export function SourcesPanel() {
             <input
               type="checkbox"
               checked={isEnabled}
-              onChange={e => setEnabled({ ...enabled, [source]: e.target.checked })}
+              onChange={e => !readOnly && setEnabled({ ...enabled, [source]: e.target.checked })}
+              disabled={readOnly}
             />
             <span className="toggle-slider" />
           </label>
@@ -103,7 +106,8 @@ export function SourcesPanel() {
                 type="text"
                 defaultValue={botName}
                 placeholder="livepix"
-                onBlur={e => setBotName(e.target.value.trim() || 'livepix')}
+                onBlur={e => !readOnly && setBotName(e.target.value.trim() || 'livepix')}
+                disabled={readOnly}
               />
             </div>
             <div className="source-field">
@@ -117,7 +121,8 @@ export function SourcesPanel() {
                   defaultValue={minDonation}
                   min={0}
                   step={1}
-                  onBlur={e => setMinDonation(parseFloat(e.target.value) || 0)}
+                  onBlur={e => !readOnly && setMinDonation(parseFloat(e.target.value) || 0)}
+                  disabled={readOnly}
                 />
               </div>
             </div>
@@ -141,12 +146,13 @@ export function SourcesPanel() {
                 type="text"
                 defaultValue={chatCommand}
                 placeholder={SOURCES_DEFAULTS.chatCommand}
-                onBlur={e => setChatCommand(e.target.value.trim() || SOURCES_DEFAULTS.chatCommand)}
+                onBlur={e => !readOnly && setChatCommand(e.target.value.trim() || SOURCES_DEFAULTS.chatCommand)}
+                disabled={readOnly}
               />
             </div>
             <div className="source-field">
               <label htmlFor="chat-tier">Tier mínimo</label>
-              <select id="chat-tier" name="chat-tier" value={getMinTier()} onChange={e => setMinTier(Number(e.target.value))}>
+              <select id="chat-tier" name="chat-tier" value={getMinTier()} onChange={e => !readOnly && setMinTier(Number(e.target.value))} disabled={readOnly}>
                 <option value={1}>Tier 1</option>
                 <option value={2}>Tier 2</option>
                 <option value={3}>Tier 3</option>
@@ -197,7 +203,7 @@ export function SourcesPanel() {
               <div
                 key={source}
                 className={`priority-pill ${source} ${draggedItem === source ? 'dragging' : ''}`}
-                draggable
+                draggable={!readOnly}
                 onDragStart={() => handleDragStart(source)}
                 onDragOver={e => handleDragOver(e, source)}
                 onDragEnd={handleDragEnd}
