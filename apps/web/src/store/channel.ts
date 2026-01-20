@@ -130,9 +130,25 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
 
         handlePartyMessage: (msg) => {
           switch (msg.type) {
-            case 'sync-full':
-              set({ requests: deserializeRequests(msg.requests) });
+            case 'sync-full': {
+              const serverRequests = deserializeRequests(msg.requests);
+              const localRequests = get().requests;
+              const { isOwner, partyConnected } = get();
+
+              // Owner seeds empty server from localStorage
+              if (serverRequests.length === 0 && localRequests.length > 0 && isOwner && partyConnected) {
+                const sources = getSourcesState();
+                broadcastSetAll(localRequests);
+                broadcastSources({ ...sources, ircConnected: false });
+                // Clean up localStorage after seeding
+                localStorage.removeItem(`dbd-requests-${channel}`);
+                localStorage.removeItem(`dbd-sources-${channel}`);
+                return;
+              }
+
+              set({ requests: serverRequests });
               break;
+            }
             case 'add-request': {
               const req = deserializeRequest(msg.request);
               set((s) => {
@@ -196,6 +212,8 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
       {
         name: `dbd-requests-${channel}`,
         partialize: (state) => ({ requests: state.requests }),
+        // Read-only storage: load from localStorage for seeding, but don't persist
+        // PartyKit is the source of truth after initial sync
         storage: {
           getItem: (name) => {
             const str = localStorage.getItem(name);
@@ -211,8 +229,8 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
               },
             };
           },
-          setItem: (name, value) => localStorage.setItem(name, JSON.stringify(value)),
-          removeItem: (name) => localStorage.removeItem(name),
+          setItem: () => {},
+          removeItem: () => {},
         },
       }
     )
@@ -261,11 +279,6 @@ export const SOURCES_DEFAULTS = {
   ircConnected: false,
 };
 
-const noopStorage = {
-  getItem: () => null,
-  setItem: () => { },
-  removeItem: () => { },
-};
 
 export function createSourcesStore(
   channel: string,
@@ -344,8 +357,15 @@ export function createSourcesStore(
       }),
       {
         name: `dbd-sources-${channel}`,
-        // Don't persist sources to localStorage - PartyKit is the source of truth
-        storage: noopStorage,
+        // Read-only: load from localStorage for seeding, PartyKit is source of truth
+        storage: {
+          getItem: (name) => {
+            const str = localStorage.getItem(name);
+            return str ? JSON.parse(str) : null;
+          },
+          setItem: () => {},
+          removeItem: () => {},
+        },
       }
     )
   );
