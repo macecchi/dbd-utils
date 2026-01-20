@@ -146,14 +146,15 @@
   width: 30px;
 }
 
-.readonly-badge {
-  font-size: var(--text-xs);
+.sources-summary {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-muted);
   background: var(--bg);
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.4rem;
   border-radius: var(--radius-sm);
-  margin-left: var(--space-sm);
+  margin-left: var(--space-xs);
 }
 
 .panel-count {

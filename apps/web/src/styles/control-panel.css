@@ -67,6 +67,10 @@
   animation: pulse 1s infinite;
 }
 
+.status-dot.disconnected {
+  background: var(--red);
+}
+
 .status-dot.error {
   background: var(--red);
 }

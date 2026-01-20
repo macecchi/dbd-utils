@@ -1,4 +1,14 @@
-import type { Request } from '../types';
+import type { Request, SourcesEnabled } from '../types';
+
+export interface SourcesSettings {
+  enabled: SourcesEnabled;
+  chatCommand: string;
+  chatTiers: number[];
+  priority: ('donation' | 'resub' | 'chat' | 'manual')[];
+  sortMode: 'priority' | 'fifo';
+  minDonation: number;
+  ircConnected: boolean;
+}
 
 export interface SerializedRequest {
   id: number;
@@ -18,13 +28,14 @@ export interface SerializedRequest {
 }
 
 export type PartyMessage =
-  | { type: 'sync-full'; requests: SerializedRequest[] }
+  | { type: 'sync-full'; requests: SerializedRequest[]; sources: SourcesSettings }
   | { type: 'add-request'; request: SerializedRequest }
   | { type: 'update-request'; id: number; updates: Partial<SerializedRequest> }
   | { type: 'toggle-done'; id: number }
   | { type: 'reorder'; fromId: number; toId: number }
   | { type: 'delete-request'; id: number }
-  | { type: 'set-all'; requests: SerializedRequest[] };
+  | { type: 'set-all'; requests: SerializedRequest[] }
+  | { type: 'update-sources'; sources: SourcesSettings };
 
 export function serializeRequest(req: Request): SerializedRequest {
   return {

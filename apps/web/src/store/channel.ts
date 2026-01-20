@@ -12,6 +12,7 @@ import {
   broadcastReorder,
   broadcastDelete,
   broadcastSetAll,
+  broadcastSources,
 } from '../services/party';
 
 // ============ REQUESTS STORE ============
@@ -230,6 +231,7 @@ interface SourcesStore {
   priority: SourceType[];
   sortMode: SortMode;
   minDonation: number;
+  ircConnected: boolean;
   setEnabled: (enabled: SourcesEnabled) => void;
   toggleSource: (source: keyof SourcesEnabled) => void;
   setChatCommand: (cmd: string) => void;
@@ -237,6 +239,9 @@ interface SourcesStore {
   setPriority: (priority: SourceType[]) => void;
   setSortMode: (mode: SortMode) => void;
   setMinDonation: (min: number) => void;
+  setIrcConnected: (connected: boolean) => void;
+  handlePartyMessage: (msg: PartyMessage) => void;
+  isTakingRequests: () => boolean;
 }
 
 export type SourcesStoreApi = ReturnType<typeof createSourcesStore>;
@@ -253,29 +258,95 @@ export const SOURCES_DEFAULTS = {
   priority: ['donation', 'chat', 'resub', 'manual'] as SourceType[],
   sortMode: 'fifo' as SortMode,
   minDonation: 5,
+  ircConnected: false,
 };
 
-export function createSourcesStore(channel: string) {
+const noopStorage = {
+  getItem: () => null,
+  setItem: () => { },
+  removeItem: () => { },
+};
+
+export function createSourcesStore(
+  channel: string,
+  getPartyState: () => { partyConnected: boolean; isOwner: boolean }
+) {
+  const maybeBroadcast = (get: () => SourcesStore) => {
+    const { partyConnected, isOwner } = getPartyState();
+    if (partyConnected && isOwner) {
+      const { enabled, chatCommand, chatTiers, priority, sortMode, minDonation, ircConnected } = get();
+      broadcastSources({ enabled, chatCommand, chatTiers, priority, sortMode, minDonation, ircConnected });
+    }
+  };
+
   return create<SourcesStore>()(
     persist(
-      (set) => ({
+      (set, get) => ({
         enabled: SOURCES_DEFAULTS.enabled,
         chatCommand: SOURCES_DEFAULTS.chatCommand,
         chatTiers: SOURCES_DEFAULTS.chatTiers,
         priority: SOURCES_DEFAULTS.priority,
         sortMode: SOURCES_DEFAULTS.sortMode,
         minDonation: SOURCES_DEFAULTS.minDonation,
-        setEnabled: (enabled) => set({ enabled }),
-        toggleSource: (source) => set((s) => ({
-          enabled: { ...s.enabled, [source]: !s.enabled[source] }
-        })),
-        setChatCommand: (chatCommand) => set({ chatCommand }),
-        setChatTiers: (chatTiers) => set({ chatTiers }),
-        setPriority: (priority) => set({ priority }),
-        setSortMode: (sortMode) => set({ sortMode }),
-        setMinDonation: (minDonation) => set({ minDonation }),
+        ircConnected: SOURCES_DEFAULTS.ircConnected,
+        setEnabled: (enabled) => {
+          set({ enabled });
+          maybeBroadcast(get);
+        },
+        toggleSource: (source) => {
+          set((s) => ({ enabled: { ...s.enabled, [source]: !s.enabled[source] } }));
+          maybeBroadcast(get);
+        },
+        setChatCommand: (chatCommand) => {
+          set({ chatCommand });
+          maybeBroadcast(get);
+        },
+        setChatTiers: (chatTiers) => {
+          set({ chatTiers });
+          maybeBroadcast(get);
+        },
+        setPriority: (priority) => {
+          set({ priority });
+          maybeBroadcast(get);
+        },
+        setSortMode: (sortMode) => {
+          set({ sortMode });
+          maybeBroadcast(get);
+        },
+        setMinDonation: (minDonation) => {
+          set({ minDonation });
+          maybeBroadcast(get);
+        },
+        setIrcConnected: (ircConnected) => {
+          set({ ircConnected });
+          maybeBroadcast(get);
+        },
+        handlePartyMessage: (msg) => {
+          if (msg.type === 'sync-full' || msg.type === 'update-sources') {
+            const sources = msg.sources;
+            const ircConnected = sources.ircConnected ?? false;
+            set({
+              enabled: sources.enabled,
+              chatCommand: sources.chatCommand,
+              chatTiers: sources.chatTiers,
+              priority: sources.priority,
+              sortMode: sources.sortMode,
+              minDonation: sources.minDonation,
+              ircConnected,
+            });
+          }
+        },
+        isTakingRequests: () => {
+          const { enabled, ircConnected } = get();
+          const { manual, ...autoSources } = enabled;
+          return ircConnected && Object.values(autoSources).some(Boolean);
+        },
       }),
-      { name: `dbd-sources-${channel}` }
+      {
+        name: `dbd-sources-${channel}`,
+        // Don't persist sources to localStorage - PartyKit is the source of truth
+        storage: noopStorage,
+      }
     )
   );
 }
@@ -289,7 +360,11 @@ export interface ChannelStores {
 
 export function createChannelStores(channel: string): ChannelStores {
   const key = channel.toLowerCase();
-  const useSources = createSourcesStore(key);
+  let useSources: SourcesStoreApi;
   const useRequests = createRequestsStore(key, () => useSources.getState());
+  useSources = createSourcesStore(key, () => {
+    const { partyConnected, isOwner } = useRequests.getState();
+    return { partyConnected, isOwner };
+  });
   return { useRequests, useSources };
 }
