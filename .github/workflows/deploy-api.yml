@@ -1,4 +1,4 @@
-name: Deploy API to Cloudflare
+name: Deploy API
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - 'apps/api/**'
       - 'package.json'
       - 'bun.lock'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 jobs:
@@ -23,7 +24,13 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Deploy to Cloudflare
+      - name: Deploy Worker
         run: bun run deploy:api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Deploy PartyKit
+        run: bun run deploy:party
+        env:
+          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
+          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}

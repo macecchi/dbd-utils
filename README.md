@@ -24,8 +24,21 @@ Feito com carinho para a comunidade brasileira 🇧🇷 de Dead by Daylight, em 
 
 ```bash
 bun install
-bun dev
+bun dev  # Servidor local com frontend + API + PartyKit
 ```
+
+## Deploy
+
+**Secrets necessários no GitHub:**
+- `CLOUDFLARE_API_TOKEN` - token com permissão Workers
+- `PARTYKIT_TOKEN` e `PARTYKIT_LOGIN` - obtido com `bunx partykit@latest token generate`
+
+**Secrets no Cloudflare (via `wrangler secret put`):**
+- `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` - app Twitch
+- `JWT_SECRET` - qualquer string segura
+
+**Secrets no PartyKit (via `bunx partykit env add JWT_SECRET`):**
+- `JWT_SECRET` - mesmo valor do Cloudflare
 
 ## Uso
 
@@ -63,11 +76,22 @@ Exibe mensagens do chat em tempo real. Pode ser escondido para mais espaço.
 
 ## Debug
 
-Painel expansível com ferramentas de desenvolvimento:
+Adicione `/debug` na URL para ativar o painel de debug. Exemplo: `http://localhost:5173/dbd-utils/#/meriw_/debug`.
 
 - **Testar extração**: testa identificação de personagem em uma mensagem
 - **Re-identificar todos**: reprocessa todos os pedidos da fila
 - **Replay VOD**: reproduz chat de uma VOD para testes (requer ID da VOD, que pode ser encontrada na url do vídeo)
+
+### Console (DevTools)
+
+```js
+dbdDebug.chat('User', 'msg')                      // chat sub tier 1
+dbdDebug.chat('User', 'msg', { tier: 2 })         // chat sub tier 2
+dbdDebug.chat('User', 'msg', { sub: false })      // chat não-sub
+dbdDebug.donate('Donor', 50, 'msg')               // donate R$50
+dbdDebug.resub('User', 'msg')                     // resub
+dbdDebug.raw('@tags... PRIVMSG #ch :msg')         // raw IRC
+```
 
 ## Licença
 

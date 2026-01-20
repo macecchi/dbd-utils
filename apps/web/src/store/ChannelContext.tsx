@@ -1,7 +1,8 @@
 // apps/web/src/store/ChannelContext.tsx
 import { createContext, useContext, useMemo, useEffect } from 'react';
 import { createChannelStores, type ChannelStores } from './channel';
-import { setActiveStores } from '../services/twitch';
+import { setActiveStores, connect as connectIrc, disconnect as disconnectIrc } from '../services/twitch';
+import { connectParty, disconnectParty } from '../services/party';
 import { useAuth } from './auth';
 
 interface ChannelContextValue extends ChannelStores {
@@ -17,14 +18,55 @@ interface ChannelProviderProps {
 }
 
 export function ChannelProvider({ channel, children }: ChannelProviderProps) {
-  const stores = useMemo(() => createChannelStores(channel), [channel]);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, getAccessToken } = useAuth();
   const isOwnChannel = isAuthenticated && !!user && channel.toLowerCase() === user.login.toLowerCase();
+  const stores = useMemo(() => createChannelStores(channel), [channel]);
 
   useEffect(() => {
     setActiveStores(stores);
     return () => setActiveStores(null);
   }, [stores]);
+
+  // Connect to Twitch IRC (only for owners)
+  useEffect(() => {
+    if (isOwnChannel) {
+      connectIrc(channel);
+      return () => disconnectIrc();
+    }
+  }, [channel, isOwnChannel]);
+
+  // Connect to PartySocket
+  useEffect(() => {
+    const { setPartyConnected, setIsOwner, handlePartyMessage: handleRequestsMessage } = stores.useRequests.getState();
+    const { handlePartyMessage: handleSourcesMessage } = stores.useSources.getState();
+    setIsOwner(isOwnChannel);
+
+    let cancelled = false;
+
+    async function connect() {
+      const token = await getAccessToken();
+      if (cancelled) return;
+
+      connectParty(
+        channel,
+        token,
+        (msg) => {
+          handleRequestsMessage(msg);
+          handleSourcesMessage(msg);
+        },
+        () => setPartyConnected(true),
+        () => setPartyConnected(false)
+      );
+    }
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      disconnectParty();
+      setPartyConnected(false);
+    };
+  }, [channel, isOwnChannel, stores, getAccessToken]);
 
   const value = useMemo(
     () => ({ channel, isOwnChannel, ...stores }),

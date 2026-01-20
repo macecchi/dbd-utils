@@ -10,6 +10,14 @@ interface TwitchUser {
   profile_image_url: string;
 }
 
+interface JwtPayload {
+  sub: string;
+  login: string;
+  display_name: string;
+  profile_image_url: string;
+  exp: number;
+}
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
@@ -22,7 +30,7 @@ interface AuthState {
   getAccessToken: () => Promise<string | null>;
 }
 
-function decodeJwtPayload(token: string): TwitchUser & { exp: number } {
+function decodeJwtPayload(token: string): JwtPayload {
   const [, payload] = token.split('.');
   return JSON.parse(atob(payload));
 }

@@ -5,16 +5,22 @@ import { DebugPanel } from './components/DebugPanel';
 import { CharacterRequestList } from './components/CharacterRequestList';
 import { ManualEntry } from './components/ManualEntry';
 import { SettingsModal } from './components/SettingsModal';
+import { SourcesBadges } from './components/SourcesBadges';
 import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { ToastContainer } from './components/ToastContainer';
-import { connect, identifyCharacter } from './services';
+import { identifyCharacter } from './services';
 import { useSettings, useAuth, ChannelProvider, useChannel, useToasts, useLastChannel } from './store';
 import { migrateGlobalToChannel } from './utils/migrate';
 
 const DEFAULT_CHANNEL = 'mandymess';
 
-const getChannelFromHash = (hash: string) => hash.replace(/^#\/?/, '') || null;
+const parseHash = (hash: string) => {
+  const parts = hash.replace(/^#\/?/, '').split('/');
+  return { channel: parts[0] || null, debug: parts[1] === 'debug' };
+};
+const getChannelFromHash = (hash: string) => parseHash(hash).channel;
+const isDebugMode = () => parseHash(window.location.hash).debug;
 
 function ChannelApp() {
   const { useRequests, useSources, isOwnChannel } = useChannel();
@@ -100,7 +106,7 @@ function ChannelApp() {
               <div className="panel-title">
                 <img src={`${import.meta.env.BASE_URL}images/IconPlayers.webp`} />
                 Fila
-                {readOnly && <span className="readonly-badge">somente leitura</span>}
+                <SourcesBadges />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button
@@ -167,8 +173,8 @@ function ChannelApp() {
           </div>
         </main>
 
-        <SourcesPanel />
-        {!readOnly && window.location.hash.includes('debug') && <DebugPanel />}
+        {!readOnly && <SourcesPanel />}
+        {isDebugMode() && <DebugPanel />}
 
         <footer className="footer">
           <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }}>{botName}</strong></div>
@@ -237,12 +243,7 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, [setLastChannel]);
 
-  // Connect when channel is set
-  useEffect(() => {
-    if (channel) {
-      connect(channel);
-    }
-  }, [channel]);
+  // IRC connection is handled in ChannelProvider (only for owners)
 
   if (!channel) {
     return null;

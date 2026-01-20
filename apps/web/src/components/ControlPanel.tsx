@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useSettings, useAuth, useChannel } from '../store';
 import { connect, disconnect } from '../services/twitch';
+import type { ConnectionState } from '../types';
 
-interface Props {
-  onOpenSettings: () => void;
-}
 
-export function ControlPanel({ onOpenSettings }: Props) {
-  const { channel, isOwnChannel } = useChannel();
-  const { status, statusText, isLLMEnabled } = useSettings();
+export function ControlPanel() {
+  const { channel, isOwnChannel, useRequests, useSources } = useChannel();
+  const { status } = useSettings();
   const { user, isAuthenticated, login, logout } = useAuth();
-  const llmEnabled = isLLMEnabled();
+  const partyConnected = useRequests((s) => s.partyConnected);
+  const ircConnected = useSources((s) => s.ircConnected);
+  const takingRequests = useSources((s) => s.isTakingRequests());
+
+  // For viewers: derive status from partyConnected + ircConnected
+  const viewerStatus: ConnectionState = !partyConnected ? 'connecting' : ircConnected ? 'connected' : 'disconnected';
+  const viewerStatusText = !partyConnected ? 'Conectando...' : ircConnected ? 'Streamer online' : 'Streamer offline';
 
   const [channelInput, setChannelInput] = useState(channel);
 
@@ -36,6 +40,12 @@ export function ControlPanel({ onOpenSettings }: Props) {
     }
   };
 
+  const handleGoToChannel = () => {
+    if (inputChannel && inputChannel !== channel) {
+      window.location.hash = `#/${inputChannel}`;
+    }
+  };
+
   const handleMyQueue = () => {
     if (!isAuthenticated) {
       login();
@@ -49,7 +59,7 @@ export function ControlPanel({ onOpenSettings }: Props) {
       <div className="field grow channel">
         <label>Canal Twitch</label>
         <div className="channel-input">
-          {isOwnChannel && (
+          {isOwnChannel && user && (
             <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
           )}
           <input
@@ -57,40 +67,43 @@ export function ControlPanel({ onOpenSettings }: Props) {
             value={channelInput}
             placeholder="canal"
             onChange={e => setChannelInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleConnect()}
+            onKeyDown={e => e.key === 'Enter' && (isOwnChannel ? handleConnect() : handleGoToChannel())}
           />
         </div>
       </div>
-      <button
-        className={`btn btn-primary ${isConnected ? 'connected' : ''}`}
-        onClick={handleConnect}
-        disabled={isConnecting || !inputChannel}
-      >
-        {isConnecting ? 'Conectando...' : isConnected ? 'Desconectar' : 'Conectar'}
-      </button>
       {isOwnChannel ? (
-        <div className="channel auth-info">
-          <button className="btn btn-ghost" onClick={logout}>Sair</button>
-        </div>
+        <>
+          <button
+            className={`btn btn-primary ${isConnected ? 'connected' : ''}`}
+            onClick={handleConnect}
+            disabled={isConnecting || !inputChannel}
+          >
+            {isConnecting ? 'Conectando...' : isConnected ? 'Desconectar' : 'Conectar'}
+          </button>
+          <div className="channel auth-info">
+            <button className="btn btn-ghost" onClick={logout}>Sair</button>
+          </div>
+        </>
       ) : (
-        <button className="btn" onClick={handleMyQueue}>
-          {isAuthenticated ? 'Minha fila' : 'Criar minha fila'}
-        </button>
+        <>
+          {inputChannel !== channel && (
+            <button className="btn btn-primary" onClick={handleGoToChannel}>
+              Ir
+            </button>
+          )}
+          <button className="btn" onClick={handleMyQueue}>
+            {isAuthenticated ? 'Minha fila' : 'Criar minha fila'}
+          </button>
+        </>
       )}
-      <button className="btn btn-icon" onClick={onOpenSettings} title="Configurações IA">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-        </svg>
-      </button>
       <div className="status-block">
         <div className="status-row">
-          <span className={`status-dot ${status}`} />
-          <span>{statusText}</span>
+          <span className={`status-dot ${viewerStatus}`} />
+          <span>{viewerStatusText}</span>
         </div>
         <div className="status-row">
-          <span className={`status-dot ${llmEnabled ? 'connected' : ''}`} />
-          <span>{llmEnabled ? 'IA configurada' : 'IA não configurada'}</span>
+          <span className={`status-dot ${takingRequests ? 'connected' : ''}`} />
+          <span>{takingRequests ? 'Fila aberta' : 'Fila fechada'}</span>
         </div>
       </div>
     </section>

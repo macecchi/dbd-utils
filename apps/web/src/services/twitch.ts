@@ -16,11 +16,20 @@ function getStores() {
   return activeStores;
 }
 
+function setIrcConnected(connected: boolean) {
+  // Only set ircConnected if we're the owner - viewers get this via PartyKit sync
+  const isOwner = activeStores?.useRequests.getState().isOwner;
+  if (isOwner) {
+    activeStores?.useSources.getState().setIrcConnected(connected);
+  }
+}
+
 export function disconnect() {
   if (ws) {
     ws.close();
     ws = null;
     useSettings.getState().setStatus('disconnected', 'Desconectado');
+    setIrcConnected(false);
     window.location.hash = '';
   }
 }
@@ -36,25 +45,27 @@ export function connect(channel: string) {
 
   useSettings.getState().setStatus('connecting', 'Conectando...');
 
-  ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-  ws.onopen = () => {
-    ws!.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-    ws!.send('NICK justinfan' + Math.floor(Math.random() * 99999));
-    ws!.send(`JOIN #${ch}`);
+  const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  ws = socket;
+  socket.onopen = () => {
+    socket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+    socket.send('NICK justinfan' + Math.floor(Math.random() * 99999));
+    socket.send(`JOIN #${ch}`);
   };
-  ws.onmessage = (e) => {
+  socket.onmessage = (e) => {
     for (const line of e.data.split('\r\n')) {
-      if (line.startsWith('PING')) ws!.send('PONG :tmi.twitch.tv');
+      if (line.startsWith('PING')) socket.send('PONG :tmi.twitch.tv');
       else if (line.includes('366')) {
         useSettings.getState().setStatus('connected', `t.tv/${ch}`);
+        setIrcConnected(true);
         window.location.hash = `/${ch}`;
       }
       else if (line.includes('USERNOTICE')) handleUserNotice(line);
       else if (line.includes('PRIVMSG')) handleMessage(line);
     }
   };
-  ws.onclose = () => { useSettings.getState().setStatus('error', 'Desconectado'); ws = null; };
-  ws.onerror = () => useSettings.getState().setStatus('error', 'Erro');
+  socket.onclose = () => { useSettings.getState().setStatus('error', 'Desconectado'); setIrcConnected(false); ws = null; };
+  socket.onerror = () => { useSettings.getState().setStatus('error', 'Erro'); setIrcConnected(false); };
 }
 
 function parseIrcTags(raw: string): Record<string, string> {
@@ -115,11 +126,14 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
   const { add: addRequest } = useRequests.getState();
   const llmEnabled = isLLMEnabled();
 
-  if (!enabled.chat || !requestText) return;
+  if (!enabled.chat) { console.log('[dbdDebug] chat source disabled'); return; }
+  if (!requestText) { console.log('[dbdDebug] empty request'); return; }
 
   const isSub = tags.subscriber === '1';
   const subTier = getSubTierFromBadges(tags.badges);
-  if (!isSub || !chatTiers.includes(subTier)) return;
+  const minTier = chatTiers.length > 0 ? Math.min(...chatTiers) : 1;
+  if (!isSub) { console.log('[dbdDebug] not a sub'); return; }
+  if (subTier < minTier) { console.log('[dbdDebug] tier', subTier, '<', minTier); return; }
 
   const local = tryLocalMatch(requestText);
 
@@ -165,6 +179,8 @@ export function handleMessage(raw: string) {
     const requestText = message.slice(chatCommand.length).trim();
     if (requestText) {
       handleChatCommand(tags, displayName, username, requestText);
+    } else {
+      console.log('[dbdDebug] empty request text after command');
     }
     return;
   }
@@ -192,3 +208,53 @@ export function handleMessage(raw: string) {
   };
   addRequest(request);
 }
+
+// Debug helpers exposed to window for DevTools testing
+declare global {
+  interface Window {
+    dbdDebug: {
+      panel: boolean;
+      chat: (user: string, message: string, opts?: { sub?: boolean; tier?: number }) => void;
+      donate: (donor: string, amount: number, message: string) => void;
+      resub: (user: string, message: string) => void;
+      raw: (ircLine: string) => void;
+    };
+  }
+}
+
+function checkWriteMode(): boolean {
+  const isOwner = activeStores?.useRequests.getState().isOwner;
+  if (!isOwner) {
+    console.warn('dbdDebug: read-only mode, login to your channel to use');
+    return false;
+  }
+  return true;
+}
+
+window.dbdDebug = {
+  panel: false,
+  chat: (user: string, message: string, opts?: { sub?: boolean; tier?: number }) => {
+    if (!checkWriteMode()) return;
+    const sub = opts?.sub ?? true;
+    const tier = opts?.tier ?? 1;
+    const badge = tier === 3 ? 3000 : tier === 2 ? 2000 : 1;
+    const raw = `@display-name=${user};subscriber=${sub ? 1 : 0};badges=${sub ? `subscriber/${badge}` : ''} :${user.toLowerCase()}!${user.toLowerCase()}@${user.toLowerCase()}.tmi.twitch.tv PRIVMSG #test :${message}`;
+    handleMessage(raw);
+  },
+  donate: (donor: string, amount: number, message: string) => {
+    if (!checkWriteMode()) return;
+    const { botName } = useSettings.getState();
+    const raw = `@display-name=${botName};color=#FF0000 :${botName.toLowerCase()}!${botName.toLowerCase()}@${botName.toLowerCase()}.tmi.twitch.tv PRIVMSG #test :${donor} doou R$ ${amount},00: ${message}`;
+    handleMessage(raw);
+  },
+  resub: (user: string, message: string) => {
+    if (!checkWriteMode()) return;
+    const raw = `@display-name=${user};msg-id=resub :tmi.twitch.tv USERNOTICE #test :${message}`;
+    handleUserNotice(raw);
+  },
+  raw: (ircLine: string) => {
+    if (!checkWriteMode()) return;
+    if (ircLine.includes('USERNOTICE')) handleUserNotice(ircLine);
+    else if (ircLine.includes('PRIVMSG')) handleMessage(ircLine);
+  }
+};
