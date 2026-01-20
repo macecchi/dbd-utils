@@ -1,23 +1,15 @@
 {
   "name": "dbd-utils",
-  "type": "module",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "bunx @react-grab/claude-code@latest && vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "deploy:api": "bun run --filter @dbd-utils/api deploy"
   },
   "devDependencies": {
-    "@types/react": "^19.2.8",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.2",
-    "bun-types": "latest",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.0",
-    "vite-plugin-pwa": "^1.2.0"
-  },
-  "dependencies": {
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "zustand": "^5.0.10"
+    "bun-types": "latest"
   }
 }

@@ -1,0 +1,18 @@
+{
+  "name": "@dbd-utils/api",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --env production",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "arctic": "^3.5.0",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.0.0"
+  }
+}
