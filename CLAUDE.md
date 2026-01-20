@@ -17,19 +17,20 @@ apps/
 │   │   ├── types/
 │   │   └── App.tsx
 │   └── public/
-└── api/              # Cloudflare Worker backend (Hono)
+└── api/              # Cloudflare Worker backend (Hono) + PartyKit
     └── src/
-        └── index.ts
+        ├── index.ts    # Hono API (auth)
+        └── party.ts    # PartyKit server (real-time sync)
 ```
 
 ## Commands
 
 ```bash
 bun install          # Install all deps
-bun run dev          # Start frontend dev server
-bun run dev:api      # Start API dev server
+bun run dev          # Start frontend + API + PartyKit
 bun run build        # Build frontend
 bun run deploy:api   # Deploy API to Cloudflare
+bun run deploy:party # Deploy PartyKit
 ```
 
 ## Key functions

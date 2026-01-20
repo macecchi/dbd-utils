@@ -6,7 +6,8 @@
     "deploy": "wrangler deploy --env production",
     "cf-typegen": "wrangler types",
     "dev:party": "partykit dev",
-    "deploy:party": "partykit deploy"
+    "deploy:party": "partykit deploy",
+    "tail:party": "partykit tail"
   },
   "dependencies": {
     "arctic": "^3.5.0",

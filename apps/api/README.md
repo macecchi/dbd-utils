@@ -4,14 +4,7 @@ Backend API for Twitch authentication and LLM character extraction.
 
 ## Setup
 
-### 1. Install dependencies
-
-```bash
-cd api
-bun install
-```
-
-### 2. Create a Twitch application
+### 1. Create a Twitch application
 
 1. Go to [Twitch Developer Console](https://dev.twitch.tv/console/apps)
 2. Create a new application
@@ -20,7 +13,7 @@ bun install
    - Production: `https://your-worker.your-subdomain.workers.dev/auth/callback`
 4. Copy the Client ID and generate a Client Secret
 
-### 3. Configure secrets
+### 2. Configure secrets
 
 #### Local development
 
@@ -37,20 +30,15 @@ Generate a JWT secret with: `openssl rand -base64 32`
 #### Production (Cloudflare)
 
 ```bash
-wrangler secret put TWITCH_CLIENT_ID
-wrangler secret put TWITCH_CLIENT_SECRET
-wrangler secret put JWT_SECRET
-```
 
-### 4. Run locally
+### 3. Run locally
 
 ```bash
 bun run dev
-```
 
 The worker will be available at `http://localhost:8787`.
 
-### 5. Deploy
+### 4. Deploy
 
 ```bash
 bun run deploy

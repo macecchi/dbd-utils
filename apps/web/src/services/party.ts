@@ -1,6 +1,6 @@
 import PartySocket from 'partysocket';
 import type { Request } from '../types';
-import type { PartyMessage, SerializedRequest } from '../types/party';
+import type { PartyMessage, SerializedRequest, SourcesSettings } from '../types/party';
 import { serializeRequest } from '../types/party';
 
 const PARTY_HOST = import.meta.env.VITE_PARTY_HOST || 'localhost:1999';
@@ -85,4 +85,8 @@ export function broadcastDelete(id: number): void {
 
 export function broadcastSetAll(requests: Request[]): void {
   send({ type: 'set-all', requests: requests.map(serializeRequest) });
+}
+
+export function broadcastSources(sources: SourcesSettings): void {
+  send({ type: 'update-sources', sources });
 }
