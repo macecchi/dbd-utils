@@ -15,7 +15,12 @@ import { migrateGlobalToChannel } from './utils/migrate';
 
 const DEFAULT_CHANNEL = 'mandymess';
 
-const getChannelFromHash = (hash: string) => hash.replace(/^#\/?/, '') || null;
+const parseHash = (hash: string) => {
+  const parts = hash.replace(/^#\/?/, '').split('/');
+  return { channel: parts[0] || null, debug: parts[1] === 'debug' };
+};
+const getChannelFromHash = (hash: string) => parseHash(hash).channel;
+const isDebugMode = () => parseHash(window.location.hash).debug;
 
 function ChannelApp() {
   const { useRequests, useSources, isOwnChannel } = useChannel();
@@ -169,7 +174,7 @@ function ChannelApp() {
         </main>
 
         {!readOnly && <SourcesPanel />}
-        {!readOnly && window.location.hash.includes('debug') && <DebugPanel />}
+        {isDebugMode() && <DebugPanel />}
 
         <footer className="footer">
           <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }}>{botName}</strong></div>

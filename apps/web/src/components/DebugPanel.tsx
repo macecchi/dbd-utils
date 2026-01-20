@@ -9,7 +9,7 @@ export function DebugPanel() {
   const { useRequests, useSources } = useChannel();
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
-  const { apiKey, models, isLLMEnabled } = useSettings();
+  const { apiKey, models, isLLMEnabled, botName } = useSettings();
   const llmEnabled = isLLMEnabled();
   const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
   const { show: showToast } = useToasts();
