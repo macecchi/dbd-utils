@@ -52,14 +52,11 @@ function ChannelApp() {
   // Handle toasts for ready requests (skip on first load)
   useEffect(() => {
     const ready = requests.filter(r => !shownToasts.has(r.id) && !r.needsIdentification);
-    console.log('[toast] effect run', { isFirstLoad: isFirstLoad.current, total: requests.length, ready: ready.length, shownSize: shownToasts.size });
     for (const req of ready) {
       shownToasts.add(req.id);
       if (isFirstLoad.current) {
-        console.log('[toast] skip (first load)', req.id);
         continue;
       }
-      console.log('[toast] SHOW', req.id, req.character);
       const title = req.source === 'manual' ? 'Novo pedido' :
         req.source === 'donation' ? 'Novo pedido por donate' :
           req.source === 'resub' ? 'Novo pedido por resub' : 'Novo pedido pelo chat';
