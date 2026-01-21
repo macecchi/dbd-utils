@@ -116,3 +116,12 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* Mobile */
+@media (max-width: 480px) {
+  .modal {
+    width: calc(100vw - 2rem);
+    max-width: none;
+    margin: 1rem;
+  }
+}

@@ -72,3 +72,10 @@
   right: var(--space-xl);
   top: calc(100% - var(--space-sm));
 }
+
+/* Mobile */
+@media (max-width: 480px) {
+  .manual-entry-body input {
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+}
