@@ -33,8 +33,9 @@ interface Props {
 }
 
 export function ManualEntry({ isOpen, onClose }: Props) {
-  const { useRequests } = useChannel();
+  const { useRequests, useChannelInfo } = useChannel();
   const addRequest = useRequests((s) => s.add);
+  const owner = useChannelInfo((s) => s.owner);
   const [input, setInput] = useState('');
   const [autocompleteItems, setAutocompleteItems] = useState<CharacterOption[]>([]);
   const [autocompleteIndex, setAutocompleteIndex] = useState(-1);
@@ -78,7 +79,7 @@ export function ManualEntry({ isOpen, onClose }: Props) {
     const request: Request = {
       id: Date.now() + Math.random(),
       timestamp: new Date(),
-      donor: 'Manual',
+      donor: owner?.displayName || 'Manual',
       amount: '',
       amountVal: 0,
       message: char.name,
@@ -90,7 +91,7 @@ export function ManualEntry({ isOpen, onClose }: Props) {
     setInput('');
     setAutocompleteItems([]);
     onClose();
-  }, [addRequest, onClose]);
+  }, [addRequest, onClose, owner]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
