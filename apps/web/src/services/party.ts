@@ -12,7 +12,8 @@ export function connectParty(
   accessToken: string | null,
   onMessage: (msg: PartyMessage) => void,
   onOpen?: () => void,
-  onClose?: () => void
+  onClose?: () => void,
+  onError?: () => void
 ): void {
   if (socket) {
     socket.close();
@@ -39,6 +40,10 @@ export function connectParty(
 
   socket.addEventListener('close', () => {
     onClose?.();
+  });
+
+  socket.addEventListener('error', () => {
+    onError?.();
   });
 }
 
@@ -89,4 +94,8 @@ export function broadcastSetAll(requests: Request[]): void {
 
 export function broadcastSources(sources: SourcesSettings): void {
   send({ type: 'update-sources', sources });
+}
+
+export function broadcastIrcStatus(connected: boolean): void {
+  send({ type: 'irc-status', connected });
 }

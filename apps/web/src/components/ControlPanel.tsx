@@ -5,10 +5,11 @@ import { useConnectionStatus } from '../hooks/useConnectionStatus';
 
 
 export function ControlPanel() {
-  const { channel, isOwnChannel } = useChannel();
-  const { status } = useSettings();
+  const { channel, isOwnChannel, useChannelInfo } = useChannel();
+  const twitchStatus = useChannelInfo((s) => s.localIrcConnectionState);
   const { user, isAuthenticated, login, logout } = useAuth();
   const { connection, queue } = useConnectionStatus();
+  const owner = useChannelInfo((s) => s.owner);
 
   const [channelInput, setChannelInput] = useState(channel);
 
@@ -19,11 +20,11 @@ export function ControlPanel() {
 
   const inputChannel = channelInput.trim().toLowerCase();
   const isSameChannel = inputChannel === channel;
-  const isConnected = status === 'connected' && isSameChannel;
-  const isConnecting = status === 'connecting';
+  const isIrcConnected = twitchStatus === 'connected' && isSameChannel;
+  const isIrcConnecting = twitchStatus === 'connecting';
 
   const handleConnect = () => {
-    if (isConnected) {
+    if (isIrcConnected) {
       disconnect();
     } else if (inputChannel) {
       if (inputChannel !== channel) {
@@ -53,8 +54,8 @@ export function ControlPanel() {
       <div className="field grow channel">
         <label>Canal Twitch</label>
         <div className="channel-input">
-          {isOwnChannel && user && (
-            <img src={user.profile_image_url} alt={user.display_name} className="avatar" />
+          {owner && (
+            <img src={owner.avatar} alt={owner.displayName} className="avatar" />
           )}
           <input
             type="text"
@@ -68,11 +69,11 @@ export function ControlPanel() {
       {isOwnChannel ? (
         <>
           <button
-            className={`btn btn-primary ${isConnected ? 'connected' : ''}`}
+            className={`btn btn-primary ${isIrcConnected ? 'connected' : ''}`}
             onClick={handleConnect}
-            disabled={isConnecting || !inputChannel}
+            disabled={isIrcConnecting || !inputChannel}
           >
-            {isConnecting ? 'Conectando...' : isConnected ? 'Desconectar' : 'Conectar'}
+            {isIrcConnecting ? 'Conectando...' : isIrcConnected ? 'Desconectar' : 'Conectar'}
           </button>
           <div className="channel auth-info">
             <button className="btn btn-ghost" onClick={logout}>Sair</button>

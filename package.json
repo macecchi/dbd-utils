@@ -9,7 +9,8 @@
     "build": "bun run --filter '*' build",
     "deploy:api": "bun run --filter @dbd-utils/api deploy",
     "dev:party": "bun run --filter @dbd-utils/api dev:party",
-    "deploy:party": "bun run --filter @dbd-utils/api deploy:party"
+    "deploy:party": "bun run --filter @dbd-utils/api deploy:party",
+    "typecheck": "bun run --filter '*' typecheck"
   },
   "devDependencies": {
     "bun-types": "latest",

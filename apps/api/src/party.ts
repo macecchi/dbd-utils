@@ -24,7 +24,13 @@ interface SourcesSettings {
   priority: ('donation' | 'resub' | 'chat' | 'manual')[];
   sortMode: 'priority' | 'fifo';
   minDonation: number;
-  ircConnected: boolean;
+}
+
+type ChannelStatus = 'offline' | 'online' | 'live';
+
+interface ChannelState {
+  status: ChannelStatus;
+  owner: { login: string; displayName: string; avatar: string } | null;
 }
 
 const SOURCES_DEFAULTS: SourcesSettings = {
@@ -34,18 +40,19 @@ const SOURCES_DEFAULTS: SourcesSettings = {
   priority: ['donation', 'chat', 'resub', 'manual'],
   sortMode: 'fifo',
   minDonation: 5,
-  ircConnected: false,
 };
 
 type PartyMessage =
-  | { type: 'sync-full'; requests: SerializedRequest[]; sources: SourcesSettings }
+  | { type: 'sync-full'; requests: SerializedRequest[]; sources: SourcesSettings; channel: ChannelState }
   | { type: 'add-request'; request: SerializedRequest }
   | { type: 'update-request'; id: number; updates: Partial<SerializedRequest> }
   | { type: 'toggle-done'; id: number }
   | { type: 'reorder'; fromId: number; toId: number }
   | { type: 'delete-request'; id: number }
   | { type: 'set-all'; requests: SerializedRequest[] }
-  | { type: 'update-sources'; sources: SourcesSettings };
+  | { type: 'update-sources'; sources: SourcesSettings }
+  | { type: 'update-channel'; channel: ChannelState }
+  | { type: 'irc-status'; connected: boolean };
 
 interface ConnectionInfo {
   isOwner: boolean;
@@ -55,6 +62,7 @@ interface ConnectionInfo {
 export default class PartyServer implements Party.Server {
   requests: SerializedRequest[] = [];
   sources: SourcesSettings = SOURCES_DEFAULTS;
+  channel: ChannelState = { status: 'offline', owner: null };
   connections: Map<string, ConnectionInfo> = new Map();
 
   constructor(public room: Party.Room) { }
@@ -68,8 +76,7 @@ export default class PartyServer implements Party.Server {
     }
     const storedSources = await this.room.storage.get<Partial<SourcesSettings>>('sources');
     if (storedSources) {
-      // Merge with defaults, always reset ircConnected to false on start
-      this.sources = { ...SOURCES_DEFAULTS, ...storedSources, ircConnected: false };
+      this.sources = { ...SOURCES_DEFAULTS, ...storedSources };
       console.log(`${this.tag} Loaded sources config:`, JSON.stringify(this.sources.enabled));
     }
   }
@@ -103,7 +110,15 @@ export default class PartyServer implements Party.Server {
     this.connections.set(conn.id, { isOwner, user });
     console.log(`${this.tag} Connected: ${conn.id} (${user?.login ?? 'anon'}) - ${this.connections.size} total`);
 
-    const syncMsg: PartyMessage = { type: 'sync-full', requests: this.requests, sources: this.sources };
+    if (isOwner && user) {
+      this.channel = {
+        status: 'online',
+        owner: { login: user.login, displayName: user.display_name, avatar: user.profile_image_url }
+      };
+      this.broadcastChannel();
+    }
+
+    const syncMsg: PartyMessage = { type: 'sync-full', requests: this.requests, sources: this.sources, channel: this.channel };
     conn.send(JSON.stringify(syncMsg));
   }
 
@@ -111,6 +126,22 @@ export default class PartyServer implements Party.Server {
     const info = this.connections.get(conn.id);
     this.connections.delete(conn.id);
     console.log(`${this.tag} Disconnected: ${conn.id} (${info?.user?.login ?? 'anon'}) - ${this.connections.size} remaining`);
+
+    if (info?.isOwner) {
+      this.channel = { status: 'offline', owner: null };
+      this.broadcastChannel();
+    }
+  }
+
+  onError(conn: Party.Connection, error: unknown) {
+    console.error(`${this.tag} Error on ${conn.id}:`, error);
+    const info = this.connections.get(conn.id);
+    this.connections.delete(conn.id);
+
+    if (info?.isOwner) {
+      this.channel = { status: 'offline', owner: null };
+      this.broadcastChannel();
+    }
   }
 
   async onMessage(message: string, sender: Party.Connection) {
@@ -197,6 +228,15 @@ export default class PartyServer implements Party.Server {
         console.log(`${this.tag} ${user}: update-sources`, JSON.stringify(msg.sources.enabled));
         break;
       }
+      case 'irc-status': {
+        const status = msg.connected ? 'live' : 'online';
+        if (this.channel.status !== status) {
+          this.channel.status = status;
+          this.broadcastChannel();
+        }
+        console.log(`${this.tag} ${user}: irc-status ${msg.connected}`);
+        break;
+      }
     }
   }
 
@@ -220,5 +260,15 @@ export default class PartyServer implements Party.Server {
 
   private get tag() {
     return `[${this.room.id}]`;
+  }
+
+  private broadcastChannel() {
+    const msg = JSON.stringify({ type: 'update-channel', channel: this.channel });
+    let count = 0;
+    for (const conn of this.room.getConnections()) {
+      conn.send(msg);
+      count++;
+    }
+    console.log(`${this.tag} Broadcast channel state to ${count} client(s): status=${this.channel.status}, owner=${this.channel.owner?.login ?? 'null'}`);
   }
 }

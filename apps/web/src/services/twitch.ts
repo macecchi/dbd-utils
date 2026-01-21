@@ -6,6 +6,9 @@ import type { ChannelStores } from '../store/channel';
 
 let ws: WebSocket | null = null;
 let activeStores: ChannelStores | null = null;
+let intentionalClose = false;
+
+export const donateBotName = 'livepix';
 
 export function setActiveStores(stores: ChannelStores | null) {
   activeStores = stores;
@@ -16,20 +19,12 @@ function getStores() {
   return activeStores;
 }
 
-function setIrcConnected(connected: boolean) {
-  // Only set ircConnected if we're the owner - viewers get this via PartyKit sync
-  const isOwner = activeStores?.useRequests.getState().isOwner;
-  if (isOwner) {
-    activeStores?.useSources.getState().setIrcConnected(connected);
-  }
-}
-
 export function disconnect() {
   if (ws) {
+    intentionalClose = true;
     ws.close();
     ws = null;
-    useSettings.getState().setStatus('disconnected', 'Desconectado');
-    setIrcConnected(false);
+    getStores().useChannelInfo.getState().setIrcConnectionState('disconnected');
     window.location.hash = '';
   }
 }
@@ -39,11 +34,15 @@ export function connect(channel: string) {
   if (!ch) return;
 
   if (ws) {
+    intentionalClose = true;
     ws.close();
     ws = null;
   }
+  intentionalClose = false;
 
-  useSettings.getState().setStatus('connecting', 'Conectando...');
+  const { setIrcConnectionState } = getStores().useChannelInfo.getState();
+  setIrcConnectionState('connecting');
+  console.log('Connecting to Twitch IRC...');
 
   const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
   ws = socket;
@@ -56,16 +55,28 @@ export function connect(channel: string) {
     for (const line of e.data.split('\r\n')) {
       if (line.startsWith('PING')) socket.send('PONG :tmi.twitch.tv');
       else if (line.includes('366')) {
-        useSettings.getState().setStatus('connected', `t.tv/${ch}`);
-        setIrcConnected(true);
+        setIrcConnectionState('connected');
+        console.log('Connected to Twitch IRC');
         window.location.hash = `/${ch}`;
       }
       else if (line.includes('USERNOTICE')) handleUserNotice(line);
       else if (line.includes('PRIVMSG')) handleMessage(line);
     }
   };
-  socket.onclose = () => { useSettings.getState().setStatus('error', 'Desconectado'); setIrcConnected(false); ws = null; };
-  socket.onerror = () => { useSettings.getState().setStatus('error', 'Erro'); setIrcConnected(false); };
+  socket.onclose = () => {
+    console.log('Disconnected from Twitch IRC');
+    if (intentionalClose) {
+      setIrcConnectionState('disconnected');
+    } else {
+      setIrcConnectionState('error');
+    }
+    ws = null;
+    intentionalClose = false;
+  };
+  socket.onerror = () => {
+    console.log('Error connecting to Twitch IRC');
+    setIrcConnectionState('error');
+  };
 }
 
 function parseIrcTags(raw: string): Record<string, string> {
@@ -154,7 +165,6 @@ export function handleMessage(raw: string) {
   const { enabled, chatCommand, minDonation } = useSources.getState();
   const { add: addRequest } = useRequests.getState();
   const { add: addChat } = useChat.getState();
-  const { botName } = useSettings.getState();
 
   const tags = parseIrcTags(raw);
   const userMatch = raw.match(/display-name=([^;]*)/i);
@@ -166,9 +176,8 @@ export function handleMessage(raw: string) {
   const username = displayName.toLowerCase();
   const message = msgMatch[1].trim();
   const color = colorMatch?.[1] || null;
-  const bot = botName.toLowerCase();
 
-  addChat({ user: displayName, message, isDonate: username === bot, color });
+  addChat({ user: displayName, message, isDonate: username === donateBotName, color });
 
   if (message.toLowerCase().startsWith(chatCommand.toLowerCase())) {
     const requestText = message.slice(chatCommand.length).trim();
@@ -180,7 +189,7 @@ export function handleMessage(raw: string) {
     return;
   }
 
-  if (username !== bot) return;
+  if (username !== donateBotName) return;
   const parsed = parseDonationMessage(message);
   if (!parsed || !enabled.donation) return;
 
@@ -238,8 +247,7 @@ window.dbdDebug = {
   },
   donate: (donor: string, amount: number, message: string) => {
     if (!checkWriteMode()) return;
-    const { botName } = useSettings.getState();
-    const raw = `@display-name=${botName};color=#FF0000 :${botName.toLowerCase()}!${botName.toLowerCase()}@${botName.toLowerCase()}.tmi.twitch.tv PRIVMSG #test :${donor} doou R$ ${amount},00: ${message}`;
+    const raw = `@display-name=${donateBotName};color=#FF0000 :${donateBotName.toLowerCase()}!${donateBotName.toLowerCase()}@${donateBotName.toLowerCase()}.tmi.twitch.tv PRIVMSG #test :${donor} doou R$ ${amount},00: ${message}`;
     handleMessage(raw);
   },
   resub: (user: string, message: string) => {

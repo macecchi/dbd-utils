@@ -19,39 +19,49 @@ interface StatusInfo {
 }
 
 export function useConnectionStatus(): StatusInfo {
-  const { status } = useSettings();
-  const { isOwnChannel, useRequests, useSources } = useChannel();
-  const partyConnected = useRequests((s) => s.partyConnected);
-  const serverIrcConnected = useSources((s) => s.serverIrcConnected);
-  const enabled = useSources((s) => s.enabled);
+  const { isOwnChannel, useSources, useChannelInfo } = useChannel();
+  const channelStatus = useChannelInfo((s) => s.status);
+  const channelOwner = useChannelInfo((s) => s.owner);
+  const localIrcConnectionState = useChannelInfo((s) => s.localIrcConnectionState);
+  const localPartyConnectionState = useChannelInfo((s) => s.localPartyConnectionState);
+  const enabledSources = useSources((s) => s.enabled);
+
+  console.log('Connection status:', { localIrcConnectionState, localPartyConnectionState, channelStatus, enabledSources });
 
   // Connection (1st dot)
   let connection: { state: ConnectionState; text: string };
-  if (isOwnChannel) {
-    if (status === 'error') {
-      connection = { state: 'error', text: 'Erro de conexão' };
-    } else if (!partyConnected || status === 'connecting') {
+  // Handle errors first
+  if (localIrcConnectionState === 'error') {
+    connection = { state: 'error', text: 'Erro Twitch' };
+  } else if (localPartyConnectionState === 'error') {
+    connection = { state: 'error', text: 'Erro servidor' };
+  } else if (localPartyConnectionState === 'connecting') {
+    connection = { state: 'connecting', text: 'Conectando...' };
+  } else if (isOwnChannel) {
+    // Owner: state is based on IRC connection and channel status
+    if (localIrcConnectionState === 'connecting') {
       connection = { state: 'connecting', text: 'Conectando' };
-    } else if (status === 'connected' && !serverIrcConnected) {
-      connection = { state: 'partial', text: 'Aguardando servidor' };
-    } else if (status === 'connected' && serverIrcConnected) {
+    } else if (localIrcConnectionState === 'connected' && channelStatus === 'online') {
+      connection = { state: 'partial', text: 'Aguardando iniciar' };
+    } else if (localIrcConnectionState === 'connected' && channelStatus === 'live') {
       connection = { state: 'connected', text: 'Conectado' };
     } else {
       connection = { state: 'disconnected', text: 'Desconectado' };
     }
   } else {
-    if (!partyConnected) {
-      connection = { state: 'connecting', text: 'Conectando' };
-    } else if (serverIrcConnected) {
-      connection = { state: 'connected', text: 'Streamer online' };
+    // Viewer: state is only based on server's channel status
+    if (channelStatus === 'live') {
+      connection = { state: 'connected', text: 'Conectado' };
+    } else if (channelStatus === 'online') {
+      connection = { state: 'partial', text: `Aguardando ${channelOwner?.displayName || 'streamer'}` };
     } else {
       connection = { state: 'disconnected', text: 'Streamer offline' };
     }
   }
 
   // Queue (2nd dot)
-  const { manual, ...autoSources } = enabled;
-  const takingRequests = serverIrcConnected && Object.values(autoSources).some(Boolean);
+  const { manual, ...autoSources } = enabledSources;
+  const takingRequests = channelStatus === 'live' && Object.values(autoSources).some(Boolean);
   const queue: { state: QueueState; text: string } = takingRequests
     ? { state: 'connected', text: 'Fila aberta' }
     : { state: 'disconnected', text: 'Fila fechada' };

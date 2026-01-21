@@ -25,7 +25,7 @@ function ChannelApp() {
   const { useRequests, useSources, isOwnChannel } = useChannel();
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
-  const { botName, chatHidden, setChatHidden } = useSettings();
+  const { chatHidden, setChatHidden } = useSettings();
   const { show } = useToasts();
   const sortMode = useSources((s) => s.sortMode);
   const setSortMode = useSources((s) => s.setSortMode);
@@ -162,7 +162,7 @@ function ChannelApp() {
         {isDebugMode() && <DebugPanel />}
 
         <footer className="footer">
-          <div>Monitorando doações via <strong style={{ color: 'var(--accent)' }}>{botName}</strong></div>
+          <div>DBD Tracker</div>
           <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span>Versão: {__APP_VERSION__}</span>
             <span className="footer-separator">•</span>
@@ -226,8 +226,6 @@ export function App() {
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, [setLastChannel]);
-
-  // IRC connection is handled in ChannelProvider (only for owners)
 
   if (!channel) {
     return null;

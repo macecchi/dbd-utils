@@ -3,13 +3,13 @@ import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } 
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
-import { useChannel, useChat, useSettings, useToasts, useAuth } from '../store';
+import { useChannel, useChat, useToasts, useAuth } from '../store';
+import { donateBotName } from '../services/twitch';
 
 export function DebugPanel() {
   const { useRequests, useSources } = useChannel();
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { clear: clearChat, add: addChat } = useChat();
-  const { botName } = useSettings();
   const { isAuthenticated } = useAuth();
   const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
   const { show: showToast } = useToasts();
@@ -60,7 +60,7 @@ export function DebugPanel() {
   const [vodStatus, setVodStatus] = useState('');
   const [isReplaying, setIsReplaying] = useState(false);
 
-  const vodConfig = { botName, minDonation, sourcesEnabled };
+  const vodConfig = { botName: donateBotName, minDonation, sourcesEnabled };
 
   const handleTest = async (e: FormEvent) => {
     e.preventDefault();

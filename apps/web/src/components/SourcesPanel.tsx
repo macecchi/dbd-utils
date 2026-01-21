@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useChannel, useSettings, SOURCES_DEFAULTS } from '../store';
+import { donateBotName } from '../services/twitch';
 
 type SourceType = 'donation' | 'resub' | 'chat';
 
@@ -36,7 +37,6 @@ export function SourcesPanel() {
     enabled, chatCommand, chatTiers, priority, sortMode, minDonation,
     setEnabled, setChatCommand, setChatTiers, setPriority, setMinDonation
   } = useSources();
-  const { botName, setBotName } = useSettings();
   const readOnly = !isOwnChannel;
 
   const [isOpen, setIsOpen] = useState(true);
@@ -97,19 +97,7 @@ export function SourcesPanel() {
 
         {source === 'donation' && (
           <div className="source-section-body">
-            <span className="source-section-desc">Pedidos feitos via donate a partir do valor mínimo definido</span>
-            <div className="source-field">
-              <label htmlFor="donation-bot">Bot</label>
-              <input
-                id="donation-bot"
-                name="donation-bot"
-                type="text"
-                defaultValue={botName}
-                placeholder="livepix"
-                onBlur={e => !readOnly && setBotName(e.target.value.trim() || 'livepix')}
-                disabled={readOnly}
-              />
-            </div>
+            <span className="source-section-desc">Pedidos feitos via <strong>{donateBotName}</strong> a partir do valor mínimo definido</span>
             <div className="source-field">
               <label htmlFor="donation-min">Mínimo</label>
               <div className="input-with-prefix">

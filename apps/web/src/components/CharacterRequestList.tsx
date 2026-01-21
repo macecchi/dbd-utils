@@ -10,9 +10,9 @@ interface Props {
 }
 
 export function CharacterRequestList({ showDone = false }: Props) {
-  const { useRequests, useSources, isOwnChannel } = useChannel();
+  const { useRequests, useChannelInfo, isOwnChannel } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
-  const serverIrcConnected = useSources((s) => s.serverIrcConnected);
+  const channelStatus = useChannelInfo((s) => s.status);
   const { showUndo } = useToasts();
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
@@ -59,7 +59,7 @@ export function CharacterRequestList({ showDone = false }: Props) {
   if (filtered.length === 0) {
     const emptyMessage = showDone
       ? 'Nenhum pedido'
-      : !isOwnChannel && !serverIrcConnected
+      : !isOwnChannel && channelStatus !== 'live'
         ? 'Streamer offline'
         : 'Aguardando pedidos...';
     return <div className="empty">{emptyMessage}</div>;

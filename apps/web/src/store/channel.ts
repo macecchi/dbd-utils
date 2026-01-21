@@ -1,7 +1,7 @@
 // apps/web/src/store/channel.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Request } from '../types';
+import type { ConnectionState, Request } from '../types';
 import type { SourcesEnabled } from '../types';
 import type { PartyMessage } from '../types/party';
 import { deserializeRequest, deserializeRequests } from '../types/party';
@@ -13,6 +13,7 @@ import {
   broadcastDelete,
   broadcastSetAll,
   broadcastSources,
+  broadcastIrcStatus,
 } from '../services/party';
 
 // ============ REQUESTS STORE ============
@@ -139,7 +140,7 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
               if (serverRequests.length === 0 && localRequests.length > 0 && isOwner && partyConnected) {
                 const sources = getSourcesState();
                 broadcastSetAll(localRequests);
-                broadcastSources({ ...sources, ircConnected: false });
+                broadcastSources(sources);
               } else {
                 set({ requests: serverRequests });
               }
@@ -248,8 +249,6 @@ interface SourcesStore {
   priority: SourceType[];
   sortMode: SortMode;
   minDonation: number;
-  localIrcConnected: boolean;        // local IRC state (what we broadcast)
-  serverIrcConnected: boolean;  // server's acknowledged state
   setEnabled: (enabled: SourcesEnabled) => void;
   toggleSource: (source: keyof SourcesEnabled) => void;
   setChatCommand: (cmd: string) => void;
@@ -257,7 +256,6 @@ interface SourcesStore {
   setPriority: (priority: SourceType[]) => void;
   setSortMode: (mode: SortMode) => void;
   setMinDonation: (min: number) => void;
-  setIrcConnected: (connected: boolean) => void;
   handlePartyMessage: (msg: PartyMessage) => void;
 }
 
@@ -275,20 +273,18 @@ export const SOURCES_DEFAULTS = {
   priority: ['donation', 'chat', 'resub', 'manual'] as SourceType[],
   sortMode: 'fifo' as SortMode,
   minDonation: 5,
-  ircConnected: false,
-  serverIrcConnected: false,
 };
 
 
 export function createSourcesStore(
   channel: string,
-  getPartyState: () => { partyConnected: boolean; isOwner: boolean }
+  getContext: () => { partyConnected: boolean; isOwner: boolean }
 ) {
   const maybeBroadcast = (get: () => SourcesStore) => {
-    const { partyConnected, isOwner } = getPartyState();
+    const { partyConnected, isOwner } = getContext();
     if (partyConnected && isOwner) {
-      const { enabled, chatCommand, chatTiers, priority, sortMode, minDonation, localIrcConnected: ircConnected } = get();
-      broadcastSources({ enabled, chatCommand, chatTiers, priority, sortMode, minDonation, ircConnected });
+      const sources = get();
+      broadcastSources(sources);
     }
   };
 
@@ -301,8 +297,6 @@ export function createSourcesStore(
         priority: SOURCES_DEFAULTS.priority,
         sortMode: SOURCES_DEFAULTS.sortMode,
         minDonation: SOURCES_DEFAULTS.minDonation,
-        localIrcConnected: SOURCES_DEFAULTS.ircConnected,
-        serverIrcConnected: SOURCES_DEFAULTS.serverIrcConnected,
         setEnabled: (enabled) => {
           set({ enabled });
           maybeBroadcast(get);
@@ -331,14 +325,9 @@ export function createSourcesStore(
           set({ minDonation });
           maybeBroadcast(get);
         },
-        setIrcConnected: (ircConnected) => {
-          set({ localIrcConnected: ircConnected });
-          maybeBroadcast(get);
-        },
         handlePartyMessage: (msg) => {
           if (msg.type === 'sync-full' || msg.type === 'update-sources') {
             const sources = msg.sources;
-            const serverIrcConnected = sources.ircConnected ?? false;
             set({
               enabled: sources.enabled,
               chatCommand: sources.chatCommand,
@@ -346,7 +335,6 @@ export function createSourcesStore(
               priority: sources.priority,
               sortMode: sources.sortMode,
               minDonation: sources.minDonation,
-              serverIrcConnected,
             });
           }
         },
@@ -367,20 +355,82 @@ export function createSourcesStore(
   );
 }
 
+// ============ CHANNEL INFO STORE ============
+
+type ChannelStatus = 'offline' | 'online' | 'live';
+
+interface ChannelOwner {
+  login: string;
+  displayName: string;
+  avatar: string;
+}
+
+interface ChannelInfoStore {
+  status: ChannelStatus;
+  owner: ChannelOwner | null;
+  localIrcConnectionState: ConnectionState;
+  localPartyConnectionState: ConnectionState;
+  setIrcConnectionState: (state: ConnectionState) => void;
+  setPartyConnectionState: (state: ConnectionState) => void;
+  handlePartyMessage: (msg: PartyMessage) => void;
+}
+
+export type ChannelInfoStoreApi = ReturnType<typeof createChannelInfoStore>;
+
+export function createChannelInfoStore(
+  getContext: () => { partyConnected: boolean; isOwner: boolean; sources: SourcesStore }
+) {
+  return create<ChannelInfoStore>()((set, get) => ({
+    status: 'offline',
+    owner: null,
+    localIrcConnectionState: 'disconnected',
+    localPartyConnectionState: 'disconnected',
+    setIrcConnectionState: (state) => {
+      set({ localIrcConnectionState: state });
+      const { isOwner } = getContext();
+      if (isOwner) {
+        broadcastIrcStatus(state === 'connected');
+      }
+    },
+    setPartyConnectionState: (state) => {
+      set({ localPartyConnectionState: state });
+    },
+    handlePartyMessage: (msg) => {
+      if (msg.type === 'sync-full' || msg.type === 'update-channel') {
+        set({
+          status: msg.channel.status,
+          owner: msg.channel.owner,
+        });
+      }
+    },
+  }));
+}
+
 // ============ CHANNEL STORES ============
 
 export interface ChannelStores {
   useRequests: RequestsStoreApi;
   useSources: SourcesStoreApi;
+  useChannelInfo: ChannelInfoStoreApi;
 }
 
-export function createChannelStores(channel: string): ChannelStores {
+// Given a room name, initialize all the stores for that room
+export function createRoomStores(channel: string): ChannelStores {
   const key = channel.toLowerCase();
   let useSources: SourcesStoreApi;
+  let useChannelInfo: ChannelInfoStoreApi;
+
   const useRequests = createRequestsStore(key, () => useSources.getState());
+
   useSources = createSourcesStore(key, () => {
     const { partyConnected, isOwner } = useRequests.getState();
     return { partyConnected, isOwner };
   });
-  return { useRequests, useSources };
+
+  useChannelInfo = createChannelInfoStore(() => {
+    const { partyConnected, isOwner } = useRequests.getState();
+    return { partyConnected, isOwner, sources: useSources.getState() };
+  });
+
+  return { useRequests, useSources, useChannelInfo };
 }

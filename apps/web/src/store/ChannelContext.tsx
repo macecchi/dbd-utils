@@ -1,6 +1,6 @@
 // apps/web/src/store/ChannelContext.tsx
 import { createContext, useContext, useMemo, useEffect } from 'react';
-import { createChannelStores, type ChannelStores } from './channel';
+import { createRoomStores, type ChannelStores } from './channel';
 import { setActiveStores, connect as connectIrc, disconnect as disconnectIrc } from '../services/twitch';
 import { connectParty, disconnectParty } from '../services/party';
 import { useAuth } from './auth';
@@ -20,7 +20,7 @@ interface ChannelProviderProps {
 export function ChannelProvider({ channel, children }: ChannelProviderProps) {
   const { user, isAuthenticated, getAccessToken } = useAuth();
   const isOwnChannel = isAuthenticated && !!user && channel.toLowerCase() === user.login.toLowerCase();
-  const stores = useMemo(() => createChannelStores(channel), [channel]);
+  const stores = useMemo(() => createRoomStores(channel), [channel]);
 
   useEffect(() => {
     setActiveStores(stores);
@@ -37,8 +37,9 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
 
   // Connect to PartySocket
   useEffect(() => {
-    const { setPartyConnected, setIsOwner, handlePartyMessage: handleRequestsMessage } = stores.useRequests.getState();
+    const { setIsOwner, handlePartyMessage: handleRequestsMessage } = stores.useRequests.getState();
     const { handlePartyMessage: handleSourcesMessage } = stores.useSources.getState();
+    const { handlePartyMessage: handleChannelInfoMessage, setPartyConnectionState } = stores.useChannelInfo.getState();
     setIsOwner(isOwnChannel);
 
     let cancelled = false;
@@ -47,15 +48,28 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
       const token = await getAccessToken();
       if (cancelled) return;
 
+      console.log('Connecting to PartyKit...');
+      setPartyConnectionState('connecting');
       connectParty(
         channel,
         token,
         (msg) => {
           handleRequestsMessage(msg);
           handleSourcesMessage(msg);
+          handleChannelInfoMessage(msg);
         },
-        () => setPartyConnected(true),
-        () => setPartyConnected(false)
+        () => {
+          console.log('Connected to PartyKit');
+          setPartyConnectionState('connected');
+        },
+        () => {
+          console.log('Disconnected from PartyKit');
+          setPartyConnectionState('disconnected');
+        },
+        () => {
+          console.log('Error connecting to PartyKit');
+          setPartyConnectionState('error');
+        }
       );
     }
 
@@ -64,7 +78,7 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     return () => {
       cancelled = true;
       disconnectParty();
-      setPartyConnected(false);
+      setPartyConnectionState('disconnected');
     };
   }, [channel, isOwnChannel, stores, getAccessToken]);
 
