@@ -23,7 +23,7 @@ const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 app.use(
   "*",
   cors({
-    origin: (origin, c) => c.env.FRONTEND_URL,
+    origin: (origin, c) => new URL(c.env.FRONTEND_URL).origin,
     credentials: true,
   })
 );
