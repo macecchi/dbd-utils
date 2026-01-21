@@ -37,6 +37,7 @@ jobs:
         run: bun run --filter @dbd-utils/web build
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_PARTY_HOST: ${{ vars.VITE_PARTY_HOST }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
