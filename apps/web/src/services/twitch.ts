@@ -86,10 +86,8 @@ function getSubTierFromBadges(badges: string): number {
 export function handleUserNotice(raw: string) {
   const { useSources, useRequests } = getStores();
   const { enabled } = useSources.getState();
-  const { isLLMEnabled } = useSettings.getState();
   const { add: addRequest } = useRequests.getState();
   const { add: addChat } = useChat.getState();
-  const llmEnabled = isLLMEnabled();
 
   const tags = parseIrcTags(raw);
   if (tags['msg-id'] !== 'resub' && tags['msg-id'] !== 'sub') return;
@@ -111,10 +109,10 @@ export function handleUserNotice(raw: string) {
     amount: '',
     amountVal: 0,
     message,
-    character: local?.character || (llmEnabled ? 'Identificando...' : ''),
+    character: local?.character || 'Identificando...',
     type: local?.type || 'unknown',
     source: 'resub',
-    needsIdentification: !local && llmEnabled
+    needsIdentification: !local
   };
   addRequest(request);
 }
@@ -122,9 +120,7 @@ export function handleUserNotice(raw: string) {
 function handleChatCommand(tags: Record<string, string>, displayName: string, _username: string, requestText: string) {
   const { useSources, useRequests } = getStores();
   const { enabled, chatTiers } = useSources.getState();
-  const { isLLMEnabled } = useSettings.getState();
   const { add: addRequest } = useRequests.getState();
-  const llmEnabled = isLLMEnabled();
 
   if (!enabled.chat) { console.log('[dbdDebug] chat source disabled'); return; }
   if (!requestText) { console.log('[dbdDebug] empty request'); return; }
@@ -144,22 +140,21 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
     amount: '',
     amountVal: 0,
     message: requestText,
-    character: local?.character || (llmEnabled ? 'Identificando...' : ''),
+    character: local?.character || 'Identificando...',
     type: local?.type || 'unknown',
     source: 'chat',
     subTier,
-    needsIdentification: !local && llmEnabled
+    needsIdentification: !local
   };
   addRequest(request);
 }
 
 export function handleMessage(raw: string) {
   const { useSources, useRequests } = getStores();
-  const { botName, isLLMEnabled } = useSettings.getState();
   const { enabled, chatCommand, minDonation } = useSources.getState();
   const { add: addRequest } = useRequests.getState();
   const { add: addChat } = useChat.getState();
-  const llmEnabled = isLLMEnabled();
+  const { botName } = useSettings.getState();
 
   const tags = parseIrcTags(raw);
   const userMatch = raw.match(/display-name=([^;]*)/i);
@@ -201,10 +196,10 @@ export function handleMessage(raw: string) {
     amount: parsed.amount,
     amountVal,
     message: parsed.message,
-    character: local?.character || (llmEnabled ? 'Identificando...' : ''),
+    character: local?.character || 'Identificando...',
     type: local?.type || 'unknown',
     source: 'donation',
-    needsIdentification: !local && llmEnabled
+    needsIdentification: !local
   };
   addRequest(request);
 }
