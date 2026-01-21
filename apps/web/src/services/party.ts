@@ -1,7 +1,6 @@
 import PartySocket from 'partysocket';
-import type { Request } from '../types';
-import type { PartyMessage, SerializedRequest, SourcesSettings } from '../types/party';
-import { serializeRequest } from '../types/party';
+import type { Request, PartyMessage, SerializedRequest, SourcesSettings } from '../types';
+import { serializeRequest } from '../types';
 
 const PARTY_HOST = import.meta.env.VITE_PARTY_HOST || 'localhost:1999';
 

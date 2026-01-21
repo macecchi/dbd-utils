@@ -1,10 +1,8 @@
 // apps/web/src/store/channel.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ConnectionState, Request } from '../types';
-import type { SourcesEnabled } from '../types';
-import type { PartyMessage } from '../types/party';
-import { deserializeRequest, deserializeRequests } from '../types/party';
+import type { ConnectionState, Request, SourcesEnabled, PartyMessage, ChannelStatus } from '../types';
+import { deserializeRequest, deserializeRequests } from '../types';
 import {
   broadcastAdd,
   broadcastUpdate,
@@ -356,8 +354,6 @@ export function createSourcesStore(
 }
 
 // ============ CHANNEL INFO STORE ============
-
-type ChannelStatus = 'offline' | 'online' | 'live';
 
 interface ChannelOwner {
   login: string;

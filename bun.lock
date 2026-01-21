@@ -12,6 +12,7 @@
     "apps/api": {
       "name": "@dbd-utils/api",
       "dependencies": {
+        "@dbd-utils/shared": "workspace:*",
         "arctic": "^3.5.0",
         "hono": "^4.7.0",
       },
@@ -25,6 +26,7 @@
     "apps/web": {
       "name": "@dbd-utils/web",
       "dependencies": {
+        "@dbd-utils/shared": "workspace:*",
         "partysocket": "^1.0.2",
         "react": "^19.2.3",
         "react-dom": "^19.2.3",
@@ -39,6 +41,10 @@
         "vite-plugin-pwa": "^1.2.0",
         "workbox-window": "^7.4.0",
       },
+    },
+    "packages/shared": {
+      "name": "@dbd-utils/shared",
+      "version": "0.0.1",
     },
   },
   "packages": {
@@ -247,6 +253,8 @@
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 
     "@dbd-utils/api": ["@dbd-utils/api@workspace:apps/api"],
+
+    "@dbd-utils/shared": ["@dbd-utils/shared@workspace:packages/shared"],
 
     "@dbd-utils/web": ["@dbd-utils/web@workspace:apps/web"],
 

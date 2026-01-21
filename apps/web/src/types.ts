@@ -1,31 +1,22 @@
-export interface Character {
-  name: string;
-  aliases: string[];
-  portrait?: string;
-}
+export type {
+  Character,
+  CharacterData,
+  Request,
+  CharacterRequest,
+  SourcesEnabled,
+  ConnectionState,
+  SerializedRequest,
+  SourcesSettings,
+  ChannelStatus,
+  ChannelState,
+  PartyMessage,
+} from '@dbd-utils/shared';
 
-export interface CharacterData {
-  survivors: Character[];
-  killers: Character[];
-}
-
-export interface Request {
-  id: number;
-  timestamp: Date;
-  donor: string;
-  amount: string;
-  amountVal: number;
-  message: string;
-  character: string;
-  type: 'survivor' | 'killer' | 'unknown' | 'none';
-  done?: boolean;
-  source: 'donation' | 'resub' | 'chat' | 'manual';
-  subTier?: number;
-  needsIdentification?: boolean;
-  validating?: boolean;
-}
-
-export type CharacterRequest = Request;
+export {
+  serializeRequest,
+  deserializeRequest,
+  deserializeRequests,
+} from '@dbd-utils/shared';
 
 export interface ChatMessage {
   user: string;
@@ -43,12 +34,3 @@ export interface Toast {
   type: 'default' | 'info' | 'undo';
   undoCallback?: () => void;
 }
-
-export interface SourcesEnabled {
-  donation: boolean;
-  resub: boolean;
-  chat: boolean;
-  manual: boolean;
-}
-
-export type ConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error';

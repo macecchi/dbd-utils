@@ -2,7 +2,8 @@
   "name": "dbd-utils",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "concurrently \"bun run --filter '*' dev\" \"bun run dev:party\"",

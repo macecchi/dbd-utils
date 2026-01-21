@@ -1,4 +1,4 @@
-import type { Request, SourcesEnabled } from '../types';
+import type { Request, SourcesEnabled } from './types';
 
 export interface SourcesSettings {
   enabled: SourcesEnabled;
