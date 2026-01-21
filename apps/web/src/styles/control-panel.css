@@ -63,6 +63,10 @@
 }
 
 .status-dot.connecting {
+  animation: pulse 1s infinite;
+}
+
+.status-dot.partial {
   background: var(--yellow);
   animation: pulse 1s infinite;
 }

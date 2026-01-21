@@ -12,7 +12,7 @@ interface Props {
 export function CharacterRequestList({ showDone = false }: Props) {
   const { useRequests, useSources, isOwnChannel } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
-  const ircConnected = useSources((s) => s.ircConnected);
+  const serverIrcConnected = useSources((s) => s.serverIrcConnected);
   const { showUndo } = useToasts();
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
@@ -59,7 +59,7 @@ export function CharacterRequestList({ showDone = false }: Props) {
   if (filtered.length === 0) {
     const emptyMessage = showDone
       ? 'Nenhum pedido'
-      : !isOwnChannel && !ircConnected
+      : !isOwnChannel && !serverIrcConnected
         ? 'Streamer offline'
         : 'Aguardando pedidos...';
     return <div className="empty">{emptyMessage}</div>;

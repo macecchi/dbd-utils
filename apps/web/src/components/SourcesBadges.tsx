@@ -2,14 +2,14 @@ import { useChannel } from '../store';
 
 export function SourcesBadges() {
     const { useSources } = useChannel();
-    const ircConnected = useSources((s) => s.ircConnected);
+    const serverIrcConnected = useSources((s) => s.serverIrcConnected);
     const sourcesEnabled = useSources((s) => s.enabled);
     const minDonation = useSources((s) => s.minDonation);
     const chatCommand = useSources((s) => s.chatCommand);
     const chatTiers = useSources((s) => s.chatTiers);
 
     const badges = (() => {
-        if (!ircConnected) return ['Pedidos desativados'];
+        if (!serverIrcConnected) return ['Pedidos desativados'];
         const parts: string[] = [];
         if (sourcesEnabled.donation) parts.push(`Donates (R$${minDonation}+)`);
         if (sourcesEnabled.chat) {

@@ -228,8 +228,8 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
               },
             };
           },
-          setItem: () => {},
-          removeItem: () => {},
+          setItem: () => { },
+          removeItem: () => { },
         },
       }
     )
@@ -248,7 +248,8 @@ interface SourcesStore {
   priority: SourceType[];
   sortMode: SortMode;
   minDonation: number;
-  ircConnected: boolean;
+  localIrcConnected: boolean;        // local IRC state (what we broadcast)
+  serverIrcConnected: boolean;  // server's acknowledged state
   setEnabled: (enabled: SourcesEnabled) => void;
   toggleSource: (source: keyof SourcesEnabled) => void;
   setChatCommand: (cmd: string) => void;
@@ -258,7 +259,6 @@ interface SourcesStore {
   setMinDonation: (min: number) => void;
   setIrcConnected: (connected: boolean) => void;
   handlePartyMessage: (msg: PartyMessage) => void;
-  isTakingRequests: () => boolean;
 }
 
 export type SourcesStoreApi = ReturnType<typeof createSourcesStore>;
@@ -276,6 +276,7 @@ export const SOURCES_DEFAULTS = {
   sortMode: 'fifo' as SortMode,
   minDonation: 5,
   ircConnected: false,
+  serverIrcConnected: false,
 };
 
 
@@ -286,7 +287,7 @@ export function createSourcesStore(
   const maybeBroadcast = (get: () => SourcesStore) => {
     const { partyConnected, isOwner } = getPartyState();
     if (partyConnected && isOwner) {
-      const { enabled, chatCommand, chatTiers, priority, sortMode, minDonation, ircConnected } = get();
+      const { enabled, chatCommand, chatTiers, priority, sortMode, minDonation, localIrcConnected: ircConnected } = get();
       broadcastSources({ enabled, chatCommand, chatTiers, priority, sortMode, minDonation, ircConnected });
     }
   };
@@ -300,7 +301,8 @@ export function createSourcesStore(
         priority: SOURCES_DEFAULTS.priority,
         sortMode: SOURCES_DEFAULTS.sortMode,
         minDonation: SOURCES_DEFAULTS.minDonation,
-        ircConnected: SOURCES_DEFAULTS.ircConnected,
+        localIrcConnected: SOURCES_DEFAULTS.ircConnected,
+        serverIrcConnected: SOURCES_DEFAULTS.serverIrcConnected,
         setEnabled: (enabled) => {
           set({ enabled });
           maybeBroadcast(get);
@@ -330,13 +332,13 @@ export function createSourcesStore(
           maybeBroadcast(get);
         },
         setIrcConnected: (ircConnected) => {
-          set({ ircConnected });
+          set({ localIrcConnected: ircConnected });
           maybeBroadcast(get);
         },
         handlePartyMessage: (msg) => {
           if (msg.type === 'sync-full' || msg.type === 'update-sources') {
             const sources = msg.sources;
-            const ircConnected = sources.ircConnected ?? false;
+            const serverIrcConnected = sources.ircConnected ?? false;
             set({
               enabled: sources.enabled,
               chatCommand: sources.chatCommand,
@@ -344,14 +346,9 @@ export function createSourcesStore(
               priority: sources.priority,
               sortMode: sources.sortMode,
               minDonation: sources.minDonation,
-              ircConnected,
+              serverIrcConnected,
             });
           }
-        },
-        isTakingRequests: () => {
-          const { enabled, ircConnected } = get();
-          const { manual, ...autoSources } = enabled;
-          return ircConnected && Object.values(autoSources).some(Boolean);
         },
       }),
       {
@@ -362,8 +359,8 @@ export function createSourcesStore(
             const str = localStorage.getItem(name);
             return str ? JSON.parse(str) : null;
           },
-          setItem: () => {},
-          removeItem: () => {},
+          setItem: () => { },
+          removeItem: () => { },
         },
       }
     )

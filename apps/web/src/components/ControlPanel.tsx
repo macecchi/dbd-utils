@@ -1,20 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useSettings, useAuth, useChannel } from '../store';
 import { connect, disconnect } from '../services/twitch';
-import type { ConnectionState } from '../types';
+import { useConnectionStatus } from '../hooks/useConnectionStatus';
 
 
 export function ControlPanel() {
-  const { channel, isOwnChannel, useRequests, useSources } = useChannel();
+  const { channel, isOwnChannel } = useChannel();
   const { status } = useSettings();
   const { user, isAuthenticated, login, logout } = useAuth();
-  const partyConnected = useRequests((s) => s.partyConnected);
-  const ircConnected = useSources((s) => s.ircConnected);
-  const takingRequests = useSources((s) => s.isTakingRequests());
-
-  // For viewers: derive status from partyConnected + ircConnected
-  const viewerStatus: ConnectionState = !partyConnected ? 'connecting' : ircConnected ? 'connected' : 'disconnected';
-  const viewerStatusText = !partyConnected ? 'Conectando...' : ircConnected ? 'Streamer online' : 'Streamer offline';
+  const { connection, queue } = useConnectionStatus();
 
   const [channelInput, setChannelInput] = useState(channel);
 
@@ -98,12 +92,12 @@ export function ControlPanel() {
       )}
       <div className="status-block">
         <div className="status-row">
-          <span className={`status-dot ${viewerStatus}`} />
-          <span>{viewerStatusText}</span>
+          <span className={`status-dot ${connection.state}`} />
+          <span>{connection.text}</span>
         </div>
         <div className="status-row">
-          <span className={`status-dot ${takingRequests ? 'connected' : ''}`} />
-          <span>{takingRequests ? 'Fila aberta' : 'Fila fechada'}</span>
+          <span className={`status-dot ${queue.state}`} />
+          <span>{queue.text}</span>
         </div>
       </div>
     </section>
