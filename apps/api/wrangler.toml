@@ -2,13 +2,13 @@ name = "dbd-tracker"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = false
+
 [vars]
 FRONTEND_URL = "http://localhost:5173"
-
-# Secrets (set via `wrangler secret put <NAME>`):
-# - TWITCH_CLIENT_ID
-# - TWITCH_CLIENT_SECRET
-# - JWT_SECRET
 
 [env.production]
 vars = { FRONTEND_URL = "https://macecchi.github.io/dbd-utils" }
