@@ -72,3 +72,23 @@ body {
   min-height: 100vh;
   line-height: 1.5;
 }
+
+/* Mobile - prevent keyboard resize and horizontal overflow */
+@media (max-width: 480px) {
+  html {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    height: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 800px) {
+  html, body {
+    overflow-x: hidden;
+  }
+}

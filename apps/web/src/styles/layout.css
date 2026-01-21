@@ -169,6 +169,12 @@
   align-items: center;
 }
 
+/* Viewer mode - hide action buttons and count */
+.viewer-mode .btn,
+.viewer-mode .panel-count {
+  display: none;
+}
+
 .panel-body {
   flex: 1;
   overflow-y: auto;
@@ -217,4 +223,111 @@
 
 .footer-separator {
   opacity: 0.5;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .app {
+    padding: 0.75rem 0;
+    gap: 0.75rem;
+    min-width: 280px;
+    max-width: 100vw;
+  }
+
+  .header {
+    padding: 0 0.75rem 0.75rem;
+  }
+
+  .panel {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .brand-icon img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand h1 {
+    font-size: 1.1rem;
+  }
+
+  .brand span {
+    display: block;
+    margin-left: 0;
+    margin-top: 0.15rem;
+  }
+
+  .stats {
+    gap: 1.5rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .panel-header {
+    padding: var(--space-md) var(--space-lg);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .panel-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--text-base);
+  }
+
+  .panel-title img {
+    width: 24px;
+  }
+
+  .sources-summary {
+    font-size: var(--text-xs);
+    padding: 0.15rem 0.35rem;
+    white-space: nowrap;
+  }
+
+  .panel-header > div:last-child {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .panel-header .btn-small {
+    font-size: var(--text-xs);
+    padding: 0.35rem 0.5rem;
+  }
+
+  .panel-header .btn-small span {
+    display: none;
+  }
+
+  .panel-body {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .footer {
+    flex-direction: column;
+    gap: var(--space-sm);
+    text-align: center;
+    padding: var(--space-md) 0.75rem 0;
+    margin: 0 0.75rem;
+  }
+}
+
+@media (max-width: 800px) and (min-width: 481px) {
+  .app {
+    padding: 1.5rem 1rem;
+  }
+
+  .panel-header {
+    padding: var(--space-md) var(--space-lg);
+  }
 }

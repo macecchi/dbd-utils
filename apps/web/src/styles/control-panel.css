@@ -102,3 +102,54 @@
 .api-status.missing {
   color: var(--yellow);
 }
+
+/* Mobile */
+@media (max-width: 480px) {
+  .controls {
+    padding: var(--space-lg);
+    gap: var(--space-md);
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .controls .form-group {
+    width: 100%;
+  }
+
+  .channel-input {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .channel-input input {
+    width: 100%;
+  }
+
+  .channel-input .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .status-block {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border);
+    min-width: unset;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    justify-content: center;
+  }
+}
+
+@media (max-width: 800px) and (min-width: 481px) {
+  .controls {
+    padding: var(--space-lg);
+  }
+}

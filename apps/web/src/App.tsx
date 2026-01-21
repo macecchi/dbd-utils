@@ -93,7 +93,7 @@ function ChannelApp() {
                 Fila
                 <SourcesBadges />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div className={readOnly ? 'viewer-mode' : undefined} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button
                   className="btn btn-ghost btn-small"
                   onClick={() => !readOnly && setSortMode(sortMode === 'fifo' ? 'priority' : 'fifo')}

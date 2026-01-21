@@ -323,3 +323,61 @@
 .char-portrait-wrapper.char-portrait-sm {
   --defaultCharPortraitDimensions: 40px;
 }
+
+/* Mobile */
+@media (max-width: 480px) {
+  .request-card {
+    padding: var(--space-md) var(--space-lg);
+  }
+
+  .request-card-content {
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+  }
+
+  .request-position {
+    font-size: 1.2em;
+    min-width: 1.5ch;
+  }
+
+  .char-portrait-wrapper {
+    --defaultCharPortraitDimensions: 42px;
+  }
+
+  .char-name {
+    font-size: var(--text-base);
+  }
+
+  .donor {
+    gap: 0.4rem;
+    margin-top: 0.3em;
+  }
+
+  .donor-name {
+    font-size: 0.75em;
+  }
+
+  .amount {
+    font-size: var(--text-xs);
+    padding: 0.1rem 0.3rem;
+  }
+
+  .time {
+    font-size: 0.65rem;
+  }
+
+  .request-actions {
+    opacity: 1;
+    pointer-events: auto;
+    position: static;
+    padding: var(--space-sm) 0 0 0;
+    background: none;
+    justify-content: flex-start;
+  }
+
+  .request-card-meta {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-xs);
+  }
+}

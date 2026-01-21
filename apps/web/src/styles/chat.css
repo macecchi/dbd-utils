@@ -32,3 +32,11 @@
 .chat-text {
   color: var(--text-secondary);
 }
+
+/* Mobile */
+@media (max-width: 480px) {
+  .chat-body {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+}
