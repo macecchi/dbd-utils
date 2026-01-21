@@ -140,13 +140,12 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
                 const sources = getSourcesState();
                 broadcastSetAll(localRequests);
                 broadcastSources({ ...sources, ircConnected: false });
-                // Clean up localStorage after seeding
-                localStorage.removeItem(`dbd-requests-${channel}`);
-                localStorage.removeItem(`dbd-sources-${channel}`);
-                return;
+              } else {
+                set({ requests: serverRequests });
               }
-
-              set({ requests: serverRequests });
+              // Clean up localStorage - PartyKit is source of truth
+              localStorage.removeItem(`dbd-requests-${channel}`);
+              localStorage.removeItem(`dbd-sources-${channel}`);
               break;
             }
             case 'add-request': {
