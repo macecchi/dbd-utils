@@ -5,7 +5,7 @@ import { useConnectionStatus } from '../hooks/useConnectionStatus';
 
 
 export function ControlPanel() {
-  const { channel, canManageChannel, useChannelInfo } = useChannel();
+  const { channel, isOwnChannel, canManageChannel, useChannelInfo } = useChannel();
   const twitchStatus = useChannelInfo((s) => s.localIrcConnectionState);
   const { user, isAuthenticated, login, logout } = useAuth();
   const { connection, queue } = useConnectionStatus();
@@ -49,6 +49,52 @@ export function ControlPanel() {
     }
   };
 
+  // Determine which buttons to show:
+  // - canManageChannel: show connect/disconnect + logout
+  // - isOwnChannel but not canManageChannel (conflict): show only "Go" if different channel
+  // - not isOwnChannel (viewer): show "Go" + "Minha fila"
+  const renderButtons = () => {
+    if (canManageChannel) {
+      return (
+        <>
+          <button
+            className={`btn btn-primary ${isIrcConnected ? 'connected' : ''}`}
+            onClick={handleConnect}
+            disabled={isIrcConnecting || !inputChannel}
+          >
+            {isIrcConnecting ? 'Conectando...' : isIrcConnected ? 'Desconectar' : 'Conectar'}
+          </button>
+          <div className="channel auth-info">
+            <button className="btn btn-ghost" onClick={logout}>Sair</button>
+          </div>
+        </>
+      );
+    }
+
+    if (isOwnChannel) {
+      // Owner conflict - only show "Go" button if they typed a different channel
+      return inputChannel !== channel ? (
+        <button className="btn btn-primary" onClick={handleGoToChannel}>
+          Ir
+        </button>
+      ) : null;
+    }
+
+    // Viewer mode
+    return (
+      <>
+        {inputChannel !== channel && (
+          <button className="btn btn-primary" onClick={handleGoToChannel}>
+            Ir
+          </button>
+        )}
+        <button className="btn" onClick={handleMyQueue}>
+          {isAuthenticated ? 'Minha fila' : 'Criar minha fila'}
+        </button>
+      </>
+    );
+  };
+
   return (
     <section className="controls">
       <div className="field grow channel">
@@ -66,31 +112,7 @@ export function ControlPanel() {
           />
         </div>
       </div>
-      {canManageChannel ? (
-        <>
-          <button
-            className={`btn btn-primary ${isIrcConnected ? 'connected' : ''}`}
-            onClick={handleConnect}
-            disabled={isIrcConnecting || !inputChannel}
-          >
-            {isIrcConnecting ? 'Conectando...' : isIrcConnected ? 'Desconectar' : 'Conectar'}
-          </button>
-          <div className="channel auth-info">
-            <button className="btn btn-ghost" onClick={logout}>Sair</button>
-          </div>
-        </>
-      ) : (
-        <>
-          {inputChannel !== channel && (
-            <button className="btn btn-primary" onClick={handleGoToChannel}>
-              Ir
-            </button>
-          )}
-          <button className="btn" onClick={handleMyQueue}>
-            {isAuthenticated ? 'Minha fila' : 'Criar minha fila'}
-          </button>
-        </>
-      )}
+      {renderButtons()}
       <div className="status-block">
         <div className="status-row">
           <span className={`status-dot ${connection.state}`} />
