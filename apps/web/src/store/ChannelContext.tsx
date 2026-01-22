@@ -42,9 +42,11 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
   // Auto-claim ownership once on initial connect if no one owns the channel
   const hasTriedAutoClaim = useRef(false);
   useEffect(() => {
-    if (isOwnChannel && partyConnected && !owner && !isOwner && !hasTriedAutoClaim.current) {
+    if (isOwnChannel && partyConnected && !hasTriedAutoClaim.current) {
       hasTriedAutoClaim.current = true;
-      claimOwnership();
+      if (!owner && !isOwner) {
+        claimOwnership();
+      }
     }
   }, [isOwnChannel, partyConnected, owner, isOwner]);
 
