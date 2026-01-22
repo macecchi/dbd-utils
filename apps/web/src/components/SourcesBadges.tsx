@@ -9,7 +9,7 @@ export function SourcesBadges() {
     const chatTiers = useSources((s) => s.chatTiers);
 
     const badges = (() => {
-        if (channelStatus !== 'live') return ['Pedidos desativados'];
+        if (channelStatus !== 'live') return ['Fila fechada'];
         const parts: string[] = [];
         if (sourcesEnabled.donation) parts.push(`Donates (R$${minDonation}+)`);
         if (sourcesEnabled.chat) {
@@ -17,7 +17,7 @@ export function SourcesBadges() {
             parts.push(`${chatCommand} (tier ${minTier}+)`);
         }
         if (sourcesEnabled.resub) parts.push('Resubs');
-        return parts.length ? parts : ['Pedidos desativados'];
+        return parts.length ? parts : ['Fila fechada'];
     })();
 
     return (

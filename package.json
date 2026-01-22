@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"bun run --filter '*' dev\" \"bun run dev:party\"",
+    "dev": "concurrently -k \"bun run --filter '*' dev\" \"bun run dev:party\"",
     "build": "bun run --filter '*' build",
     "test": "bun run --filter '*' test",
     "deploy:api": "bun run --filter @dbd-utils/api deploy",
