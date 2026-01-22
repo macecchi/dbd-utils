@@ -22,12 +22,13 @@ export function useConnectionStatus(): StatusInfo {
   const { isOwnChannel, useSources, useChannelInfo } = useChannel();
   const channelStatus = useChannelInfo((s) => s.status);
   const channelOwner = useChannelInfo((s) => s.owner);
+  const isOwner = useChannelInfo((s) => s.isOwner);
   const localIrcConnectionState = useChannelInfo((s) => s.localIrcConnectionState);
   const localPartyConnectionState = useChannelInfo((s) => s.localPartyConnectionState);
-  const ownerConflict = useChannelInfo((s) => s.ownerConflict);
   const enabledSources = useSources((s) => s.enabled);
 
-  console.log('Connection status:', { localIrcConnectionState, localPartyConnectionState, channelStatus, ownerConflict, enabledSources });
+  // Derive: someone else is managing (we're room owner but don't have the lock)
+  const someoneElseIsOwner = isOwnChannel && !isOwner && channelOwner !== null;
 
   // Connection (1st dot)
   let connection: { state: ConnectionState; text: string };
@@ -39,8 +40,8 @@ export function useConnectionStatus(): StatusInfo {
   } else if (localPartyConnectionState === 'connecting') {
     connection = { state: 'connecting', text: 'Conectando...' };
   } else if (isOwnChannel) {
-    // Owner: check for conflict first, then IRC connection state
-    if (ownerConflict) {
+    // Owner's view
+    if (someoneElseIsOwner) {
       // Another tab is managing the channel
       connection = { state: 'partial', text: 'Conectado em outra janela' };
     } else if (localIrcConnectionState === 'connecting') {

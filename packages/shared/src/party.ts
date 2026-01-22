@@ -43,7 +43,10 @@ export type PartyMessage =
   | { type: 'update-sources'; sources: SourcesSettings }
   | { type: 'update-channel'; channel: ChannelState }
   | { type: 'irc-status'; connected: boolean }
-  | { type: 'owner-conflict'; activeOwner: string };
+  | { type: 'claim-ownership' }
+  | { type: 'release-ownership' }
+  | { type: 'ownership-granted' }
+  | { type: 'ownership-denied'; currentOwner: string };
 
 export function serializeRequest(req: Request): SerializedRequest {
   return {

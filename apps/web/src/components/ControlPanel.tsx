@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useSettings, useAuth, useChannel } from '../store';
 import { connect, disconnect } from '../services/twitch';
+import { claimOwnership, releaseOwnership } from '../services/party';
 import { useConnectionStatus } from '../hooks/useConnectionStatus';
 
 
 export function ControlPanel() {
   const { channel, isOwnChannel, canManageChannel, useChannelInfo } = useChannel();
   const twitchStatus = useChannelInfo((s) => s.localIrcConnectionState);
+  const isOwner = useChannelInfo((s) => s.isOwner);
   const { user, isAuthenticated, login, logout } = useAuth();
   const { connection, queue } = useConnectionStatus();
   const owner = useChannelInfo((s) => s.owner);
@@ -26,11 +28,16 @@ export function ControlPanel() {
   const handleConnect = () => {
     if (isIrcConnected) {
       disconnect();
+      releaseOwnership();
     } else if (inputChannel) {
       if (inputChannel !== channel) {
         window.location.hash = `#/${inputChannel}`;
-      } else {
+      } else if (isOwner) {
+        // Already have ownership, just connect IRC
         connect(channel);
+      } else {
+        // Claim ownership - IRC will auto-connect when ownership is granted
+        claimOwnership();
       }
     }
   };

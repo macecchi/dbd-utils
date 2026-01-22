@@ -12,7 +12,6 @@ const SOURCES_DEFAULTS: SourcesSettings = {
 };
 
 interface ConnectionInfo {
-  isOwner: boolean;
   user: JwtPayload | null;
 }
 
@@ -44,7 +43,6 @@ export default class PartyServer implements Party.Server {
     const token = url.searchParams.get('token');
     const roomOwner = this.room.id.toLowerCase();
 
-    let isOwner = false;
     let user: JwtPayload | null = null;
 
     if (token) {
@@ -54,9 +52,7 @@ export default class PartyServer implements Party.Server {
       } else {
         user = await verifyJwt(token, jwtSecret);
         if (user) {
-          const userLogin = user.login.toLowerCase();
-          isOwner = userLogin === roomOwner;
-          console.log(`${this.tag} Auth: ${userLogin}, isOwner=${isOwner}`);
+          console.log(`${this.tag} Auth: ${user.login.toLowerCase()}`);
         } else {
           console.warn(`${this.tag} JWT verification failed for conn ${conn.id}`);
         }
@@ -65,30 +61,10 @@ export default class PartyServer implements Party.Server {
       console.log(`${this.tag} Anonymous connection ${conn.id}`);
     }
 
-    // Check for owner conflict - if another owner is already connected, demote this connection
-    let effectiveIsOwner = isOwner;
-    if (isOwner && this.activeOwnerConnId && this.connections.has(this.activeOwnerConnId)) {
-      const activeOwnerInfo = this.connections.get(this.activeOwnerConnId);
-      console.log(`${this.tag} Owner conflict: ${user?.login} tried to connect but ${activeOwnerInfo?.user?.login} is already active`);
-      effectiveIsOwner = false;
-
-      // Send owner-conflict message to the new connection
-      const conflictMsg: PartyMessage = { type: 'owner-conflict', activeOwner: activeOwnerInfo?.user?.login || 'unknown' };
-      conn.send(JSON.stringify(conflictMsg));
-    }
-
-    this.connections.set(conn.id, { isOwner: effectiveIsOwner, user });
+    this.connections.set(conn.id, { user });
     console.log(`${this.tag} Connected: ${conn.id} (${user?.login ?? 'anon'}) - ${this.connections.size} total`);
 
-    if (effectiveIsOwner && user) {
-      this.activeOwnerConnId = conn.id;
-      this.channel = {
-        status: 'online',
-        owner: { login: user.login, displayName: user.display_name, avatar: user.profile_image_url }
-      };
-      this.broadcastChannel();
-    }
-
+    // Send current state - client will see channel.owner to know if someone else has ownership
     const syncMsg: PartyMessage = { type: 'sync-full', requests: this.requests, sources: this.sources, channel: this.channel };
     conn.send(JSON.stringify(syncMsg));
   }
@@ -98,7 +74,7 @@ export default class PartyServer implements Party.Server {
     this.connections.delete(conn.id);
     console.log(`${this.tag} Disconnected: ${conn.id} (${info?.user?.login ?? 'anon'}) - ${this.connections.size} remaining`);
 
-    if (info?.isOwner && this.activeOwnerConnId === conn.id) {
+    if (this.activeOwnerConnId === conn.id) {
       this.activeOwnerConnId = null;
       this.channel = { status: 'offline', owner: null };
       this.broadcastChannel();
@@ -107,10 +83,9 @@ export default class PartyServer implements Party.Server {
 
   onError(conn: Party.Connection, error: unknown) {
     console.error(`${this.tag} Error on ${conn.id}:`, error);
-    const info = this.connections.get(conn.id);
     this.connections.delete(conn.id);
 
-    if (info?.isOwner && this.activeOwnerConnId === conn.id) {
+    if (this.activeOwnerConnId === conn.id) {
       this.activeOwnerConnId = null;
       this.channel = { status: 'offline', owner: null };
       this.broadcastChannel();
@@ -118,12 +93,6 @@ export default class PartyServer implements Party.Server {
   }
 
   async onMessage(message: string, sender: Party.Connection) {
-    const connInfo = this.connections.get(sender.id);
-    if (!connInfo?.isOwner) {
-      console.warn(`${this.tag} Rejected msg from non-owner ${sender.id}`);
-      return;
-    }
-
     let msg: PartyMessage;
     try {
       msg = JSON.parse(message);
@@ -132,7 +101,56 @@ export default class PartyServer implements Party.Server {
       return;
     }
 
-    const user = connInfo.user?.login ?? 'unknown';
+    const connInfo = this.connections.get(sender.id);
+    const isRoomOwner = connInfo?.user?.login.toLowerCase() === this.room.id.toLowerCase();
+    const isLockHolder = this.activeOwnerConnId === sender.id;
+
+    // Handle claim-ownership - anyone can send this
+    if (msg.type === 'claim-ownership') {
+      if (!isRoomOwner) {
+        const denyMsg: PartyMessage = { type: 'ownership-denied', currentOwner: 'not-room-owner' };
+        sender.send(JSON.stringify(denyMsg));
+        console.log(`${this.tag} Denied ownership to ${connInfo?.user?.login ?? sender.id}: not room owner`);
+        return;
+      }
+      if (this.activeOwnerConnId && this.activeOwnerConnId !== sender.id) {
+        const owner = this.connections.get(this.activeOwnerConnId);
+        const denyMsg: PartyMessage = { type: 'ownership-denied', currentOwner: owner?.user?.login || 'unknown' };
+        sender.send(JSON.stringify(denyMsg));
+        console.log(`${this.tag} Denied ownership to ${connInfo?.user?.login}: ${owner?.user?.login} holds the lock`);
+        return;
+      }
+      // Grant ownership
+      this.activeOwnerConnId = sender.id;
+      this.channel = {
+        status: 'online',
+        owner: { login: connInfo!.user!.login, displayName: connInfo!.user!.display_name, avatar: connInfo!.user!.profile_image_url }
+      };
+      const grantMsg: PartyMessage = { type: 'ownership-granted' };
+      sender.send(JSON.stringify(grantMsg));
+      this.broadcastChannel(); // All clients see updated channel.owner
+      console.log(`${this.tag} Granted ownership to ${connInfo!.user!.login}`);
+      return;
+    }
+
+    // Handle release-ownership - only lock holder can release
+    if (msg.type === 'release-ownership') {
+      if (isLockHolder) {
+        this.activeOwnerConnId = null;
+        this.channel = { status: 'offline', owner: null };
+        this.broadcastChannel();
+        console.log(`${this.tag} ${connInfo?.user?.login} released ownership`);
+      }
+      return;
+    }
+
+    // Reject messages from non-lock-holders
+    if (!isLockHolder) {
+      console.warn(`${this.tag} Rejected msg from non-owner ${sender.id}`);
+      return;
+    }
+
+    const user = connInfo?.user?.login ?? 'unknown';
     switch (msg.type) {
       case 'add-request': {
         if (!this.requests.some(r => r.id === msg.request.id)) {

@@ -361,7 +361,6 @@ interface ChannelInfoStore {
   status: ChannelStatus;
   owner: ChannelOwner | null;
   isOwner: boolean;
-  ownerConflict: string | null; // Login of the active owner if there's a conflict
   localIrcConnectionState: ConnectionState;
   localPartyConnectionState: ConnectionState;
   setIsOwner: (isOwner: boolean) => void;
@@ -377,7 +376,6 @@ export function createChannelInfoStore() {
     status: 'offline',
     owner: null,
     isOwner: false,
-    ownerConflict: null,
     localIrcConnectionState: 'disconnected',
     localPartyConnectionState: 'disconnected',
     setIsOwner: (isOwner) => set({ isOwner }),
@@ -392,17 +390,20 @@ export function createChannelInfoStore() {
       set({ localPartyConnectionState: state });
     },
     handlePartyMessage: (msg) => {
-      if (msg.type === 'sync-full' || msg.type === 'update-channel') {
-        set({
+      if (msg.type === 'ownership-granted') {
+        set({ isOwner: true });
+      } else if (msg.type === 'ownership-denied') {
+        set({ isOwner: false });
+      } else if (msg.type === 'sync-full' || msg.type === 'update-channel') {
+        const updates: Partial<ChannelInfoStore> = {
           status: msg.channel.status,
           owner: msg.channel.owner,
-        });
-      } else if (msg.type === 'owner-conflict') {
-        // Another tab is already managing this channel - enter read-only mode
-        set({
-          isOwner: false,
-          ownerConflict: msg.activeOwner,
-        });
+        };
+        // Reset isOwner when channel has no owner (released or disconnected)
+        if (!msg.channel.owner) {
+          updates.isOwner = false;
+        }
+        set(updates);
       }
     },
   }));

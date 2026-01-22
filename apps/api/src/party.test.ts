@@ -131,7 +131,7 @@ describe('PartyServer', () => {
       expect(msg).toHaveProperty('channel');
     });
 
-    it('identifies owner when JWT matches room id', async () => {
+    it('stores user info but does not auto-grant ownership', async () => {
       vi.mocked(verifyJwt).mockResolvedValue({
         sub: '123',
         login: 'testchannel',
@@ -145,12 +145,13 @@ describe('PartyServer', () => {
 
       await server.onConnect(conn as any, ctx as any);
 
-      expect(server.connections.get('conn1')?.isOwner).toBe(true);
-      expect(server.channel.status).toBe('online');
-      expect(server.channel.owner?.login).toBe('testchannel');
+      // User info stored but no ownership granted yet
+      expect(server.connections.get('conn1')?.user?.login).toBe('testchannel');
+      expect(server.activeOwnerConnId).toBeNull();
+      expect(server.channel.status).toBe('offline');
     });
 
-    it('does not identify owner when JWT login differs from room id', async () => {
+    it('does not store owner info for non-room-owner', async () => {
       vi.mocked(verifyJwt).mockResolvedValue({
         sub: '456',
         login: 'otheruser',
@@ -164,7 +165,7 @@ describe('PartyServer', () => {
 
       await server.onConnect(conn as any, ctx as any);
 
-      expect(server.connections.get('conn1')?.isOwner).toBe(false);
+      expect(server.connections.get('conn1')?.user?.login).toBe('otheruser');
       expect(server.channel.status).toBe('offline');
     });
 
@@ -174,7 +175,6 @@ describe('PartyServer', () => {
 
       await server.onConnect(conn as any, ctx as any);
 
-      expect(server.connections.get('conn1')?.isOwner).toBe(false);
       expect(server.connections.get('conn1')?.user).toBeNull();
     });
 
@@ -186,7 +186,7 @@ describe('PartyServer', () => {
 
       await server.onConnect(conn as any, ctx as any);
 
-      expect(server.connections.get('conn1')?.isOwner).toBe(false);
+      expect(server.connections.get('conn1')?.user).toBeNull();
     });
   });
 
@@ -202,7 +202,7 @@ describe('PartyServer', () => {
       expect(server.connections.has('conn1')).toBe(false);
     });
 
-    it('sets channel offline when owner disconnects', async () => {
+    it('sets channel offline when lock holder disconnects', async () => {
       vi.mocked(verifyJwt).mockResolvedValue({
         sub: '123',
         login: 'testchannel',
@@ -212,14 +212,20 @@ describe('PartyServer', () => {
       });
 
       const conn = new MockConnection('conn1');
+      mockRoom._connections.set('conn1', conn);
       await server.onConnect(conn as any, createMockContext('token') as any);
 
+      // Claim ownership
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), conn as any);
+
       expect(server.channel.status).toBe('online');
+      expect(server.activeOwnerConnId).toBe('conn1');
 
       server.onClose(conn as any);
 
       expect(server.channel.status).toBe('offline');
       expect(server.channel.owner).toBeNull();
+      expect(server.activeOwnerConnId).toBeNull();
     });
   });
 
@@ -240,15 +246,112 @@ describe('PartyServer', () => {
       mockRoom._connections.set('owner', ownerConn);
       await server.onConnect(ownerConn as any, createMockContext('owner-token') as any);
 
+      // Owner claims ownership
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), ownerConn as any);
+
       // Set up viewer connection
       vi.mocked(verifyJwt).mockResolvedValue(null);
       viewerConn = new MockConnection('viewer');
       mockRoom._connections.set('viewer', viewerConn);
       await server.onConnect(viewerConn as any, createMockContext() as any);
 
-      // Clear messages from connect
+      // Clear messages from connect and claim
       ownerConn.messages = [];
       viewerConn.messages = [];
+    });
+
+    it('grants ownership to room owner on claim-ownership', async () => {
+      // Create a fresh server and connection for this test
+      const freshRoom = createMockRoom();
+      const freshServer = new PartyServer(freshRoom as any);
+
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '123',
+        login: 'testchannel',
+        display_name: 'TestChannel',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+
+      const conn = new MockConnection('conn1');
+      freshRoom._connections.set('conn1', conn);
+      await freshServer.onConnect(conn as any, createMockContext('token') as any);
+
+      // Clear sync message
+      conn.messages = [];
+
+      // Claim ownership
+      await freshServer.onMessage(JSON.stringify({ type: 'claim-ownership' }), conn as any);
+
+      expect(freshServer.activeOwnerConnId).toBe('conn1');
+      expect(freshServer.channel.status).toBe('online');
+      expect(freshServer.channel.owner?.login).toBe('testchannel');
+
+      // Should receive ownership-granted followed by update-channel broadcast
+      const msgs = conn.getAllMessages();
+      expect(msgs.some(m => m.type === 'ownership-granted')).toBe(true);
+      expect(msgs.some(m => m.type === 'update-channel')).toBe(true);
+    });
+
+    it('denies ownership to non-room-owner', async () => {
+      const freshRoom = createMockRoom();
+      const freshServer = new PartyServer(freshRoom as any);
+
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '456',
+        login: 'otheruser',
+        display_name: 'OtherUser',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+
+      const conn = new MockConnection('conn1');
+      freshRoom._connections.set('conn1', conn);
+      await freshServer.onConnect(conn as any, createMockContext('token') as any);
+      conn.messages = [];
+
+      await freshServer.onMessage(JSON.stringify({ type: 'claim-ownership' }), conn as any);
+
+      expect(freshServer.activeOwnerConnId).toBeNull();
+      const denyMsg = conn.getLastMessage();
+      expect(denyMsg?.type).toBe('ownership-denied');
+    });
+
+    it('denies ownership when another owner holds the lock', async () => {
+      // viewerConn trying to claim when ownerConn has the lock won't work since they're not room owner
+      // Let's create a scenario with two room owner connections
+
+      const freshRoom = createMockRoom();
+      const freshServer = new PartyServer(freshRoom as any);
+
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '123',
+        login: 'testchannel',
+        display_name: 'TestChannel',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+
+      const conn1 = new MockConnection('conn1');
+      const conn2 = new MockConnection('conn2');
+      freshRoom._connections.set('conn1', conn1);
+      freshRoom._connections.set('conn2', conn2);
+
+      await freshServer.onConnect(conn1 as any, createMockContext('token1') as any);
+      await freshServer.onConnect(conn2 as any, createMockContext('token2') as any);
+
+      // conn1 claims ownership
+      await freshServer.onMessage(JSON.stringify({ type: 'claim-ownership' }), conn1 as any);
+      expect(freshServer.activeOwnerConnId).toBe('conn1');
+
+      conn2.messages = [];
+
+      // conn2 tries to claim - should be denied
+      await freshServer.onMessage(JSON.stringify({ type: 'claim-ownership' }), conn2 as any);
+
+      expect(freshServer.activeOwnerConnId).toBe('conn1'); // Still conn1
+      const denyMsg = conn2.getLastMessage();
+      expect(denyMsg?.type).toBe('ownership-denied');
     });
 
     it('rejects messages from non-owner', async () => {
@@ -397,11 +500,14 @@ describe('PartyServer', () => {
 
       await server.onConnect(owner as any, createMockContext('token') as any);
 
+      // Owner claims ownership
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), owner as any);
+
       vi.mocked(verifyJwt).mockResolvedValue(null);
       await server.onConnect(viewer1 as any, createMockContext() as any);
       await server.onConnect(viewer2 as any, createMockContext() as any);
 
-      // Clear sync messages
+      // Clear sync and ownership messages
       owner.messages = [];
       viewer1.messages = [];
       viewer2.messages = [];

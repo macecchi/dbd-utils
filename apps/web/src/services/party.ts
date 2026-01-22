@@ -98,3 +98,11 @@ export function broadcastSources(sources: SourcesSettings): void {
 export function broadcastIrcStatus(connected: boolean): void {
   send({ type: 'irc-status', connected });
 }
+
+export function claimOwnership(): void {
+  send({ type: 'claim-ownership' });
+}
+
+export function releaseOwnership(): void {
+  send({ type: 'release-ownership' });
+}

@@ -1,8 +1,8 @@
 // apps/web/src/store/ChannelContext.tsx
-import { createContext, useContext, useMemo, useEffect } from 'react';
+import { createContext, useContext, useMemo, useEffect, useRef } from 'react';
 import { createRoomStores, type ChannelStores } from './channel';
 import { setActiveStores, connect as connectIrc, disconnect as disconnectIrc } from '../services/twitch';
-import { connectParty, disconnectParty, broadcastIrcStatus } from '../services/party';
+import { connectParty, disconnectParty, broadcastIrcStatus, claimOwnership } from '../services/party';
 import { useAuth } from './auth';
 import { useToasts } from './toasts';
 
@@ -29,22 +29,52 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     return () => setActiveStores(null);
   }, [stores]);
 
-  // Subscribe to owner conflict state
-  const ownerConflict = stores.useChannelInfo((s) => s.ownerConflict);
+  // Subscribe to ownership state
+  const isOwner = stores.useChannelInfo((s) => s.isOwner);
+  const owner = stores.useChannelInfo((s) => s.owner);
+  const localIrcState = stores.useChannelInfo((s) => s.localIrcConnectionState);
+  const partyConnected = stores.useChannelInfo((s) => s.localPartyConnectionState) === 'connected';
   const showToast = useToasts((s) => s.show);
 
-  // Connect to Twitch IRC (only for owners without conflict)
-  useEffect(() => {
-    if (isOwnChannel && !ownerConflict) {
-      connectIrc(channel);
-      return () => disconnectIrc();
-    }
-  }, [channel, isOwnChannel, ownerConflict]);
+  // Derive: someone else is managing (we're room owner but don't have the lock)
+  const someoneElseIsOwner = isOwnChannel && !isOwner && owner !== null;
 
-  // Show toast when owner conflict is detected
+  // Auto-claim ownership once on initial connect if no one owns the channel
+  const hasTriedAutoClaim = useRef(false);
   useEffect(() => {
-    if (ownerConflict) {
+    if (isOwnChannel && partyConnected && !owner && !isOwner && !hasTriedAutoClaim.current) {
+      hasTriedAutoClaim.current = true;
+      claimOwnership();
+    }
+  }, [isOwnChannel, partyConnected, owner, isOwner]);
+
+  // Auto-connect to IRC once when ownership is first granted
+  const hasAutoConnectedIrc = useRef(false);
+  useEffect(() => {
+    if (isOwner && !hasAutoConnectedIrc.current) {
+      hasAutoConnectedIrc.current = true;
+      if (localIrcState === 'disconnected') {
+        connectIrc(channel);
+      }
+    }
+    // Reset when ownership is lost so next grant auto-connects again
+    if (!isOwner) {
+      hasAutoConnectedIrc.current = false;
+    }
+  }, [isOwner, localIrcState, channel]);
+
+  // Cleanup IRC when we lose ownership
+  useEffect(() => {
+    if (someoneElseIsOwner) {
       disconnectIrc();
+    }
+    return () => disconnectIrc();
+  }, [someoneElseIsOwner]);
+
+  // Show toast when someone else takes ownership
+  const prevSomeoneElseIsOwner = useRef(false);
+  useEffect(() => {
+    if (someoneElseIsOwner && !prevSomeoneElseIsOwner.current) {
       showToast(
         'Outra aba já está gerenciando este canal. Esta aba está em modo somente leitura.',
         'Canal já aberto',
@@ -52,14 +82,14 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
         10000
       );
     }
-  }, [ownerConflict, showToast]);
+    prevSomeoneElseIsOwner.current = someoneElseIsOwner;
+  }, [someoneElseIsOwner, showToast]);
 
   // Connect to PartySocket
   useEffect(() => {
     const { handlePartyMessage: handleRequestsMessage } = stores.useRequests.getState();
     const { handlePartyMessage: handleSourcesMessage } = stores.useSources.getState();
-    const { handlePartyMessage: handleChannelInfoMessage, setPartyConnectionState, setIsOwner } = stores.useChannelInfo.getState();
-    setIsOwner(isOwnChannel);
+    const { handlePartyMessage: handleChannelInfoMessage, setPartyConnectionState } = stores.useChannelInfo.getState();
 
     let cancelled = false;
 
@@ -106,8 +136,8 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     };
   }, [channel, isOwnChannel, stores, getAccessToken]);
 
-  // canManageChannel is true when user owns the channel AND no other tab is managing it
-  const canManageChannel = isOwnChannel && !ownerConflict;
+  // canManageChannel: we're on our own channel and either have ownership or can claim it
+  const canManageChannel = isOwnChannel && !someoneElseIsOwner;
 
   const value = useMemo(
     () => ({ channel, isOwnChannel, canManageChannel, ...stores }),
