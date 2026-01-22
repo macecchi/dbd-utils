@@ -21,11 +21,7 @@ jobs:
         run: bun install
 
       - name: Type check
-        run: |
-          bun run --filter @dbd-utils/web typecheck
-          bun run --filter @dbd-utils/api typecheck
+        run: bun run typecheck
 
       - name: Run tests
-        run: |
-          bun run --filter @dbd-utils/web test
-          bun run --filter @dbd-utils/api test
+        run: bun run test
