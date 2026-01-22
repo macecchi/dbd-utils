@@ -22,7 +22,7 @@ const getChannelFromHash = (hash: string) => parseHash(hash).channel;
 const isDebugMode = () => parseHash(window.location.hash).debug;
 
 function ChannelApp() {
-  const { useRequests, useSources, isOwnChannel } = useChannel();
+  const { useRequests, useSources, canManageChannel } = useChannel();
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
   const { chatHidden, setChatHidden } = useSettings();
@@ -33,7 +33,7 @@ function ChannelApp() {
   const [showDone, setShowDone] = useState(false);
   const [shownToasts] = useState(() => new Set<number>());
   const isFirstLoad = useRef(true);
-  const readOnly = !isOwnChannel;
+  const readOnly = !canManageChannel;
 
   // Auto-identify requests that need it
   useEffect(() => {

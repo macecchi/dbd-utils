@@ -32,12 +32,12 @@ const SOURCE_ICONS: Record<SourceType, React.ReactNode> = {
 };
 
 export function SourcesPanel() {
-  const { useSources, isOwnChannel } = useChannel();
+  const { useSources, canManageChannel } = useChannel();
   const {
     enabled, chatCommand, chatTiers, priority, sortMode, minDonation,
     setEnabled, setChatCommand, setChatTiers, setPriority, setMinDonation
   } = useSources();
-  const readOnly = !isOwnChannel;
+  const readOnly = !canManageChannel;
 
   const [isOpen, setIsOpen] = useState(true);
   const [draggedItem, setDraggedItem] = useState<SourceType | null>(null);

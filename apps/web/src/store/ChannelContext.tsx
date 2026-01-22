@@ -9,6 +9,7 @@ import { useToasts } from './toasts';
 interface ChannelContextValue extends ChannelStores {
   channel: string;
   isOwnChannel: boolean;
+  canManageChannel: boolean;
 }
 
 const ChannelContext = createContext<ChannelContextValue | null>(null);
@@ -105,9 +106,12 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     };
   }, [channel, isOwnChannel, stores, getAccessToken]);
 
+  // canManageChannel is true when user owns the channel AND no other tab is managing it
+  const canManageChannel = isOwnChannel && !ownerConflict;
+
   const value = useMemo(
-    () => ({ channel, isOwnChannel, ...stores }),
-    [channel, isOwnChannel, stores]
+    () => ({ channel, isOwnChannel, canManageChannel, ...stores }),
+    [channel, isOwnChannel, canManageChannel, stores]
   );
 
   return (
