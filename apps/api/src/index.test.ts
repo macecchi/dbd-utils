@@ -10,6 +10,27 @@ vi.mock('./gemini', () => ({
   }),
 }));
 
+// Type definitions for API responses
+interface ErrorResponse {
+  error: string;
+}
+
+interface UserResponse {
+  id: string;
+  login: string;
+  display_name: string;
+  profile_image_url: string;
+}
+
+interface TokenResponse {
+  access_token: string;
+}
+
+interface CharacterResponse {
+  character: string;
+  type: string;
+}
+
 const TEST_ENV = {
   TWITCH_CLIENT_ID: 'test-client-id',
   TWITCH_CLIENT_SECRET: 'test-client-secret',
@@ -77,7 +98,7 @@ describe('Hono API', () => {
       }, TEST_ENV);
 
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('missing_refresh_token');
     });
 
@@ -89,7 +110,7 @@ describe('Hono API', () => {
       }, TEST_ENV);
 
       expect(res.status).toBe(401);
-      const body = await res.json();
+      const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('invalid_refresh_token');
     });
 
@@ -103,7 +124,7 @@ describe('Hono API', () => {
       }, TEST_ENV);
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as TokenResponse;
       expect(body.access_token).toBeDefined();
       expect(typeof body.access_token).toBe('string');
     });
@@ -114,7 +135,7 @@ describe('Hono API', () => {
       const res = await app.request('/auth/me', {}, TEST_ENV);
 
       expect(res.status).toBe(401);
-      const body = await res.json();
+      const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('unauthorized');
     });
 
@@ -132,7 +153,7 @@ describe('Hono API', () => {
       }, TEST_ENV);
 
       expect(res.status).toBe(401);
-      const body = await res.json();
+      const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('invalid_token');
     });
 
@@ -154,7 +175,7 @@ describe('Hono API', () => {
       }, TEST_ENV);
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as UserResponse;
       expect(body.id).toBe('12345');
       expect(body.login).toBe('testuser');
       expect(body.display_name).toBe('TestUser');
@@ -185,7 +206,7 @@ describe('Hono API', () => {
       }, TEST_ENV);
 
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('invalid_input');
     });
 
@@ -202,7 +223,7 @@ describe('Hono API', () => {
       }, TEST_ENV);
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as CharacterResponse;
       expect(body.character).toBe('Meg Thomas');
       expect(body.type).toBe('survivor');
     });
@@ -223,7 +244,7 @@ describe('Hono API', () => {
       }, TEST_ENV);
 
       expect(res.status).toBe(502);
-      const body = await res.json();
+      const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('llm_error');
     });
   });
