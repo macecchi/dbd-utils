@@ -21,6 +21,7 @@ export default class PartyServer implements Party.Server {
   sources: SourcesSettings = SOURCES_DEFAULTS;
   channel: ChannelState = { status: 'offline', owner: null };
   connections: Map<string, ConnectionInfo> = new Map();
+  activeOwnerConnId: string | null = null;
 
   constructor(public room: Party.Room) { }
 
@@ -64,10 +65,23 @@ export default class PartyServer implements Party.Server {
       console.log(`${this.tag} Anonymous connection ${conn.id}`);
     }
 
-    this.connections.set(conn.id, { isOwner, user });
+    // Check for owner conflict - if another owner is already connected, demote this connection
+    let effectiveIsOwner = isOwner;
+    if (isOwner && this.activeOwnerConnId && this.connections.has(this.activeOwnerConnId)) {
+      const activeOwnerInfo = this.connections.get(this.activeOwnerConnId);
+      console.log(`${this.tag} Owner conflict: ${user?.login} tried to connect but ${activeOwnerInfo?.user?.login} is already active`);
+      effectiveIsOwner = false;
+
+      // Send owner-conflict message to the new connection
+      const conflictMsg: PartyMessage = { type: 'owner-conflict', activeOwner: activeOwnerInfo?.user?.login || 'unknown' };
+      conn.send(JSON.stringify(conflictMsg));
+    }
+
+    this.connections.set(conn.id, { isOwner: effectiveIsOwner, user });
     console.log(`${this.tag} Connected: ${conn.id} (${user?.login ?? 'anon'}) - ${this.connections.size} total`);
 
-    if (isOwner && user) {
+    if (effectiveIsOwner && user) {
+      this.activeOwnerConnId = conn.id;
       this.channel = {
         status: 'online',
         owner: { login: user.login, displayName: user.display_name, avatar: user.profile_image_url }
@@ -84,7 +98,8 @@ export default class PartyServer implements Party.Server {
     this.connections.delete(conn.id);
     console.log(`${this.tag} Disconnected: ${conn.id} (${info?.user?.login ?? 'anon'}) - ${this.connections.size} remaining`);
 
-    if (info?.isOwner) {
+    if (info?.isOwner && this.activeOwnerConnId === conn.id) {
+      this.activeOwnerConnId = null;
       this.channel = { status: 'offline', owner: null };
       this.broadcastChannel();
     }
@@ -95,7 +110,8 @@ export default class PartyServer implements Party.Server {
     const info = this.connections.get(conn.id);
     this.connections.delete(conn.id);
 
-    if (info?.isOwner) {
+    if (info?.isOwner && this.activeOwnerConnId === conn.id) {
+      this.activeOwnerConnId = null;
       this.channel = { status: 'offline', owner: null };
       this.broadcastChannel();
     }

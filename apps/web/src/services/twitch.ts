@@ -86,6 +86,25 @@ function parseIrcTags(raw: string): Record<string, string> {
   return tags;
 }
 
+/**
+ * Generate a deterministic numeric ID from the Twitch message ID.
+ * This ensures multiple tabs processing the same IRC message produce the same request ID.
+ * Falls back to content-based hash if no Twitch ID is available.
+ */
+function generateRequestId(twitchMsgId: string | undefined, fallbackContent: string): number {
+  const source = twitchMsgId || fallbackContent;
+  // Simple hash function to convert string to number
+  let hash = 0;
+  for (let i = 0; i < source.length; i++) {
+    const char = source.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Ensure positive number and add timestamp prefix for rough ordering
+  const timePrefix = Math.floor(Date.now() / 60000); // Minute-level precision
+  return Math.abs(hash) + timePrefix * 1000000000;
+}
+
 function getSubTierFromBadges(badges: string): number {
   if (!badges) return 0;
   const m = badges.match(/subscriber\/(\d+)/);
@@ -113,8 +132,12 @@ export function handleUserNotice(raw: string) {
 
   const local = tryLocalMatch(message);
 
+  // Use Twitch message ID for deterministic deduplication across tabs
+  const twitchMsgId = tags['id'];
+  const fallbackContent = `resub:${displayName}:${message}`;
+
   const request: Request = {
-    id: Date.now() + Math.random(),
+    id: generateRequestId(twitchMsgId, fallbackContent),
     timestamp: new Date(),
     donor: displayName,
     amount: '',
@@ -144,8 +167,12 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
 
   const local = tryLocalMatch(requestText);
 
+  // Use Twitch message ID for deterministic deduplication across tabs
+  const twitchMsgId = tags['id'];
+  const fallbackContent = `chat:${displayName}:${requestText}`;
+
   const request: Request = {
-    id: Date.now() + Math.random(),
+    id: generateRequestId(twitchMsgId, fallbackContent),
     timestamp: new Date(),
     donor: displayName,
     amount: '',
@@ -198,8 +225,12 @@ export function handleMessage(raw: string) {
 
   const local = tryLocalMatch(parsed.message);
 
+  // Use Twitch message ID for deterministic deduplication across tabs
+  const twitchMsgId = tags['id'];
+  const fallbackContent = `donation:${parsed.donor}:${parsed.amount}:${parsed.message}`;
+
   const request: Request = {
-    id: Date.now(),
+    id: generateRequestId(twitchMsgId, fallbackContent),
     timestamp: new Date(),
     donor: parsed.donor,
     amount: parsed.amount,
@@ -227,7 +258,7 @@ declare global {
 }
 
 function checkWriteMode(): boolean {
-  const isOwner = activeStores?.useRequests.getState().isOwner;
+  const isOwner = activeStores?.useChannelInfo.getState().isOwner;
   if (!isOwner) {
     console.warn('dbdDebug: read-only mode, login to your channel to use');
     return false;

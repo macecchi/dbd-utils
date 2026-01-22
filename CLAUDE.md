@@ -29,9 +29,14 @@ apps/
 bun install          # Install all deps
 bun run dev          # Start frontend + API + PartyKit
 bun run build        # Build frontend
+bun run test         # Run all tests (uses Vitest)
+bun run typecheck    # Type check all packages
 bun run deploy:api   # Deploy API to Cloudflare
 bun run deploy:party # Deploy PartyKit
 ```
+
+> **Note:** Use `bun run test`, not `bun test`. The project uses Vitest for testing,
+> but `bun test` invokes Bun's native test runner which is incompatible with this project.
 
 ## Key functions
 
