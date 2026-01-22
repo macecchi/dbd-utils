@@ -24,9 +24,10 @@ export function useConnectionStatus(): StatusInfo {
   const channelOwner = useChannelInfo((s) => s.owner);
   const localIrcConnectionState = useChannelInfo((s) => s.localIrcConnectionState);
   const localPartyConnectionState = useChannelInfo((s) => s.localPartyConnectionState);
+  const ownerConflict = useChannelInfo((s) => s.ownerConflict);
   const enabledSources = useSources((s) => s.enabled);
 
-  console.log('Connection status:', { localIrcConnectionState, localPartyConnectionState, channelStatus, enabledSources });
+  console.log('Connection status:', { localIrcConnectionState, localPartyConnectionState, channelStatus, ownerConflict, enabledSources });
 
   // Connection (1st dot)
   let connection: { state: ConnectionState; text: string };
@@ -38,8 +39,11 @@ export function useConnectionStatus(): StatusInfo {
   } else if (localPartyConnectionState === 'connecting') {
     connection = { state: 'connecting', text: 'Conectando...' };
   } else if (isOwnChannel) {
-    // Owner: state is based on IRC connection and channel status
-    if (localIrcConnectionState === 'connecting') {
+    // Owner: check for conflict first, then IRC connection state
+    if (ownerConflict) {
+      // Another tab is managing the channel
+      connection = { state: 'partial', text: 'Conectado em outra janela' };
+    } else if (localIrcConnectionState === 'connecting') {
       connection = { state: 'connecting', text: 'Conectando' };
     } else if (localIrcConnectionState === 'connected' && channelStatus === 'online') {
       connection = { state: 'partial', text: 'Aguardando iniciar' };
