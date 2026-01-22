@@ -4,6 +4,7 @@ import { createRoomStores, type ChannelStores } from './channel';
 import { setActiveStores, connect as connectIrc, disconnect as disconnectIrc } from '../services/twitch';
 import { connectParty, disconnectParty, broadcastIrcStatus } from '../services/party';
 import { useAuth } from './auth';
+import { useToasts } from './toasts';
 
 interface ChannelContextValue extends ChannelStores {
   channel: string;
@@ -27,13 +28,30 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     return () => setActiveStores(null);
   }, [stores]);
 
-  // Connect to Twitch IRC (only for owners)
+  // Subscribe to owner conflict state
+  const ownerConflict = stores.useChannelInfo((s) => s.ownerConflict);
+  const showToast = useToasts((s) => s.show);
+
+  // Connect to Twitch IRC (only for owners without conflict)
   useEffect(() => {
-    if (isOwnChannel) {
+    if (isOwnChannel && !ownerConflict) {
       connectIrc(channel);
       return () => disconnectIrc();
     }
-  }, [channel, isOwnChannel]);
+  }, [channel, isOwnChannel, ownerConflict]);
+
+  // Show toast when owner conflict is detected
+  useEffect(() => {
+    if (ownerConflict) {
+      disconnectIrc();
+      showToast(
+        'Outra aba já está gerenciando este canal. Esta aba está em modo somente leitura.',
+        'Canal já aberto',
+        '#f59e0b',
+        10000
+      );
+    }
+  }, [ownerConflict, showToast]);
 
   // Connect to PartySocket
   useEffect(() => {

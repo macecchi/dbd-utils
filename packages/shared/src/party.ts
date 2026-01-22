@@ -42,7 +42,8 @@ export type PartyMessage =
   | { type: 'set-all'; requests: SerializedRequest[] }
   | { type: 'update-sources'; sources: SourcesSettings }
   | { type: 'update-channel'; channel: ChannelState }
-  | { type: 'irc-status'; connected: boolean };
+  | { type: 'irc-status'; connected: boolean }
+  | { type: 'owner-conflict'; activeOwner: string };
 
 export function serializeRequest(req: Request): SerializedRequest {
   return {
