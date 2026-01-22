@@ -8,7 +8,9 @@
     "dev:party": "partykit dev",
     "deploy:party": "partykit deploy",
     "tail:party": "partykit tail",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dbd-utils/shared": "workspace:*",
@@ -19,6 +21,7 @@
     "@cloudflare/workers-types": "^4.20250109.0",
     "partykit": "^0.0.111",
     "typescript": "^5.7.0",
+    "vitest": "^4.0.17",
     "wrangler": "^4.0.0"
   }
 }
