@@ -2,7 +2,7 @@
 import { createContext, useContext, useMemo, useEffect } from 'react';
 import { createRoomStores, type ChannelStores } from './channel';
 import { setActiveStores, connect as connectIrc, disconnect as disconnectIrc } from '../services/twitch';
-import { connectParty, disconnectParty } from '../services/party';
+import { connectParty, disconnectParty, broadcastIrcStatus } from '../services/party';
 import { useAuth } from './auth';
 
 interface ChannelContextValue extends ChannelStores {
@@ -61,6 +61,11 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
         () => {
           console.log('Connected to PartyKit');
           setPartyConnectionState('connected');
+          // Re-send IRC status in case IRC connected before PartySocket
+          const { localIrcConnectionState, isOwner } = stores.useChannelInfo.getState();
+          if (isOwner && localIrcConnectionState === 'connected') {
+            broadcastIrcStatus(true);
+          }
         },
         () => {
           console.log('Disconnected from PartyKit');
