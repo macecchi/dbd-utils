@@ -104,12 +104,13 @@
 }
 
 /* Mobile */
-@media (max-width: 480px) {
+@media (max-width: 700px) {
   .controls {
     padding: var(--space-lg);
     gap: var(--space-md);
     flex-direction: column;
     align-items: stretch;
+    justify-content: center;
     border-radius: 0;
     border-left: none;
     border-right: none;
@@ -119,19 +120,14 @@
     width: 100%;
   }
 
-  .channel-input {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-sm);
-  }
-
-  .channel-input input {
-    width: 100%;
-  }
-
   .channel-input .btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .auth-info {
+    flex-grow: 1;
+    text-align: center;
   }
 
   .status-block {
