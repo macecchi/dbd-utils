@@ -5,7 +5,7 @@ import { useConnectionStatus } from '../hooks/useConnectionStatus';
 
 
 export function ControlPanel() {
-  const { channel, isOwnChannel, useChannelInfo } = useChannel();
+  const { channel, canManageChannel, useChannelInfo } = useChannel();
   const twitchStatus = useChannelInfo((s) => s.localIrcConnectionState);
   const { user, isAuthenticated, login, logout } = useAuth();
   const { connection, queue } = useConnectionStatus();
@@ -62,11 +62,11 @@ export function ControlPanel() {
             value={channelInput}
             placeholder="canal"
             onChange={e => setChannelInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && (isOwnChannel ? handleConnect() : handleGoToChannel())}
+            onKeyDown={e => e.key === 'Enter' && (canManageChannel ? handleConnect() : handleGoToChannel())}
           />
         </div>
       </div>
-      {isOwnChannel ? (
+      {canManageChannel ? (
         <>
           <button
             className={`btn btn-primary ${isIrcConnected ? 'connected' : ''}`}

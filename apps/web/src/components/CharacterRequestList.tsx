@@ -10,13 +10,13 @@ interface Props {
 }
 
 export function CharacterRequestList({ showDone = false }: Props) {
-  const { useRequests, useChannelInfo, isOwnChannel } = useChannel();
+  const { useRequests, useChannelInfo, isOwnChannel, canManageChannel } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
   const channelStatus = useChannelInfo((s) => s.status);
   const { showUndo } = useToasts();
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
-  const readOnly = !isOwnChannel;
+  const readOnly = !canManageChannel;
   const filtered = showDone ? requests : requests.filter(r => !r.done);
 
   const handleToggleDone = useCallback((id: number) => {
