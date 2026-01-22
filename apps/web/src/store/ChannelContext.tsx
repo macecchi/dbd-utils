@@ -37,9 +37,9 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
 
   // Connect to PartySocket
   useEffect(() => {
-    const { setIsOwner, setPartyConnected, handlePartyMessage: handleRequestsMessage } = stores.useRequests.getState();
+    const { handlePartyMessage: handleRequestsMessage } = stores.useRequests.getState();
     const { handlePartyMessage: handleSourcesMessage } = stores.useSources.getState();
-    const { handlePartyMessage: handleChannelInfoMessage, setPartyConnectionState } = stores.useChannelInfo.getState();
+    const { handlePartyMessage: handleChannelInfoMessage, setPartyConnectionState, setIsOwner } = stores.useChannelInfo.getState();
     setIsOwner(isOwnChannel);
 
     let cancelled = false;
@@ -61,17 +61,14 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
         () => {
           console.log('Connected to PartyKit');
           setPartyConnectionState('connected');
-          setPartyConnected(true);
         },
         () => {
           console.log('Disconnected from PartyKit');
           setPartyConnectionState('disconnected');
-          setPartyConnected(false);
         },
         () => {
           console.log('Error connecting to PartyKit');
           setPartyConnectionState('error');
-          setPartyConnected(false);
         }
       );
     }
@@ -82,7 +79,6 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
       cancelled = true;
       disconnectParty();
       setPartyConnectionState('disconnected');
-      setPartyConnected(false);
     };
   }, [channel, isOwnChannel, stores, getAccessToken]);
 

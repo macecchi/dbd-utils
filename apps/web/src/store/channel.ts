@@ -18,31 +18,30 @@ import {
 
 interface RequestsStore {
   requests: Request[];
-  partyConnected: boolean;
-  isOwner: boolean;
   add: (req: Request) => void;
   update: (id: number, updates: Partial<Request>) => void;
   toggleDone: (id: number) => void;
   setAll: (requests: Request[]) => void;
   reorder: (fromId: number, toId: number) => void;
   deleteRequest: (id: number) => void;
-  setPartyConnected: (connected: boolean) => void;
-  setIsOwner: (isOwner: boolean) => void;
   handlePartyMessage: (msg: PartyMessage) => void;
 }
 
 export type RequestsStoreApi = ReturnType<typeof createRequestsStore>;
 
-export function createRequestsStore(channel: string, getSourcesState: () => SourcesStore) {
+export function createRequestsStore(
+  channel: string,
+  getSourcesState: () => SourcesStore,
+  getContext: () => { partyConnected: boolean; isOwner: boolean }
+) {
   return create<RequestsStore>()(
     persist(
       (set, get) => ({
         requests: [],
-        partyConnected: false,
-        isOwner: false,
 
         add: (req) => {
-          const { partyConnected, isOwner, requests: existingRequests } = get();
+          const { partyConnected, isOwner } = getContext();
+          const existingRequests = get().requests;
           if (existingRequests.some(r => r.id === req.id)) return;
 
           set((s) => {
@@ -71,7 +70,7 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
         },
 
         update: (id, updates) => {
-          const { partyConnected, isOwner } = get();
+          const { partyConnected, isOwner } = getContext();
           set((s) => ({
             requests: s.requests.map((r) => (r.id === id ? { ...r, ...updates } : r)),
           }));
@@ -81,7 +80,7 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
         },
 
         toggleDone: (id) => {
-          const { partyConnected, isOwner } = get();
+          const { partyConnected, isOwner } = getContext();
           set((s) => ({
             requests: s.requests.map((r) => (r.id === id ? { ...r, done: !r.done } : r)),
           }));
@@ -91,7 +90,7 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
         },
 
         setAll: (requests) => {
-          const { partyConnected, isOwner } = get();
+          const { partyConnected, isOwner } = getContext();
           set({ requests });
           if (partyConnected && isOwner) {
             broadcastSetAll(requests);
@@ -99,7 +98,7 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
         },
 
         reorder: (fromId, toId) => {
-          const { partyConnected, isOwner } = get();
+          const { partyConnected, isOwner } = getContext();
           set((s) => {
             const requests = [...s.requests];
             const fromIdx = requests.findIndex(r => r.id === fromId);
@@ -115,7 +114,7 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
         },
 
         deleteRequest: (id) => {
-          const { partyConnected, isOwner } = get();
+          const { partyConnected, isOwner } = getContext();
           set((s) => ({
             requests: s.requests.filter((r) => r.id !== id),
           }));
@@ -124,15 +123,12 @@ export function createRequestsStore(channel: string, getSourcesState: () => Sour
           }
         },
 
-        setPartyConnected: (connected) => set({ partyConnected: connected }),
-        setIsOwner: (isOwner) => set({ isOwner }),
-
         handlePartyMessage: (msg) => {
           switch (msg.type) {
             case 'sync-full': {
               const serverRequests = deserializeRequests(msg.requests);
               const localRequests = get().requests;
-              const { isOwner, partyConnected } = get();
+              const { isOwner, partyConnected } = getContext();
 
               // Owner seeds empty server from localStorage
               if (serverRequests.length === 0 && localRequests.length > 0 && isOwner && partyConnected) {
@@ -364,8 +360,10 @@ interface ChannelOwner {
 interface ChannelInfoStore {
   status: ChannelStatus;
   owner: ChannelOwner | null;
+  isOwner: boolean;
   localIrcConnectionState: ConnectionState;
   localPartyConnectionState: ConnectionState;
+  setIsOwner: (isOwner: boolean) => void;
   setIrcConnectionState: (state: ConnectionState) => void;
   setPartyConnectionState: (state: ConnectionState) => void;
   handlePartyMessage: (msg: PartyMessage) => void;
@@ -373,17 +371,17 @@ interface ChannelInfoStore {
 
 export type ChannelInfoStoreApi = ReturnType<typeof createChannelInfoStore>;
 
-export function createChannelInfoStore(
-  getContext: () => { partyConnected: boolean; isOwner: boolean; sources: SourcesStore }
-) {
+export function createChannelInfoStore() {
   return create<ChannelInfoStore>()((set, get) => ({
     status: 'offline',
     owner: null,
+    isOwner: false,
     localIrcConnectionState: 'disconnected',
     localPartyConnectionState: 'disconnected',
+    setIsOwner: (isOwner) => set({ isOwner }),
     setIrcConnectionState: (state) => {
       set({ localIrcConnectionState: state });
-      const { isOwner } = getContext();
+      const { isOwner } = get();
       if (isOwner) {
         broadcastIrcStatus(state === 'connected');
       }
@@ -413,20 +411,23 @@ export interface ChannelStores {
 // Given a room name, initialize all the stores for that room
 export function createRoomStores(channel: string): ChannelStores {
   const key = channel.toLowerCase();
+
+  // ChannelInfoStore is created first - it has no dependencies
+  const useChannelInfo = createChannelInfoStore();
+
+  // Helper to get connection context from ChannelInfoStore
+  const getContext = () => {
+    const { localPartyConnectionState, isOwner } = useChannelInfo.getState();
+    return {
+      partyConnected: localPartyConnectionState === 'connected',
+      isOwner,
+    };
+  };
+
   let useSources: SourcesStoreApi;
-  let useChannelInfo: ChannelInfoStoreApi;
 
-  const useRequests = createRequestsStore(key, () => useSources.getState());
-
-  useSources = createSourcesStore(key, () => {
-    const { partyConnected, isOwner } = useRequests.getState();
-    return { partyConnected, isOwner };
-  });
-
-  useChannelInfo = createChannelInfoStore(() => {
-    const { partyConnected, isOwner } = useRequests.getState();
-    return { partyConnected, isOwner, sources: useSources.getState() };
-  });
+  const useRequests = createRequestsStore(key, () => useSources.getState(), getContext);
+  useSources = createSourcesStore(key, getContext);
 
   return { useRequests, useSources, useChannelInfo };
 }
