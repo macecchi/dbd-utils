@@ -56,6 +56,26 @@ export function CharacterRequestList({ showDone = false }: Props) {
     setDragOverId(null);
   }, [draggedId, dragOverId, reorder]);
 
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!draggedId) return;
+    const touch = e.touches[0];
+    const elementsAtPoint = document.elementsFromPoint(touch.clientX, touch.clientY);
+    for (const el of elementsAtPoint) {
+      const card = el.closest('.request-card') as HTMLElement;
+      if (card) {
+        const idAttr = card.dataset.requestId;
+        if (idAttr) {
+          const id = parseInt(idAttr, 10);
+          if (id !== draggedId) {
+            setDragOverId(id);
+            return;
+          }
+        }
+      }
+    }
+    setDragOverId(null);
+  }, [draggedId]);
+
   if (filtered.length === 0) {
     const emptyMessage = showDone
       ? 'Nenhum pedido'
@@ -67,27 +87,29 @@ export function CharacterRequestList({ showDone = false }: Props) {
 
   return (
     <ContextMenuProvider>
-      {(() => {
-        let activeIndex = 0;
-        return filtered.map((r) => {
-          const position = r.done ? undefined : ++activeIndex;
-          return (
-            <CharacterRequestCard
-              key={r.id}
-              request={r}
-              position={position}
-              onToggleDone={handleToggleDone}
-              showDone={showDone}
-              isDragging={draggedId === r.id}
-              isDragOver={dragOverId === r.id}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-              readOnly={readOnly}
-            />
-          );
-        });
-      })()}
+      <div onTouchMove={handleTouchMove} onTouchEnd={handleDragEnd}>
+        {(() => {
+          let activeIndex = 0;
+          return filtered.map((r) => {
+            const position = r.done ? undefined : ++activeIndex;
+            return (
+              <CharacterRequestCard
+                key={r.id}
+                request={r}
+                position={position}
+                onToggleDone={handleToggleDone}
+                showDone={showDone}
+                isDragging={draggedId === r.id}
+                isDragOver={dragOverId === r.id}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+                readOnly={readOnly}
+              />
+            );
+          });
+        })()}
+      </div>
       {!readOnly && (
         <ContextMenu
           onToggleDone={handleToggleDone}

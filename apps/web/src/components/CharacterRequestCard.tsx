@@ -88,7 +88,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest('.drag-handle')) {
+    if (!target.closest('button')) {
       e.currentTarget.setAttribute('draggable', 'true');
     }
   };
@@ -97,9 +97,17 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
     e.currentTarget.setAttribute('draggable', 'false');
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('button')) {
+      onDragStart?.(r.id);
+    }
+  };
+
   return (
     <div
       className={className}
+      data-request-id={r.id}
       onContextMenu={handleContext}
       onDragOver={handleDragOver}
       onDragStart={handleDragStart}
@@ -107,37 +115,8 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
     >
-      {!readOnly && (
-        <div className="request-actions">
-          <div className="drag-handle" title="Arrastar">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="9" cy="6" r="1.5" />
-              <circle cx="15" cy="6" r="1.5" />
-              <circle cx="9" cy="12" r="1.5" />
-              <circle cx="15" cy="12" r="1.5" />
-              <circle cx="9" cy="18" r="1.5" />
-              <circle cx="15" cy="18" r="1.5" />
-            </svg>
-          </div>
-          <button
-            className={`request-action-btn ${r.done ? 'undo' : 'done'}`}
-            onClick={handleClick}
-            title={r.done ? 'Marcar como não feito' : 'Marcar como feito'}
-          >
-            {r.done ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            )}
-          </button>
-        </div>
-      )}
       <div className="request-card-content">
         <span className="request-position">{position ? String(position).padStart(2, '0') : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="20 6 9 17 4 12"></polyline>
@@ -169,6 +148,26 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
           <span className="time">{formatRelativeTime(r.timestamp)}</span>
         </div>
       </div>
+      {!readOnly && (
+        <div className="request-actions">
+          <button
+            className={`request-action-btn ${r.done ? 'undo' : 'done'}`}
+            onClick={handleClick}
+            title={r.done ? 'Marcar como não feito' : 'Marcar como feito'}
+          >
+            {r.done ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 });

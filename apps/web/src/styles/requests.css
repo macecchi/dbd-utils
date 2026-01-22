@@ -5,6 +5,11 @@
   border-bottom: 1px solid var(--border);
   transition: background 0.15s, padding 0.2s ease, opacity 0.2s ease;
   position: relative;
+  cursor: grab;
+}
+
+.request-card:active {
+  cursor: grabbing;
 }
 
 .request-position {
@@ -15,29 +20,6 @@
   text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
   min-width: 2ch;
   text-align: right;
-}
-
-.drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-sm);
-  cursor: grab;
-  color: var(--text-muted);
-  order: 1;
-}
-
-.drag-handle svg {
-  width: 16px;
-  height: 16px;
-}
-
-.drag-handle:hover {
-  color: var(--text-secondary);
-}
-
-.drag-handle:active {
-  cursor: grabbing;
 }
 
 .request-card.deleting {
@@ -91,12 +73,12 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-sm);
-  padding: 0 var(--space-lg) 0 3rem;
+  padding: 0 var(--space-lg) 0 5rem;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
   z-index: 10;
-  background: linear-gradient(to right, transparent, var(--bg-card) 2rem);
+  background: linear-gradient(to right, transparent, var(--bg-card) 3rem);
 }
 
 .request-card:hover .request-actions {
@@ -111,11 +93,6 @@
 .request-card.collapsed .request-action-btn svg {
   width: var(--btn-icon-size-sm);
   height: var(--btn-icon-size-sm);
-}
-
-.request-card.collapsed .drag-handle svg {
-  width: 12px;
-  height: 12px;
 }
 
 .request-action-btn {
@@ -328,11 +305,16 @@
 @media (max-width: 480px) {
   .request-card {
     padding: var(--space-md) var(--space-lg);
+    display: flex;
+    align-items: stretch;
+    gap: 0;
   }
 
   .request-card-content {
     gap: var(--space-sm);
     flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
   }
 
   .request-position {
@@ -370,9 +352,23 @@
     opacity: 1;
     pointer-events: auto;
     position: static;
-    padding: var(--space-sm) 0 0 0;
+    padding: 0;
     background: none;
-    justify-content: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-xs);
+    margin-left: var(--space-sm);
+  }
+
+  .request-action-btn {
+    min-width: 36px;
+    min-height: 36px;
+    padding: var(--space-sm);
+  }
+
+  .request-action-btn svg {
+    width: 18px;
+    height: 18px;
   }
 
   .request-card-meta {
