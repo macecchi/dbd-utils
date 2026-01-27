@@ -60,7 +60,7 @@ const CHARACTERS = {
     { name: 'Hag', aliases: ['Bruxa'] },
     { name: 'Doctor', aliases: ['Médico'] },
     { name: 'Huntress', aliases: ['Caçadora'] },
-    { name: 'Cannibal', aliases: ['Bubba Sawyer', 'Bubba', 'Leatherface', 'Canibal'] },
+    { name: 'Cannibal', aliases: ['Bubba', 'Leatherface', 'Canibal'] },
     { name: 'Nightmare', aliases: ['Freddy', 'Pesadelo'] },
     { name: 'Pig', aliases: ['Porca'] },
     { name: 'Clown', aliases: ['Palhaço'] },
