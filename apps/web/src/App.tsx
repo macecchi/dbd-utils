@@ -35,8 +35,9 @@ function ChannelApp() {
   const isFirstLoad = useRef(true);
   const readOnly = !canManageChannel;
 
-  // Auto-identify requests that need it
+  // Auto-identify requests that need it (only owner should call extract API)
   useEffect(() => {
+    if (readOnly) return;
     const pending = requests.filter(r => r.needsIdentification);
     for (const req of pending) {
       identifyCharacter(
@@ -47,7 +48,7 @@ function ChannelApp() {
         update(req.id, { ...result, needsIdentification: false });
       });
     }
-  }, [requests, update]);
+  }, [requests, update, readOnly]);
 
   // Handle toasts for ready requests (skip on first load)
   useEffect(() => {
