@@ -4,6 +4,8 @@ import type { Request } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
+declare const __APP_VERSION__: string;
+
 async function callAPI(
   message: string,
   onError?: (msg: string) => void
@@ -19,6 +21,7 @@ async function callAPI(
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        'X-Client-Version': __APP_VERSION__,
       },
       body: JSON.stringify({ message }),
     });

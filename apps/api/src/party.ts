@@ -41,6 +41,7 @@ export default class PartyServer implements Party.Server {
   async onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
     const url = new URL(ctx.request.url);
     const token = url.searchParams.get('token');
+    const clientVersion = url.searchParams.get('v') || 'unknown';
     const roomOwner = this.room.id.toLowerCase();
 
     let user: JwtPayload | null = null;
@@ -62,7 +63,7 @@ export default class PartyServer implements Party.Server {
     }
 
     this.connections.set(conn.id, { user });
-    console.log(`${this.tag} Connected: ${conn.id} (${user?.login ?? 'anon'}) - ${this.connections.size} total`);
+    console.log(`${this.tag} Connected: ${conn.id} (${user?.login ?? 'anon'}) v${clientVersion} - ${this.connections.size} total`);
 
     // Send current state - client will see channel.owner to know if someone else has ownership
     const syncMsg: PartyMessage = { type: 'sync-full', requests: this.requests, sources: this.sources, channel: this.channel };

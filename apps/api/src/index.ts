@@ -194,13 +194,14 @@ api.use("*", async (c, next) => {
 
 api.post("/extract-character", async (c) => {
   const user = c.get("jwtPayload");
+  const clientVersion = c.req.header("X-Client-Version") || "unknown";
   const body = await c.req.json<{ message: string }>();
 
   if (!body.message || typeof body.message !== "string") {
     return c.json({ error: "invalid_input" }, 400);
   }
 
-  console.log(`Extract request from ${user.login}: ${body.message.slice(0, 100)}`);
+  console.log(`[v${clientVersion}] Extract request from ${user.login}: ${body.message.slice(0, 100)}`);
 
   try {
     const result = await extractCharacter(body.message, c.env.GEMINI_API_KEY);

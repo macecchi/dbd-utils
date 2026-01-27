@@ -2,6 +2,8 @@ import PartySocket from 'partysocket';
 import type { Request, PartyMessage, SerializedRequest, SourcesSettings } from '../types';
 import { serializeRequest } from '../types';
 
+declare const __APP_VERSION__: string;
+
 const PARTY_HOST = import.meta.env.VITE_PARTY_HOST || 'localhost:1999';
 
 let socket: PartySocket | null = null;
@@ -21,7 +23,7 @@ export function connectParty(
   socket = new PartySocket({
     host: PARTY_HOST,
     room: channel.toLowerCase(),
-    query: accessToken ? { token: accessToken } : {},
+    query: { ...(accessToken ? { token: accessToken } : {}), v: __APP_VERSION__ },
   });
 
   socket.addEventListener('message', (event) => {
