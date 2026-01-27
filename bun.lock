@@ -50,6 +50,9 @@
     "packages/shared": {
       "name": "@dbd-utils/shared",
       "version": "0.0.1",
+      "devDependencies": {
+        "typescript": "^5.9.3",
+      },
     },
   },
   "packages": {

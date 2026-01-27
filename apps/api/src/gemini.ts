@@ -1,4 +1,4 @@
-import { DEFAULT_CHARACTERS } from './characters';
+import { DEFAULT_CHARACTERS } from '@dbd-utils/shared';
 
 const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 const RETRIABLE_CODES = [429, 500, 502, 503, 504];

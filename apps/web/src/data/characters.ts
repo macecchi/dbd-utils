@@ -1,114 +1,16 @@
-import type { CharacterData } from '../types';
-
-export const CHARACTERS: CharacterData = {
-  survivors: [
-    { name: "Dwight Fairfield", aliases: [] },
-    { name: "Meg Thomas", aliases: [] },
-    { name: "Claudette Morel", aliases: [] },
-    { name: "Jake Park", aliases: [] },
-    { name: "Nea Karlsson", aliases: [] },
-    { name: "Laurie Strode", aliases: [] },
-    { name: "Ace Visconti", aliases: [] },
-    { name: "William Bill Overbeck", aliases: ["Velho"] },
-    { name: "Feng Min", aliases: [] },
-    { name: "David King", aliases: [] },
-    { name: "Quentin Smith", aliases: [] },
-    { name: "David Tapp", aliases: [] },
-    { name: "Kate Denson", aliases: [] },
-    { name: "Adam Francis", aliases: [] },
-    { name: "Jeff Johansen", aliases: [] },
-    { name: "Jane Romero", aliases: [] },
-    { name: "Ash Williams", aliases: [] },
-    { name: "Nancy Wheeler", aliases: [] },
-    { name: "Steve Harrington", aliases: [] },
-    { name: "Yui Kimura", aliases: [] },
-    { name: "Zarina Kassir", aliases: [] },
-    { name: "Cheryl Mason", aliases: [] },
-    { name: "Felix Richter", aliases: [] },
-    { name: "Élodie Rakoto", aliases: [] },
-    { name: "Yun-Jin Lee", aliases: [] },
-    { name: "Jill Valentine", aliases: [] },
-    { name: "Leon S. Kennedy", aliases: [] },
-    { name: "Mikaela Reid", aliases: [] },
-    { name: "Jonah Vasquez", aliases: [] },
-    { name: "Yoichi Asakawa", aliases: [] },
-    { name: "Haddie Kaur", aliases: [] },
-    { name: "Ada Wong", aliases: [] },
-    { name: "Rebecca Chambers", aliases: [] },
-    { name: "Vittorio Toscano", aliases: [] },
-    { name: "Thalita Lyra", aliases: [] },
-    { name: "Renato Lyra", aliases: [] },
-    { name: "Gabriel Soma", aliases: [] },
-    { name: "Nicolas Cage", aliases: [] },
-    { name: "Ellen Ripley", aliases: [] },
-    { name: "Alan Wake", aliases: [] },
-    { name: "Sable Ward", aliases: [] },
-    { name: "Aestri Yazar", aliases: [] },
-    { name: "Lara Croft", aliases: [] },
-    { name: "Trevor Belmont", aliases: [] },
-    { name: "Taurie Cain", aliases: [] },
-    { name: "Rick Grimes", aliases: [] },
-    { name: "Michonne Grimes", aliases: [] },
-    { name: "Vee Boonyasak", aliases: [] },
-    { name: "Dustin Henderson", aliases: [] },
-    { name: "Eleven", aliases: ["Jane Hopper", "Onze", "On", "El"] },
-  ],
-  killers: [
-    { name: "Trapper", aliases: ["Caçador"], portrait: "https://deadbydaylight.wiki.gg/images/K01_TheTrapper_Portrait.png" },
-    { name: "Wraith", aliases: ["Espectro"], portrait: "https://deadbydaylight.wiki.gg/images/K02_TheWraith_Portrait.png" },
-    { name: "Hillbilly", aliases: ["Billy", "Caipira"], portrait: "https://deadbydaylight.wiki.gg/images/K03_TheHillbilly_Portrait.png" },
-    { name: "Nurse", aliases: ["Enfermeira"], portrait: "https://deadbydaylight.wiki.gg/images/K04_TheNurse_Portrait.png" },
-    { name: "Shape", aliases: ["Michael Myers", "Forma"], portrait: "https://deadbydaylight.wiki.gg/images/K05_TheShape_Portrait.png" },
-    { name: "Hag", aliases: ["Bruxa"], portrait: "https://deadbydaylight.wiki.gg/images/K06_TheHag_Portrait.png" },
-    { name: "Doctor", aliases: ["Médico"], portrait: "https://deadbydaylight.wiki.gg/images/K07_TheDoctor_Portrait.png" },
-    { name: "Huntress", aliases: ["Caçadora"], portrait: "https://deadbydaylight.wiki.gg/images/K08_TheHuntress_Portrait.png" },
-    { name: "Cannibal", aliases: ["Bubba Sawyer", "Bubba", "Leatherface", "Canibal"], portrait: "https://deadbydaylight.wiki.gg/images/K09_TheCannibal_Portrait.png" },
-    { name: "Nightmare", aliases: ["Freddy", "Pesadelo"], portrait: "https://deadbydaylight.wiki.gg/images/K10_TheNightmare_Portrait.png" },
-    { name: "Pig", aliases: ["Porca"], portrait: "https://deadbydaylight.wiki.gg/images/K11_ThePig_Portrait.png" },
-    { name: "Clown", aliases: ["Palhaço"], portrait: "https://deadbydaylight.wiki.gg/images/K12_TheClown_Portrait.png" },
-    { name: "Spirit", aliases: ["Espírito"], portrait: "https://deadbydaylight.wiki.gg/images/K13_TheSpirit_Portrait.png" },
-    { name: "Legion", aliases: ["Legião"], portrait: "https://deadbydaylight.wiki.gg/images/K14_TheLegion_Portrait.png" },
-    { name: "Plague", aliases: ["Praga"], portrait: "https://deadbydaylight.wiki.gg/images/K15_ThePlague_Portrait.png" },
-    { name: "Ghost Face", aliases: [], portrait: "https://deadbydaylight.wiki.gg/images/K16_TheGhostFace_Portrait.png" },
-    { name: "Demogorgon", aliases: ["Demo"], portrait: "https://deadbydaylight.wiki.gg/images/K17_TheDemogorgon_Portrait.png" },
-    { name: "Oni", aliases: [], portrait: "https://deadbydaylight.wiki.gg/images/K18_TheOni_Portrait.png" },
-    { name: "Deathslinger", aliases: ["Pistoleiro"], portrait: "https://deadbydaylight.wiki.gg/images/K19_TheDeathslinger_Portrait.png" },
-    { name: "Pyramid Head", aliases: ["Executioner", "Pirâmide", "O Carrasco"], portrait: "https://deadbydaylight.wiki.gg/images/K20_TheExecutioner_Portrait.png" },
-    { name: "Blight", aliases: ["Ferrugem"], portrait: "https://deadbydaylight.wiki.gg/images/K21_TheBlight_Portrait.png" },
-    { name: "Twins", aliases: ["Gêmeos"], portrait: "https://deadbydaylight.wiki.gg/images/K22_TheTwins_Portrait.png" },
-    { name: "Trickster", aliases: ["Trapaceiro"], portrait: "https://deadbydaylight.wiki.gg/images/K23_TheTrickster_Portrait.png" },
-    { name: "Nemesis", aliases: [], portrait: "https://deadbydaylight.wiki.gg/images/K24_TheNemesis_Portrait.png" },
-    { name: "Cenobite", aliases: ["Cenobita"], portrait: "https://deadbydaylight.wiki.gg/images/K25_TheCenobite_Portrait.png" },
-    { name: "Artist", aliases: ["Artista"], portrait: "https://deadbydaylight.wiki.gg/images/K26_TheArtist_Portrait.png" },
-    { name: "Onryō", aliases: ["Sadako", "Samara"], portrait: "https://deadbydaylight.wiki.gg/images/K27_TheOnryo_Portrait.png" },
-    { name: "Dredge", aliases: ["Draga"], portrait: "https://deadbydaylight.wiki.gg/images/K28_TheDredge_Portrait.png" },
-    { name: "Mastermind", aliases: ["Wesker", "Mentor"], portrait: "https://deadbydaylight.wiki.gg/images/K29_TheMastermind_Portrait.png" },
-    { name: "Knight", aliases: ["Cavaleiro"], portrait: "https://deadbydaylight.wiki.gg/images/K30_TheKnight_Portrait.png" },
-    { name: "Skull Merchant", aliases: ["Adriana", "A Mercadora de Crânios"], portrait: "https://deadbydaylight.wiki.gg/images/K31_TheSkullMerchant_Portrait.png" },
-    { name: "Singularity", aliases: ["Singularidade"], portrait: "https://deadbydaylight.wiki.gg/images/K32_TheSingularity_Portrait.png" },
-    { name: "Xenomorph", aliases: ["Alien", "Xenomorfo"], portrait: "https://deadbydaylight.wiki.gg/images/K33_TheXenomorph_Portrait.png" },
-    { name: "Good Guy", aliases: ["Chucky", "Boneco Assassino"], portrait: "https://deadbydaylight.wiki.gg/images/K34_TheGoodGuy_Portrait.png" },
-    { name: "Unknown", aliases: ["Desconhecido", "Cido"], portrait: "https://deadbydaylight.wiki.gg/images/K35_TheUnknown_Portrait.png" },
-    { name: "Lich", aliases: ["Vecna"], portrait: "https://deadbydaylight.wiki.gg/images/K36_TheLich_Portrait.png" },
-    { name: "Dark Lord", aliases: ["Dracula", "O Lorde das Trevas"], portrait: "https://deadbydaylight.wiki.gg/images/K37_TheDarkLord_Portrait.png" },
-    { name: "Houndmaster", aliases: ["Mestra dos Cães"], portrait: "https://deadbydaylight.wiki.gg/images/K38_TheHoundmaster_Portrait.png" },
-    { name: "Ghoul", aliases: ["Kaneki", "Carniçal"], portrait: "https://deadbydaylight.wiki.gg/images/K39_TheGhoul_Portrait.png" },
-    { name: "Animatronic", aliases: ["Freddy Fazbear", "FNAF", "Animatrônico"], portrait: "https://deadbydaylight.wiki.gg/images/K40_TheAnimatronic_Portrait.png" },
-    { name: "Krasue", aliases: ["Senhora Linguiça"], portrait: "https://deadbydaylight.wiki.gg/images/K41_TheKrasue_Portrait.png" },
-    { name: "The First", aliases: ["First", "Vecna", "One", "Número Um", "Henry Creel"], portrait: "https://deadbydaylight.wiki.gg/images/K42_TheFirst_Portrait.png" },
-  ]
-};
-
-export const DEFAULT_CHARACTERS = {
-  survivors: CHARACTERS.survivors.map(c => [c.name, ...c.aliases].join('/')),
-  killers: CHARACTERS.killers.map(c => [c.name, ...c.aliases].join('/'))
-};
+export {
+  CHARACTERS,
+  DEFAULT_CHARACTERS,
+  getKillerPortrait,
+} from '@dbd-utils/shared';
 
 const GENERIC_SURVIVOR_PATTERNS = [
   /\b(?:jog[aue]|uma?)\s+(?:de\s+)?surv(?:ivor)?(?:zinho|zinha)?\b/i,
   /\b(?:de\s+)?surv(?:ivor)?(?:zinho|zinha)?\b/i,
   /\bsobrevivente\b/i,
 ];
+
+import { CHARACTERS } from '@dbd-utils/shared';
 
 export function tryLocalMatch(message: string): { character: string; type: 'killer' | 'survivor'; ambiguous?: boolean } | null {
   const lower = message.toLowerCase();
@@ -149,8 +51,4 @@ export function tryLocalMatch(message: string): { character: string; type: 'kill
     type: lastMatch.type,
     ambiguous: uniqueChars.size > 1
   };
-}
-
-export function getKillerPortrait(name: string): string | undefined {
-  return CHARACTERS.killers.find(k => k.name === name)?.portrait;
 }
