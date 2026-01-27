@@ -21,6 +21,8 @@ export async function extractCharacter(
 ): Promise<ExtractionResult> {
   const model = MODELS[modelIdx];
 
+  console.log(`[extract] Starting extraction using model: ${model} (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
+
   const prompt = `Identify the Dead by Daylight character from the user message. This is the list of valid characters, although the user might not specify them exactly as on this list.
 
 <survivors>
@@ -70,23 +72,32 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
     const err = await res.json().catch(() => ({}));
     const msg = (err as any).error?.message || `HTTP ${res.status}`;
 
+    console.warn(`[extract] Request failed with status ${res.status}: ${msg}`);
+
     if (RETRIABLE_CODES.includes(res.status)) {
       const nextIdx = (modelIdx + 1) % MODELS.length;
       if (nextIdx !== startIdx) {
+        console.log(`[extract] Switching from ${model} to ${MODELS[nextIdx]}`);
         currentModelIndex = nextIdx;
         return extractCharacter(message, apiKey, 0, nextIdx, startIdx);
       }
       if (attempt < MAX_RETRIES) {
+        console.log(`[extract] Retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
         await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
         return extractCharacter(message, apiKey, attempt + 1, modelIdx, startIdx);
       }
+      console.error(`[extract] All retries exhausted after ${MAX_RETRIES + 1} attempts`);
     }
 
+    console.error(`[extract] Non-retriable error, throwing: ${msg}`);
     throw new Error(msg);
   }
 
   currentModelIndex = modelIdx;
   const data = await res.json();
   const text = (data as any).candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  return JSON.parse(text) as ExtractionResult;
+  const result = JSON.parse(text) as ExtractionResult;
+
+  console.log(`[extract] Success: character="${result.character}" type="${result.type}"`);
+  return result;
 }
