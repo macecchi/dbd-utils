@@ -6,6 +6,15 @@ import { connectParty, disconnectParty, broadcastIrcStatus, claimOwnership } fro
 import { useAuth } from './auth';
 import { useToasts } from './toasts';
 
+function sendPushNotification(title: string, body: string) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, tag: 'dbd-disconnect' });
+  } else {
+    console.log(`[push] permission=${Notification.permission}, skipped: ${title}`);
+  }
+}
+
 interface ChannelContextValue extends ChannelStores {
   channel: string;
   isOwnChannel: boolean;
@@ -86,6 +95,66 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     }
     prevSomeoneElseIsOwner.current = someoneElseIsOwner;
   }, [someoneElseIsOwner, showToast]);
+
+  // Request notification permission when streamer connects
+  useEffect(() => {
+    if (isOwnChannel && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, [isOwnChannel]);
+
+  // Toast + push notification on disconnect (only for channel owner)
+  const prevIrcState = useRef(localIrcState);
+  const prevPartyState = useRef(partyConnected);
+  const ircEverConnected = useRef(false);
+  const partyEverConnected = useRef(false);
+  useEffect(() => {
+    if (!isOwnChannel) {
+      prevIrcState.current = localIrcState;
+      prevPartyState.current = partyConnected;
+      return;
+    }
+
+    const wasIrcConnected = prevIrcState.current === 'connected';
+
+    // IRC: connected → connecting (auto-reconnecting)
+    if (wasIrcConnected && localIrcState === 'connecting') {
+      showToast('Conexão com o chat caiu. Reconectando...', 'Twitch IRC', '#f59e0b');
+    }
+
+    // IRC: connected/connecting → error (retries exhausted)
+    if (wasIrcConnected && localIrcState === 'error') {
+      showToast('Conexão com o chat perdida. Reconecte manualmente.', 'Twitch IRC', '#ef4444', 0);
+      sendPushNotification(
+        'Fila DBD - Conexão perdida',
+        'Conexão com o chat da Twitch caiu. Reconecte para continuar recebendo pedidos.',
+      );
+    }
+
+    // IRC: reconnected successfully (not initial connect)
+    if (prevIrcState.current === 'connecting' && localIrcState === 'connected' && ircEverConnected.current) {
+      showToast('Reconectado ao chat.', 'Twitch IRC', '#22c55e');
+    }
+    if (localIrcState === 'connected') ircEverConnected.current = true;
+
+    // PartyKit: disconnected
+    if (prevPartyState.current && !partyConnected) {
+      showToast('Conexão com o servidor caiu. Reconectando...', 'Servidor', '#f59e0b');
+      sendPushNotification(
+        'Fila DBD - Conexão perdida',
+        'Conexão com o servidor caiu. Tentando reconectar...',
+      );
+    }
+
+    // PartyKit: reconnected (not initial connect)
+    if (!prevPartyState.current && partyConnected && partyEverConnected.current) {
+      showToast('Reconectado ao servidor.', 'Servidor', '#22c55e');
+    }
+    if (partyConnected) partyEverConnected.current = true;
+
+    prevIrcState.current = localIrcState;
+    prevPartyState.current = partyConnected;
+  }, [localIrcState, partyConnected, isOwnChannel, showToast]);
 
   // Connect to PartySocket
   useEffect(() => {

@@ -4,7 +4,7 @@ import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
 import { useChannel, useChat, useToasts, useAuth } from '../store';
-import { donateBotName } from '../services/twitch';
+import { donateBotName, simulateDisconnect } from '../services/twitch';
 
 export function DebugPanel() {
   const { useRequests, useSources } = useChannel();
@@ -235,6 +235,12 @@ export function DebugPanel() {
           </button>
           <button className="btn btn-ghost" onClick={handleLoadMock}>
             Carregar mock
+          </button>
+          <button className="btn btn-ghost" onClick={() => simulateDisconnect()}>
+            Simular desconexão
+          </button>
+          <button className="btn btn-ghost" onClick={() => setTimeout(() => simulateDisconnect(true), 3000)}>
+            Simular desconexão permanente (3s)
           </button>
         </div>
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>

@@ -7,6 +7,10 @@ import type { ChannelStores } from '../store/channel';
 let ws: WebSocket | null = null;
 let activeStores: ChannelStores | null = null;
 let intentionalClose = false;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BASE_DELAY = 2000;
 
 export const donateBotName = 'livepix';
 
@@ -19,7 +23,16 @@ function getStores() {
   return activeStores;
 }
 
+function clearReconnect() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectAttempts = 0;
+}
+
 export function disconnect() {
+  clearReconnect();
   if (ws) {
     intentionalClose = true;
     ws.close();
@@ -28,16 +41,30 @@ export function disconnect() {
   }
 }
 
+export function simulateDisconnect(permanent = false) {
+  if (permanent) {
+    reconnectAttempts = MAX_RECONNECT_ATTEMPTS;
+  }
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+}
+
+let currentChannel: string | null = null;
+
 export function connect(channel: string) {
   const ch = channel.trim().toLowerCase();
   if (!ch) return;
 
+  clearReconnect();
   if (ws) {
     intentionalClose = true;
     ws.close();
     ws = null;
   }
   intentionalClose = false;
+  currentChannel = ch;
 
   const { setIrcConnectionState } = getStores().useChannelInfo.getState();
   setIrcConnectionState('connecting');
@@ -54,6 +81,7 @@ export function connect(channel: string) {
     for (const line of e.data.split('\r\n')) {
       if (line.startsWith('PING')) socket.send('PONG :tmi.twitch.tv');
       else if (line.includes('366')) {
+        reconnectAttempts = 0;
         setIrcConnectionState('connected');
         console.log('Connected to Twitch IRC');
         window.location.hash = `/${ch}`;
@@ -63,18 +91,30 @@ export function connect(channel: string) {
     }
   };
   socket.onclose = () => {
-    console.log('Disconnected from Twitch IRC');
+    ws = null;
     if (intentionalClose) {
+      console.log('Disconnected from Twitch IRC');
       setIrcConnectionState('disconnected');
+      intentionalClose = false;
+      return;
+    }
+    intentionalClose = false;
+
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannel) {
+      reconnectAttempts++;
+      const delay = RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempts - 1);
+      console.log(`Twitch IRC disconnected, reconnecting (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`);
+      setIrcConnectionState('connecting');
+      reconnectTimer = setTimeout(() => {
+        if (currentChannel) connect(currentChannel);
+      }, delay);
     } else {
+      console.log('Twitch IRC disconnected, max reconnect attempts reached');
       setIrcConnectionState('error');
     }
-    ws = null;
-    intentionalClose = false;
   };
   socket.onerror = () => {
     console.log('Error connecting to Twitch IRC');
-    setIrcConnectionState('error');
   };
 }
 
