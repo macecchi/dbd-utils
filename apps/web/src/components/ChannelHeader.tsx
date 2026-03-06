@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useChannel, useAuth } from '../store';
 import { connect, disconnect } from '../services/twitch';
 import { claimOwnership, releaseOwnership } from '../services/party';
@@ -33,6 +33,17 @@ export function ChannelHeader() {
 
   const avatarUrl = roomInfo?.avatar_url || owner?.avatar;
   const lastActive = roomInfo?.updated_at ? new Date(roomInfo.updated_at + 'Z') : null;
+
+  const [copied, setCopied] = useState(false);
+  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}#/${channel}`;
+
+  const handleCopyLink = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [shareUrl]);
 
   const isConnected = twitchStatus === 'connected';
   const isConnecting = twitchStatus === 'connecting';
@@ -87,7 +98,10 @@ export function ChannelHeader() {
           <span className="channel-header-sub">
             {lastActive && connection.state === 'disconnected'
               ? `Último uso ${formatRelativeTime(lastActive)}`
-              : <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer">twitch.tv/{channel}</a>
+              : <a href={shareUrl} className="channel-header-share" onClick={handleCopyLink}>
+                {new URL(shareUrl).href.replace(/https?:\/\//, '')}
+                <span className="channel-header-share-hint">{copied ? 'Copiado!' : 'Clique para copiar'}</span>
+              </a>
             }
           </span>
         </div>

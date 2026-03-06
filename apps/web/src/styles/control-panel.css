@@ -161,6 +161,25 @@
   color: var(--text-muted);
 }
 
+.channel-header-share {
+  color: var(--text-muted);
+}
+
+.channel-header-share-hint {
+  display: none;
+  margin-left: 0.4rem;
+  color: var(--text-muted);
+}
+
+.channel-header-share:hover {
+  text-decoration: none;
+  color: var(--text-secondary);
+}
+
+.channel-header-share:hover .channel-header-share-hint {
+  display: inline;
+}
+
 /* Actions */
 .channel-header-actions {
   display: flex;
