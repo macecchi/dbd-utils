@@ -38,6 +38,9 @@ bun dev  # Servidor local com frontend + API + PartyKit
 - `JWT_SECRET` - qualquer string segura
 - `INTERNAL_API_SECRET` - secret compartilhado entre Worker e PartyKit
 
+**KV Namespace (via `wrangler kv namespace create CACHE`):**
+- Criar o namespace e atualizar o `id` no `wrangler.toml`
+
 **Database D1 (via `wrangler d1 create fila-dbd`):**
 - Criar o database e atualizar o `database_id` no `wrangler.toml`
 - Aplicar migrations: `wrangler d1 migrations apply fila-dbd`
@@ -49,10 +52,11 @@ bun dev  # Servidor local com frontend + API + PartyKit
 
 ## Uso
 
-1. Digite o nome do canal e clique em **Conectar**
-2. (Opcional) Adicione uma [API key do Gemini](https://aistudio.google.com/apikey) nas configurações para identificação automática de personagens
+1. Acesse a landing page e clique em **Conectar com Twitch**
+2. Após autenticar, clique em **Começar minha fila** para abrir sua fila
+3. A landing page exibe canais ativos com filas abertas
 
-Funciona sem API key se os nomes dos personagens forem mencionados diretamente na mensagem.
+A identificação de personagens usa IA (Gemini) automaticamente. Funciona sem IA se os nomes forem mencionados diretamente.
 
 ## Interface
 

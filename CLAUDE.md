@@ -20,7 +20,7 @@ apps/
 └── api/              # Cloudflare Worker backend (Hono) + PartyKit
     ├── migrations/     # D1 database migrations
     └── src/
-        ├── index.ts    # Hono API (auth, LLM, internal D1 endpoints)
+        ├── index.ts    # Hono API (auth, LLM, internal D1 endpoints, public /rooms/active)
         └── party.ts    # PartyKit server (real-time sync + D1 write-through)
 ```
 
@@ -56,10 +56,13 @@ bun run deploy:party # Deploy PartyKit
 - Write-through to D1 via async HTTP calls to Hono API
 
 **D1 database (persistent backup):**
-- `rooms` table — flattened sources settings per channel
+- `rooms` table — flattened sources settings, Twitch profile cache (`avatar_url`, `banner_url`), room `status`
 - `requests` table — one row per request with `position` for ordering
-- Debounced sync (2s) for requests, immediate for sources
+- Debounced sync (2s) for requests, immediate for sources and status
 - Internal auth via `INTERNAL_API_SECRET` shared between Worker and PartyKit
+
+**KV (CACHE namespace):**
+- Twitch app access token cache (client credentials flow)
 
 **localStorage (seeding only):**
 - `dbd_chat` - Recent chat messages
