@@ -293,7 +293,7 @@ function ChannelApp() {
         </main>
 
         {!readOnly && <SourcesPanel />}
-        {isDebugMode() && <DebugPanel />}
+        {(import.meta.env.DEV || isDebugMode()) && <DebugPanel />}
 
         <footer className="footer">
           <div>Fila DBD</div>
