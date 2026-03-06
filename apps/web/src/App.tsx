@@ -213,7 +213,7 @@ function ChannelApp() {
             <div className="brand-icon">
               <img src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.png`} alt="DBD" />
             </div>
-            <h1>DBD Tracker<span>Fila de pedidos</span></h1>
+            <h1>Fila DBD<span>Fila de pedidos</span></h1>
           </div>
           <Stats />
         </header>
@@ -297,7 +297,7 @@ function ChannelApp() {
         {isDebugMode() && <DebugPanel />}
 
         <footer className="footer">
-          <div>DBD Tracker</div>
+          <div>Fila DBD</div>
           <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span>Versão: {__APP_VERSION__}</span>
             <span className="footer-separator">•</span>

@@ -1,4 +1,4 @@
-# DBD Tracker
+# Fila DBD
 
 Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durante streams na Twitch. 
 
