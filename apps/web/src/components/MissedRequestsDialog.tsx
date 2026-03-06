@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getKillerPortrait } from '../data/characters';
 import { CharacterAvatar } from './CharacterAvatar';
 import type { Request } from '../types';
@@ -14,13 +14,18 @@ interface Props {
 
 export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatus, onConfirm, onClose }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const seenIds = useRef<Set<number>>(new Set());
 
-  // Select all by default when requests arrive
+  // Auto-select NEW requests, preserve user unchecks
   useEffect(() => {
-    if (requests.length > 0) {
-      setSelected(new Set(requests.map(r => r.id)));
-    }
+    const newIds = requests.filter(r => !seenIds.current.has(r.id)).map(r => r.id);
+    if (!newIds.length) return;
+    for (const id of newIds) seenIds.current.add(id);
+    setSelected(prev => { const next = new Set(prev); for (const id of newIds) next.add(id); return next; });
   }, [requests]);
+
+  // Reset tracking on dialog close/reopen
+  useEffect(() => { if (!isOpen) { seenIds.current.clear(); setSelected(new Set()); } }, [isOpen]);
 
   const toggleAll = (selectAll: boolean) => {
     if (selectAll) {

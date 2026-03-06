@@ -69,6 +69,7 @@ function ChannelApp() {
     setRecoveredRequests([]);
     setRecoveryLoading(true);
 
+    const controller = new AbortController();
     const currentRequests = useRequests.getState().requests;
     recoverMissedRequests(channel, config, currentRequests, {
       onProgress: setRecoveryStatus,
@@ -76,20 +77,25 @@ function ChannelApp() {
         setRecoveryOpen(true);
         setRecoveredRequests(prev => [...prev, req]);
       },
-    })
+    }, controller.signal)
       .then((result) => {
+        if (controller.signal.aborted) return;
         setRecoveryLoading(false);
         if (!result || result.requests.length === 0) {
-          if (result && result.lastOffset > (sourcesState.recoveryVodOffset ?? 0)) {
+          if (result) {
             useSources.getState().setRecoveryCheckpoint(result.vodId, result.lastOffset);
           }
         } else {
           recoveryResultRef.current = { vodId: result.vodId, lastOffset: result.lastOffset };
         }
       })
-      .catch(() => {
-        // silently fail
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        console.error('VOD recovery failed:', err);
+        setRecoveryLoading(false);
       });
+
+    return () => controller.abort();
   }, [ircState, partySynced, canManageChannel, channel, useSources, useRequests]);
 
   // Reset recovery state when IRC disconnects

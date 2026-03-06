@@ -120,6 +120,7 @@ export function cancelVODReplay() {
 export interface RecoveryConfig {
   botName: string;
   minDonation: number;
+  // resub: included for type compat but VOD GQL has no USERNOTICE data
   sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
   chatCommand: string;
   checkpoint?: { vodId: string; offset: number };
@@ -170,8 +171,11 @@ export async function recoverMissedRequests(
   channel: string,
   config: RecoveryConfig,
   existingRequests: Request[],
-  callbacks?: RecoveryCallbacks
+  callbacks?: RecoveryCallbacks,
+  signal?: AbortSignal
 ): Promise<RecoveryResult | null> {
+  if (signal?.aborted) return null;
+
   callbacks?.onProgress?.('Buscando VOD da stream atual...');
 
   const vodInfo = await fetchCurrentVodId(channel);
@@ -196,8 +200,9 @@ export async function recoverMissedRequests(
 
   callbacks?.onProgress?.('Analisando chat da VOD...');
 
-  while (true) {
+  while (!signal?.aborted) {
     const data = await fetchVODChat(vodId, offset);
+    if (signal?.aborted) break;
     const edges = data?.data?.video?.comments?.edges || [];
     if (!edges.length) break;
 
