@@ -64,8 +64,6 @@
   font-size: var(--text-sm);
   color: var(--text-muted);
   font-style: italic;
-  flex: 1;
-  min-width: 0;
 }
 
 /* Hover action overlay */
@@ -177,20 +175,18 @@
   gap: var(--space-sm);
 }
 
-.donor {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
+.request-card-body {
   flex: 1;
   min-width: 0;
-  flex-wrap: wrap;
   margin-top: 0.5em;
+  line-height: normal;
 }
 
 .donor-name {
   font-weight: 600;
   font-size: 0.8em;
   color: var(--accent);
+  margin-right: 0.4em;
 }
 
 .amount {
@@ -335,8 +331,7 @@
     font-size: var(--text-base);
   }
 
-  .donor {
-    gap: 0.4rem;
+  .request-card-body {
     margin-top: 0.3em;
   }
 

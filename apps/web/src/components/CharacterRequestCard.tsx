@@ -137,7 +137,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
             </span>
             {isValidating && <span className="validating-dot" title="Validando com IA..." />}
           </div>
-          <div className="donor">
+          <div className="request-card-body">
             <span className="donor-name">{r.donor}</span>
             <span className="msg-preview" title={r.message}>{r.message}</span>
           </div>
