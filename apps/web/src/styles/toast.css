@@ -66,6 +66,21 @@
 }
 
 
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.toast-close:hover {
+  color: var(--text);
+}
+
 .undo-btn {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.8rem;

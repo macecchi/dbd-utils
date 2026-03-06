@@ -96,11 +96,53 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     prevSomeoneElseIsOwner.current = someoneElseIsOwner;
   }, [someoneElseIsOwner, showToast]);
 
-  // Request notification permission when streamer connects
+  // Request notification permission + show toast if denied (reactive to permission changes)
+  const notifToastId = useRef<number | null>(null);
   useEffect(() => {
-    if (isOwnChannel && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    if (!isOwnChannel || !('Notification' in window)) return;
+
+    const { add, remove } = useToasts.getState();
+
+    const handlePermission = (state: string) => {
+      if (state === 'default') {
+        Notification.requestPermission();
+      } else if (state === 'denied') {
+        if (notifToastId.current === null) {
+          notifToastId.current = add({
+            message: 'Ative as notificações do navegador para ser alertado se a conexão cair.',
+            title: 'Notificações bloqueadas',
+            color: '#f59e0b',
+            duration: 0,
+            type: 'default',
+          });
+        }
+      } else if (state === 'granted' && notifToastId.current !== null) {
+        remove(notifToastId.current);
+        notifToastId.current = null;
+      }
+    };
+
+    handlePermission(Notification.permission);
+
+    let permStatus: PermissionStatus | null = null;
+    const onChange = () => {
+      if (permStatus) handlePermission(permStatus.state);
+    };
+
+    if ('permissions' in navigator) {
+      navigator.permissions.query({ name: 'notifications' }).then((status) => {
+        permStatus = status;
+        status.addEventListener('change', onChange);
+      });
     }
+
+    return () => {
+      permStatus?.removeEventListener('change', onChange);
+      if (notifToastId.current !== null) {
+        remove(notifToastId.current);
+        notifToastId.current = null;
+      }
+    };
   }, [isOwnChannel]);
 
   // Toast + push notification on disconnect (only for channel owner)

@@ -36,6 +36,9 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
       {toast.type === 'undo' && (
         <button className="undo-btn" onClick={handleUndo}>Desfazer</button>
       )}
+      {toast.duration === 0 && (
+        <button className="toast-close" onClick={() => onRemove(toast.id)} aria-label="Fechar">×</button>
+      )}
     </div>
   );
 }
