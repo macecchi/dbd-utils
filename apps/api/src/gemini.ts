@@ -1,6 +1,6 @@
 import { DEFAULT_CHARACTERS } from '@dbd-utils/shared';
 
-const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+const MODELS = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 const RETRIABLE_CODES = [429, 500, 502, 503, 504];
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [2000, 4000, 8000];
@@ -94,10 +94,32 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
   }
 
   currentModelIndex = modelIdx;
-  const data = await res.json();
-  const text = (data as any).candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  const result = JSON.parse(text) as ExtractionResult;
+  const data = await res.json() as any;
+  console.log(`[extract] Response from ${model}:`, JSON.stringify(data).slice(0, 500));
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
+  if (!text) {
+    const blockReason = data.promptFeedback?.blockReason
+      || data.candidates?.[0]?.finishReason;
+    console.warn(`[extract] Empty response from ${model}: ${blockReason || 'no candidates'}`);
+
+    const nextIdx = (modelIdx + 1) % MODELS.length;
+    if (nextIdx !== startIdx) {
+      console.log(`[extract] Switching from ${model} to ${MODELS[nextIdx]}`);
+      currentModelIndex = nextIdx;
+      return extractCharacter(message, apiKey, 0, nextIdx, startIdx);
+    }
+    if (attempt < MAX_RETRIES) {
+      console.log(`[extract] Retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
+      return extractCharacter(message, apiKey, attempt + 1, modelIdx, startIdx);
+    }
+
+    console.error(`[extract] All retries exhausted, returning empty`);
+    return { character: '', type: 'none' };
+  }
+
+  const result = JSON.parse(text) as ExtractionResult;
   console.log(`[extract] Success: character="${result.character}" type="${result.type}"`);
   return result;
 }
