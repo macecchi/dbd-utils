@@ -50,9 +50,8 @@ function ChannelApp() {
 
   // Trigger recovery when IRC connects
   const recoveryResultRef = useRef<{ vodId: string; lastOffset: number } | null>(null);
-  // TODO: restore gates: if (ircState !== 'connected' || !canManageChannel || hasTriedRecovery.current) return;
   useEffect(() => {
-    if (hasTriedRecovery.current) return;
+    if (ircState !== 'connected' || !canManageChannel || hasTriedRecovery.current) return;
     hasTriedRecovery.current = true;
 
     const sourcesState = useSources.getState();
