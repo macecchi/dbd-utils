@@ -71,15 +71,18 @@ function ChannelApp() {
 
     const controller = new AbortController();
     const currentRequests = useRequests.getState().requests;
+    console.log('[recovery] starting scan', { channel, config, existingCount: currentRequests.length });
     recoverMissedRequests(channel, config, currentRequests, {
-      onProgress: setRecoveryStatus,
+      onProgress: (s) => { console.log('[recovery] progress:', s); setRecoveryStatus(s); },
       onRequest: (req) => {
+        console.log('[recovery] found request:', req);
         setRecoveryOpen(true);
         setRecoveredRequests(prev => [...prev, req]);
       },
     }, controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
+        console.log('[recovery] done', result);
         setRecoveryLoading(false);
         if (!result || result.requests.length === 0) {
           if (result) {
@@ -102,6 +105,7 @@ function ChannelApp() {
   useEffect(() => {
     if (ircState === 'disconnected') {
       hasTriedRecovery.current = false;
+      recoveryResultRef.current = null;
     }
   }, [ircState]);
 
