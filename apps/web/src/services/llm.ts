@@ -28,7 +28,12 @@ async function callAPI(
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      const msg = (err as any).message || (err as any).error || `HTTP ${res.status}`;
+      const errorCode = (err as any).error;
+      if (errorCode === 'daily_limit_exceeded') {
+        onError?.('Limite diário de identificações atingido');
+        return { character: '', type: 'none' };
+      }
+      const msg = (err as any).message || errorCode || `HTTP ${res.status}`;
       onError?.(msg);
       return { character: 'Erro na API', type: 'unknown' };
     }
