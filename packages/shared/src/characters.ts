@@ -105,5 +105,5 @@ export const DEFAULT_CHARACTERS = {
 };
 
 export function getKillerPortrait(name: string): string | undefined {
-    return CHARACTERS.killers.find(k => k.name === name)?.portrait;
+    return CHARACTERS.killers.find(k => k.name === name)?.portrait || CHARACTERS.killers.find(k => k.aliases.includes(name))?.portrait;
 }
