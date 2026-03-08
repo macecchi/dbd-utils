@@ -31,12 +31,36 @@ interface CharacterResponse {
   type: string;
 }
 
+// In-memory KV mock
+function createMockKV() {
+  const store = new Map<string, { value: string; expiry?: number }>();
+  return {
+    get: vi.fn(async (key: string) => {
+      const entry = store.get(key);
+      if (!entry) return null;
+      if (entry.expiry && Date.now() > entry.expiry) {
+        store.delete(key);
+        return null;
+      }
+      return entry.value;
+    }),
+    put: vi.fn(async (key: string, value: string, opts?: { expirationTtl?: number }) => {
+      const expiry = opts?.expirationTtl ? Date.now() + opts.expirationTtl * 1000 : undefined;
+      store.set(key, { value, expiry });
+    }),
+    _store: store,
+  };
+}
+
+const mockCache = createMockKV();
+
 const TEST_ENV = {
   TWITCH_CLIENT_ID: 'test-client-id',
   TWITCH_CLIENT_SECRET: 'test-client-secret',
   JWT_SECRET: 'test-jwt-secret-that-is-long-enough',
   FRONTEND_URL: 'https://example.com/app',
   GEMINI_API_KEY: 'test-gemini-key',
+  CACHE: mockCache,
 };
 
 // Helper to create a valid JWT
@@ -59,6 +83,7 @@ async function createTestToken(payload: Record<string, unknown> = {}, expiresIn 
 describe('Hono API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCache._store.clear();
   });
 
   describe('CORS', () => {
@@ -226,6 +251,85 @@ describe('Hono API', () => {
       const body = await res.json() as CharacterResponse;
       expect(body.character).toBe('Meg Thomas');
       expect(body.type).toBe('survivor');
+    });
+
+    it('returns 400 when message exceeds 500 characters', async () => {
+      const token = await createTestToken();
+      const longMessage = 'a'.repeat(501);
+
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: longMessage }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(400);
+      const body = await res.json() as ErrorResponse & { max: number };
+      expect(body.error).toBe('message_too_long');
+      expect(body.max).toBe(500);
+    });
+
+    it('accepts message at exactly 500 characters', async () => {
+      const token = await createTestToken();
+      const exactMessage = 'a'.repeat(500);
+
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: exactMessage }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+    });
+
+    it('returns 429 when daily limit is exceeded', async () => {
+      const token = await createTestToken();
+
+      // Pre-fill the rate limit counter to the limit
+      const today = new Date().toISOString().slice(0, 10);
+      await mockCache.put(`ratelimit:extract:12345:${today}`, '200');
+
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: 'quero meg' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(429);
+      const body = await res.json() as ErrorResponse & { limit: number };
+      expect(body.error).toBe('daily_limit_exceeded');
+      expect(body.limit).toBe(200);
+    });
+
+    it('increments rate limit counter after successful extraction', async () => {
+      const token = await createTestToken();
+
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: 'quero meg' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+
+      const today = new Date().toISOString().slice(0, 10);
+      expect(mockCache.put).toHaveBeenCalledWith(
+        `ratelimit:extract:12345:${today}`,
+        '1',
+        { expirationTtl: 86400 }
+      );
     });
 
     it('returns 502 when Gemini fails', async () => {

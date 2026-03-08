@@ -196,6 +196,10 @@ api.use("*", async (c, next) => {
   await next();
 });
 
+// Twitch chat messages are capped at 500 characters
+const MAX_MESSAGE_LENGTH = 500;
+const DAILY_EXTRACT_LIMIT = 200;
+
 api.post("/extract-character", async (c) => {
   const user = c.get("jwtPayload");
   const clientVersion = c.req.header("X-Client-Version") || "unknown";
@@ -205,10 +209,33 @@ api.post("/extract-character", async (c) => {
     return c.json({ error: "invalid_input" }, 400);
   }
 
+  if (body.message.length > MAX_MESSAGE_LENGTH) {
+    return c.json({ error: "message_too_long", max: MAX_MESSAGE_LENGTH }, 400);
+  }
+
+  // Per-user daily rate limit via KV
+  const today = new Date().toISOString().slice(0, 10);
+  const rateLimitKey = `ratelimit:extract:${user.sub}:${today}`;
+  const currentCount = parseInt((await c.env.CACHE.get(rateLimitKey)) || "0", 10);
+
+  if (currentCount >= DAILY_EXTRACT_LIMIT) {
+    console.warn(`[ratelimit] User ${user.login} (${user.sub}) hit daily extract limit of ${DAILY_EXTRACT_LIMIT}`);
+    return c.json({ error: "daily_limit_exceeded", limit: DAILY_EXTRACT_LIMIT }, 429);
+  }
+
   console.log(`[v${clientVersion}] Extract request from ${user.login}: ${body.message.slice(0, 100)}`);
 
   try {
     const result = await extractCharacter(body.message, c.env.GEMINI_API_KEY);
+
+    // Increment counter after successful extraction (TTL: 24h)
+    const putPromise = c.env.CACHE.put(rateLimitKey, String(currentCount + 1), { expirationTtl: 86400 });
+    try {
+      c.executionCtx.waitUntil(putPromise);
+    } catch {
+      await putPromise;
+    }
+
     return c.json(result);
   } catch (e: any) {
     console.error("Gemini error:", e.message);
