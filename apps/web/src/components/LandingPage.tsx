@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../store';
-import { formatRelativeTime } from '../utils/helpers';
+import { formatRelativeTime, handleLinkClick } from '../utils/helpers';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
@@ -23,7 +23,7 @@ function ConnectButton() {
 
   if (isAuthenticated && user) {
     return (
-      <a className="btn btn-primary landing-cta" href={`#/${user.login.toLowerCase()}`}>
+      <a className="btn btn-primary landing-cta" href={`/${user.login.toLowerCase()}`} onClick={handleLinkClick}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
           <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
         </svg>
@@ -82,7 +82,7 @@ function LiveChannels() {
   return (
     <div className={`landing-channels-grid${rooms.length === 1 ? ' single' : ''}`}>
       {rooms.map(room => (
-        <a key={room.id} className="landing-channel-card" href={`#/${room.channel_login}`}>
+        <a key={room.id} className="landing-channel-card" href={`/${room.channel_login}`} onClick={handleLinkClick}>
           <div className="landing-channel-thumb">
             {(room.thumbnail_url || room.banner_url) ? (
               <img src={(room.thumbnail_url || room.banner_url)!} alt={room.channel_login} />

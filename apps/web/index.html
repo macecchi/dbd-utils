@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <script>
     if (location.hostname === 'macecchi.github.io')
-      location.replace('https://filadbd.pages.dev/' + location.hash);
+      location.replace('https://filadbd.pages.dev' + location.pathname.replace('/dbd-utils', '') + (location.hash ? location.hash.slice(1) : ''));
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
   <title>Fila DBD - Fila de pedidos</title>

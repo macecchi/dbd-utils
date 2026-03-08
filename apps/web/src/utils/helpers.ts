@@ -19,6 +19,18 @@ export interface ParsedDonationMessage {
   message: string;
 }
 
+export function navigate(path: string) {
+  if (path === window.location.pathname) return;
+  window.history.pushState(null, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+export function handleLinkClick(e: React.MouseEvent<HTMLAnchorElement>) {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+  e.preventDefault();
+  navigate(e.currentTarget.getAttribute('href')!);
+}
+
 export function parseDonationMessage(message: string): ParsedDonationMessage | null {
   const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
   if (!match) return null;

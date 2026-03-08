@@ -87,7 +87,7 @@ Exibe mensagens do chat em tempo real. Pode ser escondido para mais espaço.
 
 ## Debug
 
-Adicione `/debug` na URL para ativar o painel de debug. Exemplo: `http://localhost:5173/dbd-utils/#/meriw_/debug`.
+Adicione `#debug` na URL para ativar o painel de debug. Exemplo: `http://localhost:5173/meriw_#debug`.
 
 - **Testar extração**: testa identificação de personagem em uma mensagem
 - **Re-identificar todos**: reprocessa todos os pedidos da fila

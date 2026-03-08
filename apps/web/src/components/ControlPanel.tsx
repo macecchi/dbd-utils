@@ -3,6 +3,7 @@ import { useSettings, useAuth, useChannel } from '../store';
 import { connect, disconnect } from '../services/twitch';
 import { claimOwnership, releaseOwnership } from '../services/party';
 import { useConnectionStatus } from '../hooks/useConnectionStatus';
+import { navigate } from '../utils/helpers';
 
 
 export function ControlPanel() {
@@ -31,7 +32,7 @@ export function ControlPanel() {
       releaseOwnership();
     } else if (inputChannel) {
       if (inputChannel !== channel) {
-        window.location.hash = `#/${inputChannel}`;
+        navigate(`/${inputChannel}`);
       } else if (isOwner) {
         // Already have ownership, just connect IRC
         connect(channel);
@@ -44,7 +45,7 @@ export function ControlPanel() {
 
   const handleGoToChannel = () => {
     if (inputChannel && inputChannel !== channel) {
-      window.location.hash = `#/${inputChannel}`;
+      navigate(`/${inputChannel}`);
     }
   };
 
@@ -52,7 +53,7 @@ export function ControlPanel() {
     if (!isAuthenticated) {
       login();
     } else if (user) {
-      window.location.hash = `#/${user.login.toLowerCase()}`;
+      navigate(`/${user.login.toLowerCase()}`);
     }
   };
 

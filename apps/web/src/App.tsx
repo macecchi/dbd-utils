@@ -14,15 +14,19 @@ import { identifyCharacter } from './services';
 import { recoverMissedRequests } from './services/vod';
 import { donateBotName } from './services/twitch';
 import { useSettings, useAuth, ChannelProvider, useChannel, useToasts, useLastChannel } from './store';
+import { navigate, handleLinkClick } from './utils/helpers';
 import { migrateGlobalToChannel } from './utils/migrate';
 import type { Request } from './types';
 
-const parseHash = (hash: string) => {
-  const parts = hash.replace(/^#\/?/, '').split('/');
-  return { channel: parts[0] || null, debug: parts[1] === 'debug' };
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const getChannelFromPath = () => {
+  const path = window.location.pathname.startsWith(basePath)
+    ? window.location.pathname.slice(basePath.length)
+    : window.location.pathname;
+  return path.replace(/^\//, '').split('/')[0] || null;
 };
-const getChannelFromHash = (hash: string) => parseHash(hash).channel;
-const isDebugMode = () => parseHash(window.location.hash).debug;
+const isDebugMode = () => window.location.hash === '#debug' || window.location.hash === '#debug=true';
 
 function ChannelApp() {
   const { channel, useRequests, useSources, useChannelInfo, canManageChannel } = useChannel();
@@ -208,7 +212,7 @@ function ChannelApp() {
     <>
       <div className="app">
         <header className="header">
-          <a className="brand" href="#/">
+          <a className="brand" href="/" onClick={handleLinkClick}>
             <div className="brand-icon">
               <img src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.webp`} alt="DBD" />
             </div>
@@ -323,6 +327,12 @@ export function App() {
   const [channel, setChannel] = useState<string | null>(() => {
     migrateGlobalToChannel();
 
+    // Migrate hash routes to path routes
+    if (window.location.hash.startsWith('#/')) {
+      const path = window.location.hash.slice(1);
+      window.history.replaceState(null, '', path);
+    }
+
     // Handle OAuth callback
     const success = useAuth.getState().handleCallback();
     if (success) {
@@ -330,37 +340,35 @@ export function App() {
       if (freshUser?.login) {
         const ch = freshUser.login.toLowerCase();
         useLastChannel.getState().setLastChannel(ch);
-        window.location.hash = `#/${ch}`;
+        navigate(`/${ch}`);
         return ch;
       }
     }
 
-    // Set channel from hash — if none, show landing page
-    const hashChannel = getChannelFromHash(window.location.hash);
-    if (hashChannel) {
-      const ch = hashChannel.toLowerCase();
+    // Set channel from path — if none, show landing page
+    const pathChannel = getChannelFromPath();
+    if (pathChannel) {
+      const ch = pathChannel.toLowerCase();
       useLastChannel.getState().setLastChannel(ch);
       return ch;
     }
     return null;
   });
 
-  // Handle navigation (hashchange + popstate for browser back)
+  // Handle navigation (popstate for browser back/forward + programmatic navigate)
   useEffect(() => {
     const syncChannel = () => {
-      const hashChannel = getChannelFromHash(window.location.hash);
-      if (hashChannel) {
-        const ch = hashChannel.toLowerCase();
+      const pathChannel = getChannelFromPath();
+      if (pathChannel) {
+        const ch = pathChannel.toLowerCase();
         setChannel(ch);
         useLastChannel.getState().setLastChannel(ch);
       } else {
         setChannel(null);
       }
     };
-    window.addEventListener('hashchange', syncChannel);
     window.addEventListener('popstate', syncChannel);
     return () => {
-      window.removeEventListener('hashchange', syncChannel);
       window.removeEventListener('popstate', syncChannel);
     };
   }, []);

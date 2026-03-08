@@ -84,7 +84,6 @@ export function connect(channel: string) {
         reconnectAttempts = 0;
         setIrcConnectionState('connected');
         console.log('Connected to Twitch IRC');
-        window.location.hash = `/${ch}`;
       }
       else if (line.includes('USERNOTICE')) handleUserNotice(line);
       else if (line.includes('PRIVMSG')) handleMessage(line);

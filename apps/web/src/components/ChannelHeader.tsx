@@ -35,7 +35,7 @@ export function ChannelHeader() {
   const lastActive = roomInfo?.updated_at ? new Date(roomInfo.updated_at + 'Z') : null;
 
   const [copied, setCopied] = useState(false);
-  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}#/${channel}`;
+  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}${channel}`;
 
   const handleCopyLink = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
