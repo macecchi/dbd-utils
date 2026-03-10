@@ -305,6 +305,8 @@ function ChannelApp() {
             <span>Versão: {__APP_VERSION__}</span>
             <span className="footer-separator">•</span>
             <a href="https://github.com/macecchi/dbd-utils" target="_blank">GitHub</a>
+            <span className="footer-separator">•</span>
+            <a href="https://discord.gg/6pY7Efhxd" target="_blank">Discord</a>
           </span>
         </footer>
       </div>

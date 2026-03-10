@@ -217,7 +217,11 @@ export function LandingPage() {
       </div>
       <footer className="landing-footer">
         <span>Fila DBD</span>
-        <a href="https://github.com/macecchi/dbd-utils" target="_blank">GitHub</a>
+        <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <a href="https://github.com/macecchi/dbd-utils" target="_blank">GitHub</a>
+          <span>•</span>
+          <a href="https://discord.gg/6pY7Efhxd" target="_blank">Discord</a>
+        </span>
       </footer>
     </div>
   );
