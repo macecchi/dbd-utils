@@ -29,17 +29,11 @@ app.use(
   "*",
   cors({
     origin: (origin, c) => {
-      const frontendOrigin = new URL(c.env.FRONTEND_URL).origin;
-      if (origin === frontendOrigin) return origin;
-      // Allow preview subdomains (e.g., abc123.filadbd.pages.dev)
-      const frontendHost = new URL(c.env.FRONTEND_URL).hostname;
-      if (origin) {
-        try {
-          const originHost = new URL(origin).hostname;
-          if (originHost.endsWith(`.${frontendHost}`)) return origin;
-        } catch { /* invalid origin */ }
-      }
-      return frontendOrigin;
+      const frontend = new URL(c.env.FRONTEND_URL);
+      if (!origin) return frontend.origin;
+      const url = new URL(origin);
+      if (url.hostname === frontend.hostname || url.hostname.endsWith(`.${frontend.hostname}`)) return origin;
+      return frontend.origin;
     },
     credentials: true,
   })
