@@ -439,10 +439,15 @@ app.get("/rooms/active", async (c) => {
         });
         if (res.ok) {
           const data = await res.json<{ status: string; connections: number; pending_count: number }>();
+          if (data.status !== r.status) {
+            console.log(`[rooms/active] ${r.id}: D1 status="${r.status}" → PartyKit status="${data.status}"`);
+          }
           partyStatusMap.set(r.id, { status: data.status, pending_count: data.pending_count });
+        } else {
+          console.warn(`[rooms/active] PartyKit returned ${res.status} for ${r.id}`);
         }
-      } catch {
-        // PartyKit unreachable — fall back to D1 data
+      } catch (e) {
+        console.warn(`[rooms/active] PartyKit unreachable for ${r.id}, falling back to D1:`, e);
       }
     });
     await Promise.all(fetches);
@@ -471,7 +476,16 @@ app.get("/rooms/active", async (c) => {
     };
   });
 
-  return c.json({ rooms: enriched });
+  // Sort: online/live first, then by viewer count, then by pending requests
+  enriched.sort((a, b) => {
+    const aOnline = a.status !== 'offline' ? 1 : 0;
+    const bOnline = b.status !== 'offline' ? 1 : 0;
+    if (aOnline !== bOnline) return bOnline - aOnline;
+    if ((a.viewer_count ?? 0) !== (b.viewer_count ?? 0)) return (b.viewer_count ?? 0) - (a.viewer_count ?? 0);
+    return (b.pending_count ?? 0) - (a.pending_count ?? 0);
+  });
+
+  return c.json({ rooms: enriched.slice(0, 12) });
 });
 
 app.get("/rooms/:roomId", async (c) => {
