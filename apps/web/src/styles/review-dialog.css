@@ -1,0 +1,275 @@
+/* Requests Review Dialog */
+
+.review-dialog {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 95%;
+  max-width: 820px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.2s ease;
+}
+
+/* Tabs */
+
+.review-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.review-tab {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.review-tab:hover {
+  color: var(--text-secondary);
+}
+
+.review-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.review-tab-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  line-height: 1.2;
+}
+
+/* Table */
+
+.review-table-wrap {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.review-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.review-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.review-table th {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.review-table td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  color: var(--text);
+}
+
+.review-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.review-row-changed {
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.review-row-changed:hover {
+  background: rgba(139, 92, 246, 0.1) !important;
+}
+
+/* Columns */
+
+.review-col-num {
+  width: 2.5rem;
+  text-align: center !important;
+  color: var(--text-muted) !important;
+}
+
+.review-col-char {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* Fix: make the char column cell a flex container in <td> too */
+td.review-col-char {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.review-char-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 130px;
+}
+
+.review-col-donor {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-col-source {
+  width: 5rem;
+}
+
+.review-col-amount {
+  width: 4.5rem;
+  white-space: nowrap;
+}
+
+.review-col-msg {
+  max-width: 180px;
+}
+
+.review-msg-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-col-done {
+  width: 4.5rem;
+  text-align: center !important;
+}
+
+.review-col-time {
+  width: 3.5rem;
+  white-space: nowrap;
+  color: var(--text-muted) !important;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--text-xs);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* Done button */
+
+.review-done-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.review-done-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.review-done-btn.checked {
+  color: var(--accent);
+}
+
+.review-done-btn.changed {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Changes diff display */
+
+.review-done-diff {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.review-diff-old {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.review-diff-old.done {
+  color: var(--accent);
+  opacity: 0.5;
+}
+
+.review-diff-new {
+  color: var(--text);
+}
+
+.review-diff-new.done {
+  color: var(--accent);
+}
+
+.review-done-diff svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Mobile */
+
+@media (max-width: 640px) {
+  .review-dialog {
+    width: calc(100vw - 1rem);
+    max-height: 92vh;
+    margin: 0.5rem;
+    border-radius: 12px;
+  }
+
+  .review-col-msg,
+  .review-col-amount {
+    display: none;
+  }
+
+  .review-char-name {
+    max-width: 80px;
+  }
+
+  .review-col-donor {
+    max-width: 70px;
+  }
+}

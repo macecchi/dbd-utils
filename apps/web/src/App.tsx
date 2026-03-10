@@ -6,6 +6,7 @@ import { CharacterRequestList } from './components/CharacterRequestList';
 import { LandingPage } from './components/LandingPage';
 import { ManualEntry } from './components/ManualEntry';
 import { MissedRequestsDialog } from './components/MissedRequestsDialog';
+import { RequestsReviewDialog } from './components/RequestsReviewDialog';
 import { SourcesBadges } from './components/SourcesBadges';
 import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
@@ -39,6 +40,7 @@ function ChannelApp() {
   const setSortMode = useSources((s) => s.setSortMode);
   const [manualOpen, setManualOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [shownToasts] = useState(() => new Set<number>());
   const isFirstLoad = useRef(true);
   const readOnly = !canManageChannel;
@@ -254,6 +256,12 @@ function ChannelApp() {
                     <path d="M12 5v14M5 12h14" />
                   </svg>
                 </button>
+                <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setReviewOpen(true)} title="Revisar pedidos" disabled={readOnly || requests.length === 0}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M3 9h18M9 3v18" />
+                  </svg>
+                </button>
                 <button className={`btn btn-ghost btn-small btn-small-icon${showDone ? ' active' : ''}`} onClick={() => setShowDone(v => !v)} title={showDone ? 'Esconder feitos' : 'Mostrar feitos'}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     {showDone ? <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /> : <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />}
@@ -312,6 +320,12 @@ function ChannelApp() {
       </div>
 
       <ManualEntry isOpen={manualOpen} onClose={() => setManualOpen(false)} />
+      <RequestsReviewDialog
+        isOpen={reviewOpen}
+        requests={requests}
+        onApply={(edited) => { setAll(edited); setReviewOpen(false); }}
+        onClose={() => setReviewOpen(false)}
+      />
       <MissedRequestsDialog
         isOpen={recoveryOpen}
         requests={recoveredRequests}
