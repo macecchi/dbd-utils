@@ -17,7 +17,9 @@ export function CharacterRequestList({ showDone = false }: Props) {
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const readOnly = !canManageChannel;
-  const filtered = showDone ? requests : requests.filter(r => !r.done);
+  const filtered = showDone
+    ? [...requests].sort((a, b) => Number(a.done) - Number(b.done))
+    : requests.filter(r => !r.done);
 
   const handleToggleDone = useCallback((id: number) => {
     if (readOnly) return;

@@ -34,6 +34,9 @@ export function createRequestsStore(
   getSourcesState: () => SourcesStore,
   getContext: () => { partyConnected: boolean; isOwner: boolean }
 ) {
+  // Saved before sync-full overwrites local state; merged when ownership is (re)claimed
+  let preSyncRequests: Request[] | null = null;
+
   return create<RequestsStore>()(
     persist(
       (set, get) => ({
@@ -130,6 +133,12 @@ export function createRequestsStore(
               const localRequests = get().requests;
               const { isOwner, partyConnected } = getContext();
 
+              // Save local state before overwriting — will be merged if ownership is (re)claimed.
+              // This handles the case where the owner made changes (toggle done, add requests)
+              // during a brief PartyKit disconnect; without this, sync-full would silently
+              // discard those changes because isOwner is false until ownership is re-granted.
+              preSyncRequests = localRequests.length > 0 ? localRequests : null;
+
               // Owner seeds empty server from localStorage
               if (serverRequests.length === 0 && localRequests.length > 0 && isOwner && partyConnected) {
                 const sources = getSourcesState();
@@ -176,6 +185,44 @@ export function createRequestsStore(
                 ),
               }));
               break;
+            case 'ownership-granted': {
+              // After reconnect, merge any local changes made during the disconnect.
+              // Only the lock-holder can mutate requests, so pre-sync local state is
+              // authoritative for done flags and locally-added requests.
+              if (preSyncRequests && preSyncRequests.length > 0) {
+                const currentRequests = get().requests;
+                const localById = new Map(preSyncRequests.map(r => [r.id, r]));
+                const currentIds = new Set(currentRequests.map(r => r.id));
+
+                let hasChanges = false;
+
+                // Preserve local done states that diverged during disconnect
+                const merged = currentRequests.map(r => {
+                  const local = localById.get(r.id);
+                  if (local && local.done !== r.done) {
+                    hasChanges = true;
+                    return { ...r, done: local.done };
+                  }
+                  return r;
+                });
+
+                // Re-add requests that were created locally during disconnect
+                for (const r of preSyncRequests) {
+                  if (!currentIds.has(r.id)) {
+                    merged.push(r);
+                    hasChanges = true;
+                  }
+                }
+
+                if (hasChanges) {
+                  set({ requests: merged });
+                  broadcastSetAll(merged);
+                }
+
+                preSyncRequests = null;
+              }
+              break;
+            }
             case 'toggle-done':
               set((s) => ({
                 requests: s.requests.map((r) => (r.id === msg.id ? { ...r, done: !r.done } : r)),
