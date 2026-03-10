@@ -26,6 +26,8 @@ apps/
 
 ## Commands
 
+ALWAYS use bun, never npm. npm -> bunm, npx -> bunx, node -> bun.
+
 ```bash
 bun install          # Install all deps
 bun run dev          # Start frontend + API + PartyKit
