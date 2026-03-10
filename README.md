@@ -1,28 +1,61 @@
 # Fila DBD
 
-[![Discord](https://img.shields.io/discord/6pY7Efhxd?logo=discord&label=Discord&color=5865F2)](https://discord.gg/6pY7Efhxd)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2?logo=discord&logoColor=white)](https://discord.gg/6pY7Efhxd)
 
-Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durante streams na Twitch.
+Site para gerenciar pedidos de personagens de Dead by Daylight durante streams na Twitch.
 
 Feito com carinho para a comunidade brasileira 🇧🇷 de Dead by Daylight, em especial [MandyMess](https://twitch.tv/mandymess) 🫶
+
+Use o nosso [Discord](https://discord.gg/6pY7Efhxd) ou o próprio GitHub para mandar feedback, sugerir funcionalidades e reportar bugs.
 
 ## Como funciona
 
 1. Conecta ao chat da Twitch em tempo real
 2. Detecta pedidos de personagens de múltiplas fontes que o streamer configura (donates, resubs, comandos de chat)
-3. Identifica automaticamente o personagem mencionado, usando IA (Gemini, free tier) quando necessário
-4. Exibe fila ordenada por prioridade com retratos dos personagens
+3. Identifica automaticamente o personagem mencionado, usando IA quando necessário
+4. Exibe fila ordenada com retratos dos personagens
 
-## Fontes de pedidos
+
+## Como usar
+
+1. Acesse o site e clique em **Começar minha fila** para conectar com sua conta da Twitch
+2. Sua fila será aberta automaticamente
+3. Configure as fontes de pedidos
+
+É preciso estar com o site aberto para receber pedidos.
+
+**Notificações**: só mostramos um pequeno aviso na página quando um novo pedido é recebido. Ative as notificações do navegador para receber alertas quando houver algum problema.
+
+### Fontes de pedidos
 
 | Fonte | Como funciona |
 |-------|---------------|
 | **Donates** | Detecta mensagens do bot de doação (ex: LivePix). Filtra por valor mínimo |
 | **Resubs** | Captura mensagens de resub via USERNOTICE do Twitch IRC |
 | **Chat** | Comando configurável (padrão: `!fila`) para inscritos. Filtra por tier mínimo |
-| **Manual** | Entrada manual com autocomplete de personagens |
+| **Manual** | Entrada manual de personagens |
+
+### Fila de pedidos
+
+- Clique em um pedido para marcar como feito
+- Arraste para reordenar manualmente
+- Selecione a ordenação de pedidos por fila de chegada ou por prioridade
+- Botão **+** adiciona pedido manual
+
+### Painel de fontes
+
+Ative/desative cada fonte individualmente e a qualquer momento:
+
+- **Donates**: configure valor mínimo
+- **Chat**: configure comando e tier mínimo de inscrito (ex: só Tier 2 e 3 podem pedir)
+- **Resubs**: mensagens de reinscrição
+
+Arraste os pills de prioridade para definir ordem que os novos pedidos entram na fila. 
+
 
 ## Instalação
+
+Instale o [Bun](https://bun.sh) e execute:
 
 ```bash
 bun install
@@ -30,6 +63,8 @@ bun dev  # Servidor local com frontend + API + PartyKit
 ```
 
 ## Deploy
+
+O serviço foi feito para ser deployado no [Cloudflare Workers](https://workers.cloudflare.com/) e [PartyKit](https://www.partykit.io/).
 
 **Secrets necessários no GitHub:**
 - `CLOUDFLARE_API_TOKEN` - token com permissão Workers
@@ -52,44 +87,9 @@ bun dev  # Servidor local com frontend + API + PartyKit
 - `INTERNAL_API_SECRET` - mesmo valor do Cloudflare
 - `API_URL` - URL do Worker em produção (ex: `https://dbd-tracker.<account>.workers.dev`)
 
-## Uso
-
-1. Acesse a landing page e clique em **Conectar com Twitch**
-2. Após autenticar, clique em **Começar minha fila** para abrir sua fila
-3. A landing page exibe canais ativos com filas abertas
-
-A identificação de personagens usa IA (Gemini) automaticamente. Funciona sem IA se os nomes forem mencionados diretamente.
-
-## Interface
-
-### Fila de pedidos
-
-- Clique em um pedido para marcar como feito
-- Arraste para reordenar manualmente
-- Selecione a ordenação de pedidos por fila de chegada ou por prioridade
-- Botão **+** adiciona pedido manual com autocomplete
-
-### Painel de fontes
-
-- Ative/desative cada fonte individualmente
-- **Donates**: configure valor mínimo
-- **Chat**: configure comando e tier mínimo de inscrito (ex: só Tier 2 e 3 podem pedir)
-- Arraste os pills de prioridade para definir ordem de classificação
-
-### Configurações LLM
-
-Usamos o Google Gemini que oferece um plano gratuito e fácil de configurar.
-
-- **API Key**: chave do Google Gemini para identificação de personagens
-- **Modelos**: lista de modelos em ordem de prioridade (fallback em caso de rate limit)
-
-### Chat ao vivo
-
-Exibe mensagens do chat em tempo real. Pode ser escondido para mais espaço.
-
 ## Debug
 
-Adicione `#debug` na URL para ativar o painel de debug. Exemplo: `http://localhost:5173/meriw_#debug`.
+Adicione `#debug` na URL para ativar o painel de debug. Exemplo: `http://localhost:5173/meriw_/#debug`.
 
 - **Testar extração**: testa identificação de personagem em uma mensagem
 - **Re-identificar todos**: reprocessa todos os pedidos da fila
@@ -108,6 +108,11 @@ dbdDebug.raw('@tags... PRIVMSG #ch :msg')         // raw IRC
 
 ## Licença
 
-MIT
+MIT ([LICENSE](LICENSE))
 
 Todos os direitos de Dead by Daylight pertencem à Behaviour Interactive.
+
+## Agradecimentos
+
+- [MandyMess](https://twitch.tv/mandymess) - por me inspirar a criar o projeto
+- [Dead by Daylight Wiki](https://deadbydaylight.wiki.gg/) - banco de dados e imagens dos personagens
