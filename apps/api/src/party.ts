@@ -39,6 +39,14 @@ export default class PartyServer implements Party.Server {
     }
   }
 
+  async onRequest() {
+    return Response.json({
+      status: this.channel.status,
+      connections: this.connections.size,
+      pending_count: this.requests.filter(r => !r.done).length,
+    });
+  }
+
   async onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
     const url = new URL(ctx.request.url);
     const token = url.searchParams.get('token');
@@ -79,7 +87,7 @@ export default class PartyServer implements Party.Server {
     if (this.activeOwnerConnId === conn.id) {
       this.activeOwnerConnId = null;
       this.channel = { status: 'offline', owner: null };
-      this.broadcastChannel();
+      this.flushAndSyncOffline();
     }
   }
 
@@ -90,7 +98,7 @@ export default class PartyServer implements Party.Server {
     if (this.activeOwnerConnId === conn.id) {
       this.activeOwnerConnId = null;
       this.channel = { status: 'offline', owner: null };
-      this.broadcastChannel();
+      this.flushAndSyncOffline();
     }
   }
 
@@ -143,7 +151,7 @@ export default class PartyServer implements Party.Server {
       if (isLockHolder) {
         this.activeOwnerConnId = null;
         this.channel = { status: 'offline', owner: null };
-        this.broadcastChannel();
+        this.flushAndSyncOffline();
         console.log(`${this.tag} ${connInfo?.user?.login} released ownership`);
       }
       return;
@@ -314,6 +322,16 @@ export default class PartyServer implements Party.Server {
 
   private get isDev() {
     return this.room.env.DEV_MODE === 'true';
+  }
+
+  private flushAndSyncOffline() {
+    this.broadcastChannel();
+    // Cancel pending debounced sync and flush immediately
+    if (this.syncRequestsTimer) {
+      clearTimeout(this.syncRequestsTimer);
+      this.syncRequestsTimer = null;
+    }
+    this.syncRequestsToD1();
   }
 
   private broadcastChannel() {

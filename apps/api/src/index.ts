@@ -13,6 +13,7 @@ type Bindings = {
   FRONTEND_URL: string;
   GEMINI_API_KEY: string;
   INTERNAL_API_SECRET: string;
+  PARTY_HOST: string;
   DB: D1Database;
   CACHE: KVNamespace;
 };
@@ -23,7 +24,7 @@ type Variables = {
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// CORS for frontend
+// CORS for frontend (also allows *.filadbd.pages.dev preview subdomains)
 app.use(
   "*",
   cors({
@@ -431,21 +432,66 @@ app.get("/rooms/active", async (c) => {
   const streams = await fetchStreams(logins, token, c.env.TWITCH_CLIENT_ID);
   const streamMap = new Map(streams.map((s) => [s.user_login, s]));
 
+  // For rooms that D1 claims are non-offline, ask PartyKit for authoritative status
+  const partyHost = c.env.PARTY_HOST;
+  const partyStatusMap = new Map<string, { status: string; pending_count: number }>();
+  if (partyHost) {
+    const nonOffline = results.filter((r) => r.status !== 'offline');
+    const protocol = partyHost.startsWith('localhost') ? 'http' : 'https';
+    const fetches = nonOffline.map(async (r) => {
+      try {
+        const res = await fetch(`${protocol}://${partyHost}/parties/main/${r.id}`, {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (res.ok) {
+          const data = await res.json<{ status: string; connections: number; pending_count: number }>();
+          if (data.status !== r.status) {
+            console.log(`[rooms/active] ${r.id}: D1 status="${r.status}" → PartyKit status="${data.status}"`);
+          }
+          partyStatusMap.set(r.id, { status: data.status, pending_count: data.pending_count });
+        } else {
+          console.warn(`[rooms/active] PartyKit returned ${res.status} for ${r.id}`);
+        }
+      } catch (e) {
+        console.warn(`[rooms/active] PartyKit unreachable for ${r.id}, falling back to D1:`, e);
+      }
+    });
+    await Promise.all(fetches);
+  }
+
   const enriched = results.map((r) => {
     const login = r.channel_login.toLowerCase();
     const fresh = profileMap.get(login);
     const stream = streamMap.get(login);
+    const isLive = !!stream;
+
+    // Use PartyKit as source of truth for status and pending count when available
+    const partyInfo = partyStatusMap.get(r.id);
+    const status = partyInfo?.status ?? r.status;
+    const pendingCount = partyInfo ? partyInfo.pending_count : (r.pending_count ?? 0);
+
     return {
       ...r,
+      status,
+      pending_count: pendingCount,
       avatar_url: r.avatar_url ?? fresh?.avatar_url ?? null,
       banner_url: r.banner_url ?? fresh?.banner_url ?? null,
-      is_live: !!stream,
+      is_live: isLive,
       thumbnail_url: stream?.thumbnail_url ?? null,
       viewer_count: stream?.viewer_count ?? null,
     };
   });
 
-  return c.json({ rooms: enriched });
+  // Sort: online/live first, then by viewer count, then by pending requests
+  enriched.sort((a, b) => {
+    const aOnline = a.status !== 'offline' ? 1 : 0;
+    const bOnline = b.status !== 'offline' ? 1 : 0;
+    if (aOnline !== bOnline) return bOnline - aOnline;
+    if ((a.viewer_count ?? 0) !== (b.viewer_count ?? 0)) return (b.viewer_count ?? 0) - (a.viewer_count ?? 0);
+    return (b.pending_count ?? 0) - (a.pending_count ?? 0);
+  });
+
+  return c.json({ rooms: enriched.slice(0, 12) });
 });
 
 app.get("/rooms/:roomId", async (c) => {
