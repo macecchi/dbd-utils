@@ -218,6 +218,7 @@ export function LandingPage() {
       <footer className="landing-footer">
         <span>Fila DBD</span>
         <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          Ajuda e feedback:
           <a href="https://github.com/macecchi/dbd-utils" target="_blank">GitHub</a>
           <span>•</span>
           <a href="https://discord.gg/6pY7Efhxd" target="_blank">Discord</a>
