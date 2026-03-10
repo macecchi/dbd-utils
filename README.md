@@ -1,6 +1,8 @@
 # Fila DBD
 
-Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durante streams na Twitch. 
+[![Discord](https://img.shields.io/discord/6pY7Efhxd?logo=discord&label=Discord&color=5865F2)](https://discord.gg/6pY7Efhxd)
+
+Aplicação web para gerenciar pedidos de personagens de Dead by Daylight durante streams na Twitch.
 
 Feito com carinho para a comunidade brasileira 🇧🇷 de Dead by Daylight, em especial [MandyMess](https://twitch.tv/mandymess) 🫶
 
