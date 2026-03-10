@@ -150,6 +150,9 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
   const prevPartyState = useRef(partyConnected);
   const ircEverConnected = useRef(false);
   const partyEverConnected = useRef(false);
+  const partyPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const PARTY_PUSH_DELAY = 30_000; // only push after 30s disconnected
+
   useEffect(() => {
     if (!isOwnChannel) {
       prevIrcState.current = localIrcState;
@@ -179,24 +182,45 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     }
     if (localIrcState === 'connected') ircEverConnected.current = true;
 
-    // PartyKit: disconnected
+    // PartyKit: disconnected — toast immediately, push after delay
     if (prevPartyState.current && !partyConnected) {
       showToast('Conexão com o servidor caiu. Reconectando...', 'Servidor', '#f59e0b');
-      sendPushNotification(
-        'Fila DBD - Conexão perdida',
-        'Conexão com o servidor caiu. Tentando reconectar...',
-      );
+      if (!partyPushTimer.current) {
+        partyPushTimer.current = setTimeout(() => {
+          partyPushTimer.current = null;
+          sendPushNotification(
+            'Fila DBD - Conexão perdida',
+            'Conexão com o servidor caiu. Tentando reconectar...',
+          );
+        }, PARTY_PUSH_DELAY);
+      }
     }
 
-    // PartyKit: reconnected (not initial connect)
-    if (!prevPartyState.current && partyConnected && partyEverConnected.current) {
-      showToast('Reconectado ao servidor.', 'Servidor', '#22c55e');
+    // PartyKit: reconnected — cancel pending push, show toast (not initial connect)
+    if (!prevPartyState.current && partyConnected) {
+      if (partyPushTimer.current) {
+        clearTimeout(partyPushTimer.current);
+        partyPushTimer.current = null;
+      }
+      if (partyEverConnected.current) {
+        showToast('Reconectado ao servidor.', 'Servidor', '#22c55e');
+      }
     }
     if (partyConnected) partyEverConnected.current = true;
 
     prevIrcState.current = localIrcState;
     prevPartyState.current = partyConnected;
   }, [localIrcState, partyConnected, isOwnChannel, showToast]);
+
+  // Cleanup party push timer on unmount
+  useEffect(() => {
+    return () => {
+      if (partyPushTimer.current) {
+        clearTimeout(partyPushTimer.current);
+        partyPushTimer.current = null;
+      }
+    };
+  }, []);
 
   // Connect to PartySocket
   useEffect(() => {
