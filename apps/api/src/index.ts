@@ -411,7 +411,9 @@ app.get("/rooms/active", async (c) => {
      LEFT JOIN requests req ON req.room_id = r.id
      WHERE r.updated_at > datetime('now', '-24 hours')
      GROUP BY r.id
-     ORDER BY r.updated_at DESC
+     ORDER BY CASE WHEN r.status != 'offline' THEN 0 ELSE 1 END,
+              SUM(CASE WHEN req.done = 0 THEN 1 ELSE 0 END) DESC,
+              r.updated_at DESC
      LIMIT 20`
   ).all<RoomRow>();
 
@@ -507,7 +509,7 @@ app.get("/rooms/active", async (c) => {
     return (b.pending_count ?? 0) - (a.pending_count ?? 0);
   });
 
-  return c.json({ rooms: enriched.slice(0, 12) });
+  return c.json({ rooms: enriched.slice(0, 10) });
 });
 
 app.get("/rooms/:roomId", async (c) => {
