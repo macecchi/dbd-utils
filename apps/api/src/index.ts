@@ -500,8 +500,11 @@ app.get("/rooms/active", async (c) => {
     };
   });
 
+  // Only show rooms with an active queue or pending requests
+  const active = enriched.filter((r) => r.status !== 'offline' || (r.pending_count ?? 0) > 0);
+
   // Sort: online/live first, then by viewer count, then by pending requests
-  enriched.sort((a, b) => {
+  active.sort((a, b) => {
     const aOnline = a.status !== 'offline' ? 1 : 0;
     const bOnline = b.status !== 'offline' ? 1 : 0;
     if (aOnline !== bOnline) return bOnline - aOnline;
@@ -509,7 +512,7 @@ app.get("/rooms/active", async (c) => {
     return (b.pending_count ?? 0) - (a.pending_count ?? 0);
   });
 
-  return c.json({ rooms: enriched.slice(0, 10) });
+  return c.json({ rooms: active.slice(0, 10) });
 });
 
 app.get("/rooms/:roomId", async (c) => {
