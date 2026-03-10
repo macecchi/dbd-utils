@@ -1,6 +1,5 @@
 // apps/web/src/store/channel.ts
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { ConnectionState, Request, SourcesEnabled, PartyMessage, ChannelStatus } from '../types';
 import { deserializeRequest, deserializeRequests } from '../types';
 import {
@@ -34,11 +33,11 @@ export function createRequestsStore(
   getSourcesState: () => SourcesStore,
   getContext: () => { partyConnected: boolean; isOwner: boolean }
 ) {
-  // Saved before sync-full overwrites local state; merged when ownership is (re)claimed
+  // Saved before sync-full overwrites local state; merged when ownership is (re)claimed.
+  // Contains real in-memory state from this session only (no localStorage).
   let preSyncRequests: Request[] | null = null;
 
   return create<RequestsStore>()(
-    persist(
       (set, get) => ({
         requests: [],
 
@@ -131,25 +130,13 @@ export function createRequestsStore(
             case 'sync-full': {
               const serverRequests = deserializeRequests(msg.requests);
               const localRequests = get().requests;
-              const { isOwner, partyConnected } = getContext();
 
-              // Save local state before overwriting — will be merged if ownership is (re)claimed.
-              // This handles the case where the owner made changes (toggle done, add requests)
-              // during a brief PartyKit disconnect; without this, sync-full would silently
-              // discard those changes because isOwner is false until ownership is re-granted.
+              // Preserve in-memory state for merge on ownership re-grant.
+              // Only matters during mid-session reconnects where local state
+              // may have diverged (toggle done, add requests) during brief disconnect.
               preSyncRequests = localRequests.length > 0 ? localRequests : null;
 
-              // Owner seeds empty server from localStorage
-              if (serverRequests.length === 0 && localRequests.length > 0 && isOwner && partyConnected) {
-                const sources = getSourcesState();
-                broadcastSetAll(localRequests);
-                broadcastSources(sources);
-              } else {
-                set({ requests: serverRequests });
-              }
-              // Clean up localStorage - PartyKit is source of truth
-              localStorage.removeItem(`dbd-requests-${channel}`);
-              localStorage.removeItem(`dbd-sources-${channel}`);
+              set({ requests: serverRequests });
               break;
             }
             case 'add-request': {
@@ -250,31 +237,6 @@ export function createRequestsStore(
           }
         },
       }),
-      {
-        name: `dbd-requests-${channel}`,
-        partialize: (state) => ({ requests: state.requests }),
-        // Read-only storage: load from localStorage for seeding, but don't persist
-        // PartyKit is the source of truth after initial sync
-        storage: {
-          getItem: (name) => {
-            const str = localStorage.getItem(name);
-            if (!str) return null;
-            const parsed = JSON.parse(str);
-            return {
-              state: {
-                ...parsed.state,
-                requests: (parsed.state.requests || []).map((r: any) => ({
-                  ...r,
-                  timestamp: new Date(r.timestamp),
-                })),
-              },
-            };
-          },
-          setItem: () => { },
-          removeItem: () => { },
-        },
-      }
-    )
   );
 }
 
@@ -333,7 +295,6 @@ export function createSourcesStore(
   };
 
   return create<SourcesStore>()(
-    persist(
       (set, get) => ({
         enabled: SOURCES_DEFAULTS.enabled,
         chatCommand: SOURCES_DEFAULTS.chatCommand,
@@ -389,19 +350,6 @@ export function createSourcesStore(
           }
         },
       }),
-      {
-        name: `dbd-sources-${channel}`,
-        // Read-only: load from localStorage for seeding, PartyKit is source of truth
-        storage: {
-          getItem: (name) => {
-            const str = localStorage.getItem(name);
-            return str ? JSON.parse(str) : null;
-          },
-          setItem: () => { },
-          removeItem: () => { },
-        },
-      }
-    )
   );
 }
 

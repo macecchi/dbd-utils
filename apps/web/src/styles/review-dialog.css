@@ -118,6 +118,12 @@
   color: var(--text-muted) !important;
 }
 
+.review-col-id {
+  width: 5rem;
+  color: var(--text-muted) !important;
+  font-size: var(--text-xs);
+}
+
 .review-char-wrap {
   display: flex;
   align-items: center;
@@ -252,7 +258,8 @@
     border-radius: 12px;
   }
 
-  .review-col-msg {
+  .review-col-msg,
+  .review-col-id {
     display: none;
   }
 

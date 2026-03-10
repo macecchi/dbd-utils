@@ -289,18 +289,20 @@ internal.put("/rooms/:roomId/requests", async (c) => {
     ).bind(roomId, roomId)
   );
 
-  // Delete existing requests for this room
-  statements.push(
-    c.env.DB.prepare("DELETE FROM requests WHERE room_id = ?").bind(roomId)
-  );
-
-  // Insert all current requests with position
+  // Upsert all current requests
   for (let i = 0; i < body.requests.length; i++) {
     const r = body.requests[i];
     statements.push(
       c.env.DB.prepare(
         `INSERT INTO requests (id, room_id, position, timestamp, donor, amount, amount_val, message, character, type, done, done_at, source, sub_tier, needs_identification)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (room_id, id) DO UPDATE SET
+           position = excluded.position,
+           character = excluded.character,
+           type = excluded.type,
+           done = excluded.done,
+           done_at = excluded.done_at,
+           needs_identification = excluded.needs_identification`
       ).bind(
         r.id,
         roomId,

@@ -16,7 +16,6 @@ import { recoverMissedRequests } from './services/vod';
 import { donateBotName } from './services/twitch';
 import { useSettings, useAuth, ChannelProvider, useChannel, useToasts, useLastChannel } from './store';
 import { navigate, handleLinkClick } from './utils/helpers';
-import { migrateGlobalToChannel } from './utils/migrate';
 import type { Request } from './types';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -341,8 +340,6 @@ function ChannelApp() {
 
 export function App() {
   const [channel, setChannel] = useState<string | null>(() => {
-    migrateGlobalToChannel();
-
     // Migrate hash routes to path routes
     if (window.location.hash.startsWith('#/')) {
       const path = window.location.hash.slice(1);

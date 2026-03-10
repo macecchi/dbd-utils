@@ -132,6 +132,7 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
               <thead>
                 <tr>
                   <th className="review-col-num">#</th>
+                  <th className="review-col-id">ID</th>
                   <th className="review-col-char">Personagem</th>
                   <th className="review-col-donor">Doador</th>
                   <th className="review-col-source">Fonte</th>
@@ -151,6 +152,7 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
                   return (
                     <tr key={r.id} className={changed ? 'review-row-changed' : undefined}>
                       <td className="review-col-num mono">{i + 1}</td>
+                      <td className="review-col-id mono">{r.id}</td>
                       <td className="review-col-char">
                         <div className="review-char-wrap">
                           <CharacterAvatar portrait={portrait} type={r.type} size="sm" />
