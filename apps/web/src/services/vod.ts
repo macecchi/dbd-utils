@@ -260,6 +260,7 @@ export async function scanVODForRequests(
         }
       }
 
+      // Chat commands (VOD GQL does not expose subscriber badges, so tier filtering is not possible here)
       if (username !== botName && message.toLowerCase().startsWith(chatCommand) && config.sourcesEnabled.chat) {
         const requestText = message.slice(chatCommand.length).trim();
         if (requestText) {

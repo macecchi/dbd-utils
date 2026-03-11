@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchRecentVods, type VODInfo } from '../services/vod';
 
 interface Props {
@@ -27,15 +27,17 @@ export function VODSelectionDialog({ isOpen, channel, onConfirm, onClose }: Prop
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const cursorRef = useRef<string | null>(null);
 
   const loadVods = useCallback(async (append = false) => {
-    const isMore = append && cursor;
-    if (isMore) setLoadingMore(true); else setLoading(true);
+    const cur = append ? cursorRef.current : null;
+    if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
-      const result = await fetchRecentVods(channel, 10, isMore ? cursor! : undefined);
+      const result = await fetchRecentVods(channel, 10, cur || undefined);
       setVods(prev => append ? [...prev, ...result.vods] : result.vods);
       setHasMore(result.hasMore);
+      cursorRef.current = result.endCursor;
       setCursor(result.endCursor);
       setLoaded(true);
     } catch {
@@ -44,11 +46,11 @@ export function VODSelectionDialog({ isOpen, channel, onConfirm, onClose }: Prop
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [channel, cursor]);
+  }, [channel]);
 
-  const handleOpen = useCallback(() => {
-    if (!loaded) loadVods();
-  }, [loaded, loadVods]);
+  useEffect(() => {
+    if (isOpen && !loaded && !loading && !error) loadVods();
+  }, [isOpen, loaded, loading, error, loadVods]);
 
   const toggle = (id: string) => {
     setSelected(prev => {
@@ -67,17 +69,13 @@ export function VODSelectionDialog({ isOpen, channel, onConfirm, onClose }: Prop
     setVods([]);
     setSelected(new Set());
     setCursor(null);
+    cursorRef.current = null;
     setLoaded(false);
     setHasMore(false);
     onClose();
   };
 
   if (!isOpen) return null;
-
-  // Trigger load on render (if not loaded)
-  if (!loaded && !loading && !error) {
-    handleOpen();
-  }
 
   return (
     <div className="missed-requests-overlay" onClick={handleClose}>

@@ -432,6 +432,9 @@ function ChannelApp() {
         onConfirm={handleVodRecoveryConfirm}
         onClose={handleVodRecoveryClose}
         disabledIds={vodDisabledIds}
+        emptyText="Nenhum pedido encontrado nas VODs selecionadas."
+        loadingText="Analisando VODs..."
+        doneText="Encontramos"
       />
       <ToastContainer />
     </>

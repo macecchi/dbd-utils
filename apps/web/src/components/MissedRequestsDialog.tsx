@@ -11,9 +11,12 @@ interface Props {
   onConfirm: (selected: Request[]) => void;
   onClose: () => void;
   disabledIds?: Set<number>;
+  emptyText?: string;
+  loadingText?: string;
+  doneText?: string;
 }
 
-export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatus, onConfirm, onClose, disabledIds }: Props) {
+export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatus, onConfirm, onClose, disabledIds, emptyText, loadingText, doneText }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const seenIds = useRef<Set<number>>(new Set());
 
@@ -79,11 +82,11 @@ export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatu
         {isLoading && requests.length === 0 ? (
           <div className="missed-requests-loading">
             <div className="missed-requests-spinner" />
-            <span>{loadingStatus || 'Buscando pedidos perdidos...'}</span>
+            <span>{loadingStatus || loadingText || 'Buscando pedidos perdidos...'}</span>
           </div>
         ) : requests.length === 0 ? (
           <div className="missed-requests-empty">
-            <span>Nenhum pedido perdido encontrado na stream atual.</span>
+            <span>{emptyText || 'Nenhum pedido perdido encontrado na stream atual.'}</span>
             <button className="btn btn-ghost" onClick={onClose}>Fechar</button>
           </div>
         ) : (
@@ -92,10 +95,10 @@ export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatu
               {isLoading ? (
                 <>
                   <span className="missed-requests-spinner-inline" />
-                  Analisando stream... <strong>{requests.length}</strong> pedido{requests.length > 1 ? 's' : ''} encontrado{requests.length > 1 ? 's' : ''}
+                  {loadingText || 'Analisando stream...'} <strong>{requests.length}</strong> pedido{requests.length > 1 ? 's' : ''} encontrado{requests.length > 1 ? 's' : ''}
                 </>
               ) : (
-                <>Encontramos <strong>{requests.length}</strong> pedido{requests.length > 1 ? 's' : ''} na stream atual</>
+                <>{doneText || 'Encontramos'} <strong>{requests.length}</strong> pedido{requests.length > 1 ? 's' : ''}</>
               )}
             </div>
             <div className="missed-requests-actions">
