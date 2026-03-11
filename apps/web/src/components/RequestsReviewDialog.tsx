@@ -82,6 +82,23 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
     setTab('current');
   }, [editedRequests, changedIds, onApply]);
 
+  const undoneCount = useMemo(() => editedRequests.filter(r => !r.done).length, [editedRequests]);
+
+  const markAllDone = useCallback(() => {
+    setEdits(prev => {
+      const next = new Map(prev);
+      for (const r of requests) {
+        if (r.done) continue;
+        const current = next.get(r.id);
+        const currentDone = current?.done !== undefined ? current.done : false;
+        if (!currentDone) {
+          next.set(r.id, { ...current, done: true, doneAt: new Date() });
+        }
+      }
+      return next;
+    });
+  }, [requests]);
+
   if (!isOpen) return null;
 
   const changesTab = tab === 'changes';
@@ -215,6 +232,14 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
 
         <div className="missed-requests-footer">
           <button className="btn btn-ghost" onClick={handleClose}>Cancelar</button>
+          <button
+            className="btn btn-ghost"
+            onClick={markAllDone}
+            disabled={undoneCount === 0}
+            title="Marcar todos como feitos"
+          >
+            Marcar todos como feitos{undoneCount > 0 ? ` (${undoneCount})` : ''}
+          </button>
           <button
             className="btn btn-primary"
             onClick={handleApply}
