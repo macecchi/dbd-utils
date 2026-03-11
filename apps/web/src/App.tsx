@@ -5,7 +5,7 @@ import { DebugPanel } from './components/DebugPanel';
 import { CharacterRequestList } from './components/CharacterRequestList';
 import { LandingPage } from './components/LandingPage';
 import { ManualEntry } from './components/ManualEntry';
-import { MissedRequestsDialog } from './components/MissedRequestsDialog';
+import { ImportRequestsDialog } from './components/ImportRequestsDialog';
 import { VODSelectionDialog } from './components/VODSelectionDialog';
 import { RequestsReviewDialog } from './components/RequestsReviewDialog';
 import { SourcesBadges } from './components/SourcesBadges';
@@ -56,7 +56,6 @@ function ChannelApp() {
   const partySynced = useChannelInfo((s) => s.partySynced);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
-  const [recoveryStatus, setRecoveryStatus] = useState('');
   const [recoveredRequests, setRecoveredRequests] = useState<Request[]>([]);
   const hasTriedRecovery = useRef(false);
 
@@ -64,7 +63,6 @@ function ChannelApp() {
   const [vodSelectOpen, setVodSelectOpen] = useState(false);
   const [vodRecoveryOpen, setVodRecoveryOpen] = useState(false);
   const [vodRecoveryLoading, setVodRecoveryLoading] = useState(false);
-  const [vodRecoveryStatus, setVodRecoveryStatus] = useState('');
   const [vodRecoveredRequests, setVodRecoveredRequests] = useState<Request[]>([]);
   const vodRecoveryAbort = useRef<AbortController | null>(null);
 
@@ -92,7 +90,7 @@ function ChannelApp() {
     const currentRequests = useRequests.getState().requests;
     console.log('[recovery] starting scan', { channel, config, existingCount: currentRequests.length });
     recoverMissedRequests(channel, config, currentRequests, {
-      onProgress: (s) => { console.log('[recovery] progress:', s); setRecoveryStatus(s); },
+      onProgress: (s) => { console.log('[recovery] progress:', s); },
       onRequest: (req) => {
         console.log('[recovery] found request:', req);
         setRecoveryOpen(true);
@@ -203,9 +201,8 @@ function ChannelApp() {
     try {
       for (const vod of vods) {
         if (controller.signal.aborted) break;
-        setVodRecoveryStatus(`Analisando VOD "${vod.title || vod.id}"...`);
         await scanVODForRequests(vod.id, vod.createdAt, config, {
-          onProgress: (s) => setVodRecoveryStatus(`VOD "${vod.title || vod.id}": ${s}`),
+          onProgress: (s) => console.log(`[vod] VOD "${vod.title || vod.id}": ${s}`),
           onRequest: (req) => setVodRecoveredRequests(prev => [...prev, req])
         }, controller.signal);
       }
@@ -415,11 +412,11 @@ function ChannelApp() {
         onApply={(edited) => { setAll(edited); setReviewOpen(false); }}
         onClose={() => setReviewOpen(false)}
       />
-      <MissedRequestsDialog
+      <ImportRequestsDialog
         isOpen={recoveryOpen}
         requests={recoveredRequests}
         isLoading={recoveryLoading}
-        loadingStatus={recoveryStatus}
+
         onConfirm={handleRecoveryConfirm}
         onClose={handleRecoveryClose}
       />
@@ -429,11 +426,11 @@ function ChannelApp() {
         onConfirm={handleVodSelect}
         onClose={() => setVodSelectOpen(false)}
       />
-      <MissedRequestsDialog
+      <ImportRequestsDialog
         isOpen={vodRecoveryOpen}
         requests={vodRecoveredRequests}
         isLoading={vodRecoveryLoading}
-        loadingStatus={vodRecoveryStatus}
+
         onConfirm={handleVodRecoveryConfirm}
         onClose={handleVodRecoveryClose}
         onBack={() => { handleVodRecoveryClose(); setVodSelectOpen(true); }}

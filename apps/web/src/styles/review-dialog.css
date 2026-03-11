@@ -57,50 +57,7 @@
   line-height: 1.2;
 }
 
-/* Table */
-
-.review-table-wrap {
-  overflow: auto;
-  flex: 1;
-  min-height: 0;
-}
-
-.review-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-}
-
-.review-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.review-table th {
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.5rem 0.6rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-  user-select: none;
-}
-
-.review-table td {
-  padding: 0.45rem 0.6rem;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-  color: var(--text);
-}
-
-.review-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
-}
+/* Changed row highlight */
 
 .review-row-changed {
   background: rgba(139, 92, 246, 0.06);
@@ -110,58 +67,7 @@
   background: rgba(139, 92, 246, 0.1) !important;
 }
 
-/* Columns */
-
-.review-col-num {
-  width: 2.5rem;
-  text-align: center !important;
-  color: var(--text-muted) !important;
-}
-
-.review-col-id {
-  width: 5rem;
-  color: var(--text-muted) !important;
-  font-size: var(--text-xs);
-}
-
-.review-char-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.review-char-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 130px;
-}
-
-.review-col-donor {
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.review-col-source {
-  white-space: nowrap;
-}
-
-.review-msg-text {
-  display: block;
-  word-break: break-word;
-}
-
-.review-col-done {
-  width: 4.5rem;
-  text-align: center !important;
-}
-
-.review-col-dates {
-  white-space: nowrap;
-  color: var(--text-muted) !important;
-}
+/* Dates column */
 
 .review-dates-wrap {
   display: grid;
@@ -179,15 +85,6 @@
   color: var(--accent);
   font-size: var(--text-xs);
   opacity: 0.8;
-}
-
-.mono {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: var(--text-xs);
-}
-
-.text-muted {
-  color: var(--text-muted);
 }
 
 /* Done button */
@@ -262,18 +159,5 @@
     height: 92vh;
     margin: 0.5rem;
     border-radius: 12px;
-  }
-
-  .review-col-msg,
-  .review-col-id {
-    display: none;
-  }
-
-  .review-char-name {
-    max-width: 80px;
-  }
-
-  .review-col-donor {
-    max-width: 70px;
   }
 }

@@ -1,23 +1,6 @@
-/* Missed Requests Recovery Dialog */
+/* Recovery & VOD Dialogs */
 
-.missed-requests-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.missed-requests-dialog {
+.recovery-dialog {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -30,43 +13,11 @@
   animation: slideUp 0.2s ease;
 }
 
-@keyframes slideUp {
-  from { transform: translateY(10px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+.recovery-dialog-wide {
+  max-width: 780px;
 }
 
-.missed-requests-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.missed-requests-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.missed-requests-title svg {
-  color: var(--accent);
-}
-
-.dialog-help-text {
-  margin: 0;
-  padding: 0.75rem 1.25rem;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  line-height: 1.5;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.missed-requests-subtitle {
+.recovery-subtitle {
   padding: 0.75rem 1.25rem;
   font-size: var(--text-sm);
   color: var(--text-secondary);
@@ -74,11 +25,11 @@
   flex-shrink: 0;
 }
 
-.missed-requests-subtitle strong {
+.recovery-subtitle strong {
   color: var(--text);
 }
 
-.missed-requests-actions {
+.recovery-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -87,77 +38,14 @@
   flex-shrink: 0;
 }
 
-.missed-requests-count {
+.recovery-count {
   font-size: var(--text-xs);
   color: var(--text-muted);
-}
-
-.missed-requests-list {
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-}
-
-.missed-request-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 1.25rem;
-  cursor: pointer;
-  transition: background 0.1s;
-  border-bottom: 1px solid var(--border);
-}
-
-.missed-request-item:last-child {
-  border-bottom: none;
-}
-
-.missed-request-item:hover {
-  background: var(--bg-card);
-}
-
-.missed-request-item.checked {
-  background: rgba(139, 92, 246, 0.05);
-}
-
-.missed-request-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.missed-request-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.missed-request-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-xs);
-  flex-shrink: 0;
-}
-
-.missed-request-time {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
-.missed-requests-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
 }
 
 /* Loading state */
-.missed-requests-loading {
+
+.recovery-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -167,7 +55,7 @@
   font-size: var(--text-sm);
 }
 
-.missed-requests-spinner {
+.recovery-spinner {
   width: 24px;
   height: 24px;
   border: 2px solid var(--border);
@@ -180,7 +68,7 @@
   to { transform: rotate(360deg); }
 }
 
-.missed-requests-spinner-inline {
+.recovery-spinner-inline {
   display: inline-block;
   width: 12px;
   height: 12px;
@@ -193,31 +81,51 @@
   opacity: 0.6;
 }
 
-/* Empty state */
-.missed-requests-empty {
+/* Recovery list (scrollable container for VOD items) */
+
+.recovery-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* VOD Selection Items */
+
+.vod-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 2rem 1.25rem;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
+  gap: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border);
 }
 
-/* Disabled/duplicate rows */
-.missed-request-item.disabled {
-  opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
+.vod-item:last-child {
+  border-bottom: none;
 }
 
-.missed-request-duplicate {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  white-space: nowrap;
+.vod-item:hover {
+  background: var(--bg-card);
 }
 
-/* VOD Selection */
+.vod-item.checked {
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.vod-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.vod-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .vod-item-title {
   font-size: var(--text-sm);
   color: var(--text);
@@ -248,16 +156,12 @@
 }
 
 /* Mobile */
+
 @media (max-width: 480px) {
-  .missed-requests-dialog {
+  .recovery-dialog {
     width: calc(100vw - 1rem);
     max-height: 90vh;
     margin: 0.5rem;
     border-radius: 12px;
-  }
-
-  .missed-request-item {
-    padding: 0.5rem 1rem;
-    gap: 0.5rem;
   }
 }

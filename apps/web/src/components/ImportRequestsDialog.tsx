@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
-import { getKillerPortrait } from '../data/characters';
-import { CharacterAvatar } from './CharacterAvatar';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Request } from '../types';
+import { RequestsTable, type RequestsTableColumn } from './RequestsTable';
 
 interface Props {
   isOpen: boolean;
   requests: Request[];
   isLoading: boolean;
-  loadingStatus: string;
   onConfirm: (selected: Request[]) => void;
   onClose: () => void;
   onBack?: () => void;
@@ -16,7 +14,9 @@ interface Props {
   doneText?: string;
 }
 
-export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatus, onConfirm, onClose, onBack, emptyText, loadingText, doneText }: Props) {
+const TIME_FMT: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+
+export function ImportRequestsDialog({ isOpen, requests, isLoading, onConfirm, onClose, onBack, emptyText, loadingText, doneText }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const seenIds = useRef<Set<number>>(new Set());
 
@@ -32,26 +32,26 @@ export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatu
   useEffect(() => { if (!isOpen) { seenIds.current.clear(); setSelected(new Set()); } }, [isOpen]);
 
   const toggleAll = (selectAll: boolean) => {
-    if (selectAll) {
-      setSelected(new Set(requests.map(r => r.id)));
-    } else {
-      setSelected(new Set());
-    }
+    setSelected(selectAll ? new Set(requests.map(r => r.id)) : new Set());
   };
 
-  const toggle = (id: number) => {
+  const toggle = useCallback((id: number) => {
     setSelected(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
   const handleConfirm = () => {
-    const selectedRequests = requests.filter(r => selected.has(r.id));
-    onConfirm(selectedRequests);
+    onConfirm(requests.filter(r => selected.has(r.id)));
   };
+
+  const handleRowClick = useCallback((idx: number) => {
+    const req = requests[idx];
+    if (req) toggle(req.id);
+  }, [requests, toggle]);
 
   if (!isOpen) return null;
 
@@ -59,11 +59,34 @@ export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatu
   const noneSelected = selected.size === 0;
   const selectedCount = selected.size;
 
+  const leadColumns: RequestsTableColumn[] = [
+    {
+      key: 'check',
+      className: 'req-col-check',
+      header: (
+        <input
+          type="checkbox"
+          checked={allSelected}
+          onChange={() => toggleAll(!allSelected)}
+          disabled={requests.length === 0}
+        />
+      ),
+      render: (req) => (
+        <input
+          type="checkbox"
+          checked={selected.has(req.id)}
+          onChange={() => toggle(req.id)}
+          onClick={e => e.stopPropagation()}
+        />
+      ),
+    },
+  ];
+
   return (
-    <div className="missed-requests-overlay" onClick={onClose}>
-      <div className="missed-requests-dialog" onClick={e => e.stopPropagation()}>
-        <div className="missed-requests-header">
-          <div className="missed-requests-title">
+    <div className="modal-overlay open" onClick={onClose}>
+      <div className="recovery-dialog recovery-dialog-wide" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12,6 12,12 16,14" />
@@ -78,23 +101,23 @@ export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatu
         </div>
 
         {!isLoading && requests.length === 0 ? (
-          <div className="missed-requests-empty">
+          <div className="dialog-empty">
             <span>{emptyText || 'Nenhum pedido perdido encontrado na stream atual.'}</span>
             <button className="btn btn-ghost" onClick={onClose}>Fechar</button>
           </div>
         ) : (
           <>
-            <div className="missed-requests-subtitle">
+            <div className="recovery-subtitle">
               {isLoading ? (
                 <>
-                  <span className="missed-requests-spinner-inline" />
+                  <span className="recovery-spinner-inline" />
                   {loadingText || 'Analisando stream...'} <strong>{requests.length}</strong> pedido{requests.length > 1 ? 's' : ''} encontrado{requests.length > 1 ? 's' : ''}
                 </>
               ) : (
                 <>{doneText || 'Encontramos'} <strong>{requests.length}</strong> pedido{requests.length > 1 ? 's' : ''}</>
               )}
             </div>
-            <div className="missed-requests-actions">
+            <div className="recovery-actions">
               <button
                 className="btn btn-ghost btn-small"
                 onClick={() => toggleAll(!allSelected)}
@@ -102,57 +125,19 @@ export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatu
               >
                 {allSelected ? 'Desmarcar todos' : 'Marcar todos'}
               </button>
-              <span className="missed-requests-count">
+              <span className="recovery-count">
                 {selectedCount} de {requests.length} selecionado{selectedCount !== 1 ? 's' : ''}
               </span>
             </div>
-            <div className="missed-requests-list">
-              {requests.map(req => {
-                const portrait = req.type === 'killer' && req.character ? getKillerPortrait(req.character) : undefined;
-                const isIdentifying = req.needsIdentification || req.character === 'Identificando...';
-                const charDisplay = isIdentifying ? '' :
-                  (!req.character || req.type === 'unknown') ? 'Desconhecido' :
-                    req.character;
-
-                const badgeText = req.source === 'donation' ? req.amount :
-                  req.source === 'chat' ? `TIER ${req.subTier || 1}` :
-                    req.source === 'resub' ? 'RESUB' : '';
-
-                return (
-                  <label key={req.id} className={`missed-request-item${selected.has(req.id) ? ' checked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(req.id)}
-                      onChange={() => toggle(req.id)}
-                    />
-                    <CharacterAvatar portrait={portrait} type={req.type} size="sm" />
-                    <div className="missed-request-info">
-                      {charDisplay && (
-                        <div className="character">
-                          <img
-                            src={`${import.meta.env.BASE_URL}images/${req.type === 'killer' ? 'IconKiller.webp' : req.type === 'survivor' ? 'IconSurv.webp' : 'IconShuffle.webp'}`}
-                            alt=""
-                            className="char-type-icon"
-                          />
-                          <span className="char-name">{charDisplay}</span>
-                        </div>
-                      )}
-                      <div className="request-card-body">
-                        <span className="donor-name">{req.donor}</span>
-                        {req.message}
-                      </div>
-                    </div>
-                    <div className="missed-request-meta">
-                      {badgeText && <span className={`amount source-${req.source}`}>{badgeText}</span>}
-                      <span className="missed-request-time">
-                        {req.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </label>
-                );
-              })}
+            <div className="req-table-wrap">
+              <RequestsTable
+                requests={requests}
+                leadColumns={leadColumns}
+                timeFormat={TIME_FMT}
+                onRowClick={handleRowClick}
+              />
             </div>
-            <div className="missed-requests-footer">
+            <div className="modal-footer">
               <button className="btn btn-ghost" onClick={onBack ?? onClose}>
                 {onBack ? 'Voltar' : 'Ignorar'}
               </button>
@@ -162,7 +147,7 @@ export function MissedRequestsDialog({ isOpen, requests, isLoading, loadingStatu
                 disabled={noneSelected || isLoading}
               >
                 {isLoading
-                  ? <span className="missed-requests-spinner-inline" />
+                  ? <span className="recovery-spinner-inline" />
                   : <>Adicionar {selectedCount > 0 ? selectedCount : ''} pedido{selectedCount !== 1 ? 's' : ''}</>
                 }
               </button>

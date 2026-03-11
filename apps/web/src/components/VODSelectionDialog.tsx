@@ -78,10 +78,10 @@ export function VODSelectionDialog({ isOpen, channel, onConfirm, onClose }: Prop
   if (!isOpen) return null;
 
   return (
-    <div className="missed-requests-overlay" onClick={handleClose}>
-      <div className="missed-requests-dialog" onClick={e => e.stopPropagation()}>
-        <div className="missed-requests-header">
-          <div className="missed-requests-title">
+    <div className="modal-overlay open" onClick={handleClose}>
+      <div className="recovery-dialog" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polygon points="23 7 16 12 23 17 23 7" />
               <rect x="1" y="5" width="15" height="14" rx="2" />
@@ -96,32 +96,32 @@ export function VODSelectionDialog({ isOpen, channel, onConfirm, onClose }: Prop
         </div>
 
         {loading ? (
-          <div className="missed-requests-loading">
-            <div className="missed-requests-spinner" />
+          <div className="recovery-loading">
+            <div className="recovery-spinner" />
             <span>Buscando VODs de {channel}...</span>
           </div>
         ) : error ? (
-          <div className="missed-requests-empty">
+          <div className="dialog-empty">
             <span>{error}</span>
             <button className="btn btn-ghost" onClick={() => loadVods()}>Tentar novamente</button>
           </div>
         ) : vods.length === 0 ? (
-          <div className="missed-requests-empty">
+          <div className="dialog-empty">
             <span>Nenhuma VOD encontrada para {channel}.</span>
             <button className="btn btn-ghost" onClick={handleClose}>Fechar</button>
           </div>
         ) : (
           <>
             <p className="dialog-help-text">Recupere pedidos de streams anteriores. Selecione as VODs que deseja escanear — o chat será analisado para encontrar pedidos de donates e comandos de chat. Resubs não podem ser recuperados de VODs.</p>
-            <div className="missed-requests-list">
+            <div className="recovery-list">
               {vods.map(vod => (
-                <label key={vod.id} className={`missed-request-item${selected.has(vod.id) ? ' checked' : ''}`}>
+                <label key={vod.id} className={`vod-item${selected.has(vod.id) ? ' checked' : ''}`}>
                   <input
                     type="checkbox"
                     checked={selected.has(vod.id)}
                     onChange={() => toggle(vod.id)}
                   />
-                  <div className="missed-request-info">
+                  <div className="vod-item-info">
                     <div className="vod-item-title">{vod.title || `VOD ${vod.id}`}</div>
                     <div className="vod-item-meta">
                       {formatDate(vod.createdAt)} · {formatDuration(vod.lengthSeconds)}
@@ -136,14 +136,14 @@ export function VODSelectionDialog({ isOpen, channel, onConfirm, onClose }: Prop
                   disabled={loadingMore}
                 >
                   {loadingMore ? (
-                    <><span className="missed-requests-spinner-inline" /> Carregando...</>
+                    <><span className="recovery-spinner-inline" /> Carregando...</>
                   ) : (
                     'Carregar mais'
                   )}
                 </button>
               )}
             </div>
-            <div className="missed-requests-footer">
+            <div className="modal-footer">
               <button className="btn btn-ghost" onClick={handleClose}>Cancelar</button>
               <button
                 className="btn btn-primary"

@@ -113,3 +113,14 @@ a:hover {
     overflow-x: hidden;
   }
 }
+
+/* Utility classes */
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--text-xs);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
