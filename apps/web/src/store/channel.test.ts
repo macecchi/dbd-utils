@@ -243,6 +243,49 @@ describe('channel stores', () => {
       expect(party.broadcastSetAll).toHaveBeenCalledWith(requests);
     });
 
+    it('rejects add when pending cap reached', () => {
+      const stores = createRoomStores('testchannel');
+      stores.useChannelInfo.getState().setPartyConnectionState('connected');
+      stores.useChannelInfo.getState().setIsOwner(true);
+
+      // Add 99 pending requests
+      for (let i = 1; i <= 99; i++) {
+        stores.useRequests.getState().add(createTestRequest({ id: i }));
+      }
+      expect(stores.useRequests.getState().requests).toHaveLength(99);
+      vi.clearAllMocks();
+
+      // 100th should be rejected
+      stores.useRequests.getState().add(createTestRequest({ id: 100 }));
+
+      expect(stores.useRequests.getState().requests).toHaveLength(99);
+      expect(party.broadcastAdd).not.toHaveBeenCalled();
+    });
+
+    it('allows add when total is at cap but some are done', () => {
+      const stores = createRoomStores('testchannel');
+      stores.useChannelInfo.getState().setPartyConnectionState('connected');
+      stores.useChannelInfo.getState().setIsOwner(true);
+
+      // 95 pending + 4 done = 99 total
+      const requests: Request[] = [];
+      for (let i = 1; i <= 95; i++) {
+        requests.push(createTestRequest({ id: i, done: false }));
+      }
+      for (let i = 96; i <= 99; i++) {
+        requests.push(createTestRequest({ id: i, done: true }));
+      }
+      stores.useRequests.getState().setAll(requests);
+      vi.clearAllMocks();
+
+      // Should succeed — only 95 pending, under 99 cap
+      stores.useRequests.getState().add(createTestRequest({ id: 200 }));
+
+      expect(stores.useRequests.getState().requests).toHaveLength(100);
+      expect(stores.useRequests.getState().requests.filter(r => !r.done)).toHaveLength(96);
+      expect(party.broadcastAdd).toHaveBeenCalledTimes(1);
+    });
+
     it('does not add duplicate requests', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setIsOwner(true);

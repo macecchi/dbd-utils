@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import PartyServer from './party';
 import type { SerializedRequest, SourcesSettings, PartyMessage } from '@dbd-utils/shared';
+import { MAX_PENDING_REQUESTS } from '@dbd-utils/shared';
 
 // Mock jwt module
 vi.mock('./jwt', () => ({
@@ -512,6 +513,280 @@ describe('PartyServer', () => {
       await server.onMessage('not valid json', ownerConn as any);
 
       expect(server.requests).toHaveLength(0);
+    });
+  });
+
+  describe('onStart — D1 recovery', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('prunes done requests from DO on load', async () => {
+      const stored = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: true }),
+        createTestRequest({ id: 3, done: false }),
+        createTestRequest({ id: 4, done: true }),
+      ];
+      mockRoom.storage.get.mockImplementation((key: string) => {
+        if (key === 'requests') return Promise.resolve(stored);
+        return Promise.resolve(null);
+      });
+
+      await server.onStart();
+
+      expect(server.requests).toHaveLength(2);
+      expect(server.requests.every(r => !r.done)).toBe(true);
+      expect(server.requests.map(r => r.id)).toEqual([1, 3]);
+      expect(mockRoom.storage.put).toHaveBeenCalledWith(
+        'requests',
+        expect.arrayContaining([
+          expect.objectContaining({ id: 1 }),
+          expect.objectContaining({ id: 3 }),
+        ])
+      );
+    });
+
+    it('recovers from D1 when DO is empty', async () => {
+      const d1Room = createMockRoom();
+      d1Room.env = { JWT_SECRET: 'test-secret', API_URL: 'https://api.test', INTERNAL_API_SECRET: 'secret' } as any;
+      d1Room.storage.get.mockResolvedValue(null);
+      const d1Server = new PartyServer(d1Room as any);
+
+      const recovered = [
+        createTestRequest({ id: 10, done: false }),
+        createTestRequest({ id: 20, done: false }),
+      ];
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ requests: recovered }),
+      }));
+
+      await d1Server.onStart();
+
+      expect(d1Server.requests).toEqual(recovered);
+      expect(d1Room.storage.put).toHaveBeenCalledWith('requests', recovered);
+    });
+  });
+
+  describe('persist', () => {
+    let ownerConn: MockConnection;
+
+    beforeEach(async () => {
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '123',
+        login: 'testchannel',
+        display_name: 'TestChannel',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      ownerConn = new MockConnection('owner');
+      mockRoom._connections.set('owner', ownerConn);
+      await server.onConnect(ownerConn as any, createMockContext('owner-token') as any);
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), ownerConn as any);
+      ownerConn.messages = [];
+      mockRoom.storage.put.mockClear();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('stores only pending requests', async () => {
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: true }),
+        createTestRequest({ id: 3, done: false }),
+      ];
+
+      const newReq = createTestRequest({ id: 4, done: false });
+      await server.onMessage(JSON.stringify({ type: 'add-request', request: newReq }), ownerConn as any);
+
+      const putCalls = mockRoom.storage.put.mock.calls.filter(
+        (c) => c[0] === 'requests'
+      );
+      const lastPut = putCalls[putCalls.length - 1][1] as SerializedRequest[];
+      expect(lastPut.every(r => !r.done)).toBe(true);
+      expect(lastPut.some(r => r.id === 2)).toBe(false);
+    });
+  });
+
+  describe('add-request — pending cap', () => {
+    let ownerConn: MockConnection;
+    let viewerConn: MockConnection;
+
+    beforeEach(async () => {
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '123',
+        login: 'testchannel',
+        display_name: 'TestChannel',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      ownerConn = new MockConnection('owner');
+      mockRoom._connections.set('owner', ownerConn);
+      await server.onConnect(ownerConn as any, createMockContext('owner-token') as any);
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), ownerConn as any);
+
+      vi.mocked(verifyJwt).mockResolvedValue(null);
+      viewerConn = new MockConnection('viewer');
+      mockRoom._connections.set('viewer', viewerConn);
+      await server.onConnect(viewerConn as any, createMockContext() as any);
+
+      ownerConn.messages = [];
+      viewerConn.messages = [];
+    });
+
+    it('rejects at pending cap', async () => {
+      server.requests = Array.from({ length: MAX_PENDING_REQUESTS }, (_, i) =>
+        createTestRequest({ id: i + 1, done: false })
+      );
+
+      const extra = createTestRequest({ id: 9999, done: false });
+      await server.onMessage(JSON.stringify({ type: 'add-request', request: extra }), ownerConn as any);
+
+      expect(server.requests.filter(r => !r.done)).toHaveLength(MAX_PENDING_REQUESTS);
+      expect(server.requests.some(r => r.id === 9999)).toBe(false);
+    });
+
+    it('sends server-error when pending cap reached', async () => {
+      server.requests = Array.from({ length: MAX_PENDING_REQUESTS }, (_, i) =>
+        createTestRequest({ id: i + 1, done: false })
+      );
+
+      const extra = createTestRequest({ id: 9999, done: false });
+      await server.onMessage(JSON.stringify({ type: 'add-request', request: extra }), ownerConn as any);
+
+      const errorMsg = ownerConn.getAllMessages().find(m => m.type === 'server-error');
+      expect(errorMsg).toBeDefined();
+      expect((errorMsg as any).code).toBe('pending_cap');
+    });
+
+    it('allows add when some are done', async () => {
+      const requests: SerializedRequest[] = [];
+      for (let i = 0; i < MAX_PENDING_REQUESTS; i++) {
+        requests.push(createTestRequest({ id: i + 1, done: i < 10 }));
+      }
+      server.requests = requests;
+
+      const pendingBefore = server.requests.filter(r => !r.done).length;
+      expect(pendingBefore).toBe(MAX_PENDING_REQUESTS - 10);
+
+      const extra = createTestRequest({ id: 9999, done: false });
+      await server.onMessage(JSON.stringify({ type: 'add-request', request: extra }), ownerConn as any);
+
+      expect(server.requests.some(r => r.id === 9999)).toBe(true);
+    });
+  });
+
+  describe('syncRequestsToD1', () => {
+    let ownerConn: MockConnection;
+
+    beforeEach(async () => {
+      vi.useFakeTimers();
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '123',
+        login: 'testchannel',
+        display_name: 'TestChannel',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      mockRoom.env = { JWT_SECRET: 'test-secret', API_URL: 'https://api.test', INTERNAL_API_SECRET: 'secret' } as any;
+
+      ownerConn = new MockConnection('owner');
+      mockRoom._connections.set('owner', ownerConn);
+      await server.onConnect(ownerConn as any, createMockContext('owner-token') as any);
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), ownerConn as any);
+      ownerConn.messages = [];
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it('prunes done from memory after successful D1 sync', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: true }),
+        createTestRequest({ id: 3, done: false }),
+        createTestRequest({ id: 4, done: true }),
+      ];
+
+      await (server as any).syncRequestsToD1();
+
+      expect(server.requests).toHaveLength(2);
+      expect(server.requests.every(r => !r.done)).toBe(true);
+    });
+
+    it('sends server-error after 3 consecutive D1 failures', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+
+      // 1st failure
+      await (server as any).syncRequestsToD1();
+      let errors = ownerConn.getAllMessages().filter(m => m.type === 'server-error' && (m as any).code === 'd1_sync_failed');
+      expect(errors).toHaveLength(0);
+
+      // 2nd failure
+      await (server as any).syncRequestsToD1();
+      errors = ownerConn.getAllMessages().filter(m => m.type === 'server-error' && (m as any).code === 'd1_sync_failed');
+      expect(errors).toHaveLength(0);
+
+      // 3rd failure — should send error
+      await (server as any).syncRequestsToD1();
+      errors = ownerConn.getAllMessages().filter(m => m.type === 'server-error' && (m as any).code === 'd1_sync_failed');
+      expect(errors).toHaveLength(1);
+    });
+
+    it('restores dirty IDs on sync failure', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: false }),
+      ];
+      (server as any).dirtyRequestIds = new Set([1, 2]);
+
+      await (server as any).syncRequestsToD1();
+
+      const dirtyIds = (server as any).dirtyRequestIds as Set<number>;
+      expect(dirtyIds.has(1)).toBe(true);
+      expect(dirtyIds.has(2)).toBe(true);
+    });
+  });
+
+  describe('server-error', () => {
+    it('sends error only to owner connection', async () => {
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '123',
+        login: 'testchannel',
+        display_name: 'TestChannel',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+
+      const ownerConn = new MockConnection('owner');
+      mockRoom._connections.set('owner', ownerConn);
+      await server.onConnect(ownerConn as any, createMockContext('owner-token') as any);
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), ownerConn as any);
+
+      vi.mocked(verifyJwt).mockResolvedValue(null);
+      const viewerConn = new MockConnection('viewer');
+      mockRoom._connections.set('viewer', viewerConn);
+      await server.onConnect(viewerConn as any, createMockContext() as any);
+
+      ownerConn.messages = [];
+      viewerConn.messages = [];
+
+      (server as any).sendError('test_code', 'test message');
+
+      const ownerErrors = ownerConn.getAllMessages().filter(m => m.type === 'server-error');
+      const viewerErrors = viewerConn.getAllMessages().filter(m => m.type === 'server-error');
+      expect(ownerErrors).toHaveLength(1);
+      expect((ownerErrors[0] as any).code).toBe('test_code');
+      expect(viewerErrors).toHaveLength(0);
     });
   });
 

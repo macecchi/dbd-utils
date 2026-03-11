@@ -277,6 +277,40 @@ api.post("/extract-character", async (c) => {
   }
 });
 
+// GET /api/rooms/:roomId/requests — authenticated, owner-only, returns all requests from D1
+api.get("/rooms/:roomId/requests", async (c) => {
+  const roomId = c.req.param("roomId").toLowerCase();
+  const user = c.get("jwtPayload");
+  const isOwner = user.login.toLowerCase() === roomId;
+  const isDev = c.env.FRONTEND_URL === "http://localhost:5173";
+
+  if (!isOwner && !isDev) {
+    return c.json({ error: "forbidden" }, 403);
+  }
+
+  const { results } = await c.env.DB.prepare(
+    "SELECT * FROM requests WHERE room_id = ? AND deleted_at IS NULL ORDER BY position ASC"
+  ).bind(roomId).all();
+
+  const requests = (results ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id,
+    timestamp: r.timestamp,
+    donor: r.donor,
+    amount: r.amount ?? "",
+    amountVal: r.amount_val ?? 0,
+    message: r.message ?? "",
+    character: r.character ?? "",
+    type: r.type ?? "unknown",
+    done: !!(r.done),
+    doneAt: r.done_at ?? undefined,
+    source: r.source,
+    subTier: r.sub_tier ?? undefined,
+    needsIdentification: !!(r.needs_identification),
+  }));
+
+  return c.json({ requests });
+});
+
 app.route("/api", api);
 
 // ============ INTERNAL API ROUTES (PartyKit → D1) ============
@@ -464,40 +498,6 @@ internal.get("/rooms/:roomId/requests", async (c) => {
 });
 
 app.route("/internal", internal);
-
-// GET /api/rooms/:roomId/requests — authenticated, owner-only, returns all requests from D1
-api.get("/rooms/:roomId/requests", async (c) => {
-  const roomId = c.req.param("roomId").toLowerCase();
-  const user = c.get("jwtPayload");
-  const isOwner = user.login.toLowerCase() === roomId;
-  const isDev = c.env.FRONTEND_URL === "http://localhost:5173";
-
-  if (!isOwner && !isDev) {
-    return c.json({ error: "forbidden" }, 403);
-  }
-
-  const { results } = await c.env.DB.prepare(
-    "SELECT * FROM requests WHERE room_id = ? AND deleted_at IS NULL ORDER BY position ASC"
-  ).bind(roomId).all();
-
-  const requests = (results ?? []).map((r: Record<string, unknown>) => ({
-    id: r.id,
-    timestamp: r.timestamp,
-    donor: r.donor,
-    amount: r.amount ?? "",
-    amountVal: r.amount_val ?? 0,
-    message: r.message ?? "",
-    character: r.character ?? "",
-    type: r.type ?? "unknown",
-    done: !!(r.done),
-    doneAt: r.done_at ?? undefined,
-    source: r.source,
-    subTier: r.sub_tier ?? undefined,
-    needsIdentification: !!(r.needs_identification),
-  }));
-
-  return c.json({ requests });
-});
 
 // ============ PUBLIC API ROUTES ============
 

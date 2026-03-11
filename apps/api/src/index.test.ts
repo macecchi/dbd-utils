@@ -54,13 +54,39 @@ function createMockKV() {
 
 const mockCache = createMockKV();
 
+function createMockDB() {
+  const statements: Array<{ sql: string; bindings: unknown[] }> = [];
+  const mockStatement = {
+    bind: vi.fn(function (...args: unknown[]) {
+      statements[statements.length - 1].bindings = args;
+      return mockStatement;
+    }),
+    run: vi.fn().mockResolvedValue({ success: true }),
+    all: vi.fn().mockResolvedValue({ results: [] }),
+    first: vi.fn().mockResolvedValue(null),
+  };
+  return {
+    prepare: vi.fn((sql: string) => {
+      statements.push({ sql, bindings: [] });
+      return mockStatement;
+    }),
+    batch: vi.fn().mockResolvedValue([]),
+    _statements: statements,
+    _mockStatement: mockStatement,
+  };
+}
+
+const mockDB = createMockDB();
+
 const TEST_ENV = {
   TWITCH_CLIENT_ID: 'test-client-id',
   TWITCH_CLIENT_SECRET: 'test-client-secret',
   JWT_SECRET: 'test-jwt-secret-that-is-long-enough',
   FRONTEND_URL: 'https://example.com/app',
   GEMINI_API_KEY: 'test-gemini-key',
+  INTERNAL_API_SECRET: 'test-internal-secret',
   CACHE: mockCache,
+  DB: mockDB,
 };
 
 // Helper to create a valid JWT
@@ -84,6 +110,7 @@ describe('Hono API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCache._store.clear();
+    mockDB._statements.length = 0;
   });
 
   describe('CORS', () => {
@@ -373,6 +400,211 @@ describe('Hono API', () => {
       expect(res.status).toBe(502);
       const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('llm_error');
+    });
+  });
+
+  describe('PUT /internal/rooms/:roomId/requests', () => {
+    const internalAuth = 'Bearer internal:test-internal-secret';
+
+    it('returns 401 without internal auth', async () => {
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: [] }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(401);
+    });
+
+    it('full sync marks missing as done (not deleted)', async () => {
+      const requests = [
+        { id: 'r1', timestamp: '2024-01-01T00:00:00Z', donor: 'user1', source: 'chat' },
+        { id: 'r2', timestamp: '2024-01-01T00:01:00Z', donor: 'user2', source: 'chat' },
+      ];
+
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ requests }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const markDoneSql = mockDB._statements.find(s => s.sql.includes('SET done = 1'));
+      expect(markDoneSql).toBeDefined();
+      expect(markDoneSql!.sql).toContain('NOT IN');
+      expect(markDoneSql!.sql).toContain('done_at');
+      expect(markDoneSql!.sql).not.toContain('deleted_at');
+      expect(markDoneSql!.bindings).toContain('r1');
+      expect(markDoneSql!.bindings).toContain('r2');
+    });
+
+    it('full sync with empty list marks all as done', async () => {
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ requests: [] }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const markDoneSql = mockDB._statements.find(s => s.sql.includes('SET done = 1'));
+      expect(markDoneSql).toBeDefined();
+      expect(markDoneSql!.sql).not.toContain('NOT IN');
+    });
+
+    it('partial sync only upserts provided requests', async () => {
+      const requests = [
+        { id: 'r1', timestamp: '2024-01-01T00:00:00Z', donor: 'user1', source: 'chat' },
+      ];
+
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ requests, mode: 'partial' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { mode: string };
+      expect(body.mode).toBe('partial');
+      const markDoneSql = mockDB._statements.find(s => s.sql.includes('SET done = 1'));
+      expect(markDoneSql).toBeUndefined();
+    });
+
+    it('uses batchInChunks for large batches', async () => {
+      const requests = Array.from({ length: 85 }, (_, i) => ({
+        id: `r${i}`,
+        timestamp: '2024-01-01T00:00:00Z',
+        donor: `user${i}`,
+        source: 'chat',
+      }));
+
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ requests }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      // 1 room upsert + 1 mark-done + 85 upserts = 87 statements → 2 batch calls (80 + 7)
+      expect(mockDB.batch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('GET /internal/rooms/:roomId/requests', () => {
+    const internalAuth = 'Bearer internal:test-internal-secret';
+
+    it('returns 401 without internal auth', async () => {
+      const res = await app.request('/internal/rooms/testroom/requests', {}, TEST_ENV);
+
+      expect(res.status).toBe(401);
+    });
+
+    it('returns pending requests from D1', async () => {
+      mockDB._mockStatement.all.mockResolvedValueOnce({
+        results: [
+          {
+            id: 'r1',
+            room_id: 'testroom',
+            position: 0,
+            timestamp: '2024-01-01T00:00:00Z',
+            donor: 'user1',
+            amount: 'R$10',
+            amount_val: 10,
+            message: 'quero meg',
+            character: 'Meg Thomas',
+            type: 'survivor',
+            done: 0,
+            done_at: null,
+            source: 'donation',
+            sub_tier: null,
+            needs_identification: 0,
+          },
+        ],
+      });
+
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        headers: { Authorization: internalAuth },
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { requests: Array<Record<string, unknown>> };
+      expect(body.requests).toHaveLength(1);
+      expect(body.requests[0].id).toBe('r1');
+      expect(body.requests[0].character).toBe('Meg Thomas');
+      expect(body.requests[0].done).toBe(false);
+      expect(body.requests[0].source).toBe('donation');
+    });
+  });
+
+  describe('GET /api/rooms/:roomId/requests', () => {
+    it('returns 401 without JWT auth', async () => {
+      const res = await app.request('/api/rooms/testuser/requests', {}, TEST_ENV);
+
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 403 for non-owner', async () => {
+      const token = await createTestToken({ login: 'otheruser' });
+
+      const res = await app.request('/api/rooms/testuser/requests', {
+        headers: { Authorization: `Bearer ${token}` },
+      }, TEST_ENV);
+
+      expect(res.status).toBe(403);
+      const body = await res.json() as ErrorResponse;
+      expect(body.error).toBe('forbidden');
+    });
+
+    it('returns requests for owner', async () => {
+      mockDB._mockStatement.all.mockResolvedValueOnce({
+        results: [
+          {
+            id: 'r1',
+            room_id: 'testuser',
+            position: 0,
+            timestamp: '2024-01-01T00:00:00Z',
+            donor: 'user1',
+            amount: '',
+            amount_val: 0,
+            message: 'quero meg',
+            character: 'Meg Thomas',
+            type: 'survivor',
+            done: 1,
+            done_at: '2024-01-01T01:00:00Z',
+            source: 'chat',
+            sub_tier: 1,
+            needs_identification: 0,
+          },
+        ],
+      });
+
+      const token = await createTestToken({ login: 'testuser' });
+
+      const res = await app.request('/api/rooms/testuser/requests', {
+        headers: { Authorization: `Bearer ${token}` },
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { requests: Array<Record<string, unknown>> };
+      expect(body.requests).toHaveLength(1);
+      expect(body.requests[0].id).toBe('r1');
+      expect(body.requests[0].done).toBe(true);
+      expect(body.requests[0].doneAt).toBe('2024-01-01T01:00:00Z');
+      expect(body.requests[0].subTier).toBe(1);
+    });
+
+    it('allows any authenticated user in dev mode', async () => {
+      mockDB._mockStatement.all.mockResolvedValueOnce({ results: [] });
+
+      const token = await createTestToken({ login: 'otheruser' });
+      const devEnv = { ...TEST_ENV, FRONTEND_URL: 'http://localhost:5173' };
+
+      const res = await app.request('/api/rooms/testuser/requests', {
+        headers: { Authorization: `Bearer ${token}` },
+      }, devEnv);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { requests: Array<Record<string, unknown>> };
+      expect(body.requests).toHaveLength(0);
     });
   });
 });
