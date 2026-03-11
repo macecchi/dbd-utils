@@ -352,21 +352,38 @@ internal.put("/rooms/:roomId/requests", async (c) => {
   );
 
   // Full mode: mark requests not in incoming list as done
-  // MAX_PENDING_REQUESTS (99) + 1 roomId = 100 bound params (D1 free plan limit)
   if (!isPartial) {
     const incomingIds = body.requests.map((r: Record<string, unknown>) => r.id);
-    if (incomingIds.length > 0) {
+    if (incomingIds.length === 0) {
+      // No incoming → mark all pending as done
+      statements.push(
+        c.env.DB.prepare(
+          "UPDATE requests SET done = 1, done_at = datetime('now') WHERE room_id = ? AND done = 0"
+        ).bind(roomId)
+      );
+    } else if (incomingIds.length <= 99) {
+      // Fits in one NOT IN clause (99 IDs + 1 roomId = 100 bound params)
       statements.push(
         c.env.DB.prepare(
           `UPDATE requests SET done = 1, done_at = datetime('now') WHERE room_id = ? AND done = 0 AND id NOT IN (${incomingIds.map(() => '?').join(',')})`
         ).bind(roomId, ...incomingIds)
       );
     } else {
+      // >99 IDs: mark ALL pending as done, then un-done the incoming ones in chunks
       statements.push(
         c.env.DB.prepare(
           "UPDATE requests SET done = 1, done_at = datetime('now') WHERE room_id = ? AND done = 0"
         ).bind(roomId)
       );
+      const CHUNK = 99;
+      for (let i = 0; i < incomingIds.length; i += CHUNK) {
+        const chunk = incomingIds.slice(i, i + CHUNK);
+        statements.push(
+          c.env.DB.prepare(
+            `UPDATE requests SET done = 0, done_at = NULL WHERE room_id = ? AND id IN (${chunk.map(() => '?').join(',')})`
+          ).bind(roomId, ...chunk)
+        );
+      }
     }
   }
 

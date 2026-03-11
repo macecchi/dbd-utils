@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { MAX_PENDING_REQUESTS } from '@dbd-utils/shared';
 import type { ConnectionState, Request, SourcesEnabled, PartyMessage, ChannelStatus } from '../types';
 import { deserializeRequest, deserializeRequests } from '../types';
+import { useToasts } from './toasts';
 import {
   broadcastAdd,
   broadcastUpdate,
@@ -52,7 +53,7 @@ export function createRequestsStore(
           if (existingRequests.some(r => r.id === req.id)) return;
           if (existingRequests.filter(r => !r.done).length >= MAX_PENDING_REQUESTS) {
             console.warn(`[requests] Pending cap reached (${MAX_PENDING_REQUESTS}), rejecting request #${req.id}`);
-            import('../store').then(m => m.useToasts.getState().show('Fila cheia! Marque pedidos como feitos para liberar espaço.', 'Limite atingido'));
+            useToasts.getState().show('Fila cheia! Marque pedidos como feitos para liberar espaço.', 'Limite atingido');
             return;
           }
 
