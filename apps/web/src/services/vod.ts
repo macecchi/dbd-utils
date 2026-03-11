@@ -192,6 +192,104 @@ export async function fetchRecentVods(
   };
 }
 
+export interface ScanConfig {
+  botName: string;
+  minDonation: number;
+  sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
+  chatCommand: string;
+}
+
+export interface ScanCallbacks {
+  onProgress?: (status: string) => void;
+  onRequest?: (request: Request) => void;
+}
+
+export async function scanVODForRequests(
+  vodId: string,
+  vodCreatedAt: string,
+  config: ScanConfig,
+  callbacks?: ScanCallbacks,
+  signal?: AbortSignal
+): Promise<Request[]> {
+  const vodStart = new Date(vodCreatedAt).getTime();
+  const botName = config.botName.toLowerCase();
+  const chatCommand = config.chatCommand.toLowerCase();
+  const requests: Request[] = [];
+  const seen = new Set<string>();
+  let offset = 0;
+
+  while (!signal?.aborted) {
+    const data = await fetchVODChat(vodId, offset);
+    if (signal?.aborted) break;
+    const edges = data?.data?.video?.comments?.edges || [];
+    if (!edges.length) break;
+
+    let newCount = 0, lastOffset = offset;
+    for (const { node } of edges) {
+      if (seen.has(node.id)) continue;
+      seen.add(node.id);
+      newCount++;
+
+      const username = node.commenter?.login?.toLowerCase() || '';
+      const displayName = node.commenter?.displayName || username;
+      const message = node.message?.fragments?.map((f: { text: string }) => f.text).join('') || '';
+      lastOffset = node.contentOffsetSeconds || lastOffset;
+      const timestamp = new Date(vodStart + (node.contentOffsetSeconds || 0) * 1000);
+
+      if (username === botName && config.sourcesEnabled.donation) {
+        const parsed = parseDonationMessage(message);
+        if (parsed) {
+          const amountVal = parseAmount(parsed.amount);
+          if (amountVal >= config.minDonation) {
+            const local = tryLocalMatch(parsed.message);
+            const req: Request = {
+              id: hashStringToNumber(`vod:${node.id}`),
+              timestamp,
+              donor: parsed.donor,
+              amount: parsed.amount,
+              amountVal,
+              message: parsed.message,
+              character: local?.character || '',
+              type: local?.type || 'unknown',
+              source: 'donation',
+              needsIdentification: !local
+            };
+            requests.push(req);
+            callbacks?.onRequest?.(req);
+          }
+        }
+      }
+
+      if (username !== botName && message.toLowerCase().startsWith(chatCommand) && config.sourcesEnabled.chat) {
+        const requestText = message.slice(chatCommand.length).trim();
+        if (requestText) {
+          const local = tryLocalMatch(requestText);
+          const req: Request = {
+            id: hashStringToNumber(`vod:${node.id}`),
+            timestamp,
+            donor: displayName,
+            amount: '',
+            amountVal: 0,
+            message: requestText,
+            character: local?.character || '',
+            type: local?.type || 'unknown',
+            source: 'chat',
+            needsIdentification: !local
+          };
+          requests.push(req);
+          callbacks?.onRequest?.(req);
+        }
+      }
+    }
+
+    callbacks?.onProgress?.(`${seen.size} msgs, ${requests.length} pedidos`);
+    if (!newCount) break;
+    offset = lastOffset + 1;
+  }
+
+  return requests;
+}
+
 export async function recoverMissedRequests(
   channel: string,
   config: RecoveryConfig,
