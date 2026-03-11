@@ -82,7 +82,6 @@
 .channel-header-name-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
 }
 
 .channel-header-name {
@@ -94,16 +93,27 @@
   text-overflow: ellipsis;
 }
 
-.channel-header-twitch {
+.channel-header-name-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.channel-header-name-link svg {
   color: var(--text-muted);
   flex-shrink: 0;
-  display: flex;
   transition: color 0.15s;
 }
 
-.channel-header-twitch:hover {
-  color: #9146ff;
+.channel-header-name-link:hover {
   text-decoration: none;
+}
+
+.channel-header-name-link:hover svg {
+  color: #9146ff;
 }
 
 /* Status badges */

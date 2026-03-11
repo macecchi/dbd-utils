@@ -64,7 +64,8 @@
 }
 
 /* CTA Button */
-.landing-cta {
+.landing-cta,
+.landing-cta:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
