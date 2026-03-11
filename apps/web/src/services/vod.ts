@@ -167,6 +167,31 @@ export interface RecoveryCallbacks {
   onRequest?: (request: Request) => void;
 }
 
+export interface VODInfo {
+  id: string;
+  title: string;
+  createdAt: string;
+  lengthSeconds: number;
+}
+
+export async function fetchRecentVods(
+  channel: string,
+  count: number,
+  cursor?: string
+): Promise<{ vods: VODInfo[]; hasMore: boolean; endCursor: string | null }> {
+  const data = await fetchGQL({
+    query: `query($login:String!,$first:Int!,$after:String){user(login:$login){videos(first:$first,after:$after,type:ARCHIVE,sort:TIME){edges{node{id title createdAt lengthSeconds}cursor}pageInfo{hasNextPage}}}}`,
+    variables: { login: channel, first: count, after: cursor || null }
+  });
+  const edges = data?.data?.user?.videos?.edges || [];
+  const pageInfo = data?.data?.user?.videos?.pageInfo;
+  return {
+    vods: edges.map((e: { node: VODInfo }) => e.node),
+    hasMore: pageInfo?.hasNextPage ?? false,
+    endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null
+  };
+}
+
 export async function recoverMissedRequests(
   channel: string,
   config: RecoveryConfig,
