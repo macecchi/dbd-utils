@@ -6,6 +6,7 @@ interface Props {
   isOpen: boolean;
   requests: Request[];
   isLoading: boolean;
+  loadingStatus?: string;
   onConfirm: (selected: Request[]) => void;
   onClose: () => void;
   onBack?: () => void;
@@ -14,9 +15,7 @@ interface Props {
   doneText?: string;
 }
 
-const TIME_FMT: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
-
-export function ImportRequestsDialog({ isOpen, requests, isLoading, onConfirm, onClose, onBack, emptyText, loadingText, doneText }: Props) {
+export function ImportRequestsDialog({ isOpen, requests, isLoading, loadingStatus, onConfirm, onClose, onBack, emptyText, loadingText, doneText }: Props) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const seenIds = useRef<Set<number>>(new Set());
 
@@ -111,7 +110,7 @@ export function ImportRequestsDialog({ isOpen, requests, isLoading, onConfirm, o
               {isLoading ? (
                 <>
                   <span className="recovery-spinner-inline" />
-                  {loadingText || 'Analisando stream...'} <strong>{requests.length}</strong> pedido{requests.length > 1 ? 's' : ''} encontrado{requests.length > 1 ? 's' : ''}
+                  {loadingStatus || loadingText || 'Analisando stream...'}
                 </>
               ) : (
                 <>{doneText || 'Encontramos'} <strong>{requests.length}</strong> pedido{requests.length > 1 ? 's' : ''}</>
@@ -133,8 +132,8 @@ export function ImportRequestsDialog({ isOpen, requests, isLoading, onConfirm, o
               <RequestsTable
                 requests={requests}
                 leadColumns={leadColumns}
-                timeFormat={TIME_FMT}
                 onRowClick={handleRowClick}
+                emptyText=""
               />
             </div>
             <div className="modal-footer">

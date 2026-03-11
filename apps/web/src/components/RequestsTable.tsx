@@ -30,13 +30,12 @@ interface Props {
   showId?: boolean;
   showMessage?: boolean;
   showTimestamp?: boolean;
-  timeFormat?: Intl.DateTimeFormatOptions;
   onRowClick?: (index: number, e: MouseEvent) => void;
   rowClassName?: (req: Request, index: number) => string | undefined;
   emptyText?: string;
 }
 
-const DEFAULT_TIME_FMT: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+const TIME_FMT: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
 
 export function RequestsTable({
   requests,
@@ -45,12 +44,12 @@ export function RequestsTable({
   showId = false,
   showMessage = true,
   showTimestamp = true,
-  timeFormat = DEFAULT_TIME_FMT,
   onRowClick,
   rowClassName,
   emptyText = 'Nenhum pedido.',
 }: Props) {
   if (requests.length === 0) {
+    if (!emptyText) return null;
     return (
       <div className="dialog-empty">
         <span>{emptyText}</span>
@@ -111,7 +110,7 @@ export function RequestsTable({
               )}
               {showTimestamp && (
                 <td className="req-col-dates mono">
-                  {r.timestamp.toLocaleString('pt-BR', timeFormat)}
+                  {r.timestamp.toLocaleString('pt-BR', TIME_FMT)}
                 </td>
               )}
               {trailColumns?.map(col => (

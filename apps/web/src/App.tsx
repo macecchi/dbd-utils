@@ -56,6 +56,7 @@ function ChannelApp() {
   const partySynced = useChannelInfo((s) => s.partySynced);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryStatus, setRecoveryStatus] = useState('');
   const [recoveredRequests, setRecoveredRequests] = useState<Request[]>([]);
   const hasTriedRecovery = useRef(false);
 
@@ -63,6 +64,7 @@ function ChannelApp() {
   const [vodSelectOpen, setVodSelectOpen] = useState(false);
   const [vodRecoveryOpen, setVodRecoveryOpen] = useState(false);
   const [vodRecoveryLoading, setVodRecoveryLoading] = useState(false);
+  const [vodRecoveryStatus, setVodRecoveryStatus] = useState('');
   const [vodRecoveredRequests, setVodRecoveredRequests] = useState<Request[]>([]);
   const vodRecoveryAbort = useRef<AbortController | null>(null);
 
@@ -90,7 +92,7 @@ function ChannelApp() {
     const currentRequests = useRequests.getState().requests;
     console.log('[recovery] starting scan', { channel, config, existingCount: currentRequests.length });
     recoverMissedRequests(channel, config, currentRequests, {
-      onProgress: (s) => { console.log('[recovery] progress:', s); },
+      onProgress: (s) => { console.log('[recovery] progress:', s); setRecoveryStatus(s); },
       onRequest: (req) => {
         console.log('[recovery] found request:', req);
         setRecoveryOpen(true);
@@ -201,8 +203,9 @@ function ChannelApp() {
     try {
       for (const vod of vods) {
         if (controller.signal.aborted) break;
+        setVodRecoveryStatus(`Analisando VOD "${vod.title || vod.id}"...`);
         await scanVODForRequests(vod.id, vod.createdAt, config, {
-          onProgress: (s) => console.log(`[vod] VOD "${vod.title || vod.id}": ${s}`),
+          onProgress: (s) => setVodRecoveryStatus(s),
           onRequest: (req) => setVodRecoveredRequests(prev => [...prev, req])
         }, controller.signal);
       }
@@ -252,7 +255,7 @@ function ChannelApp() {
     const parts = [`${newRequests.length} adicionado${newRequests.length !== 1 ? 's' : ''}`];
     if (undoneCount > 0) parts.push(`${undoneCount} reativado${undoneCount !== 1 ? 's' : ''}`);
     if (skipped > 0) parts.push(`${skipped} já estava${skipped !== 1 ? 'm' : ''} na fila`);
-    show(parts.join('\n'), 'Pedidos recuperados');
+    show(parts.join(' | '), 'Pedidos recuperados');
   }, [useRequests, useSources, setAll, show]);
 
   const handleVodRecoveryClose = useCallback(() => {
@@ -416,7 +419,7 @@ function ChannelApp() {
         isOpen={recoveryOpen}
         requests={recoveredRequests}
         isLoading={recoveryLoading}
-
+        loadingStatus={recoveryStatus}
         onConfirm={handleRecoveryConfirm}
         onClose={handleRecoveryClose}
       />
@@ -430,7 +433,7 @@ function ChannelApp() {
         isOpen={vodRecoveryOpen}
         requests={vodRecoveredRequests}
         isLoading={vodRecoveryLoading}
-
+        loadingStatus={vodRecoveryStatus}
         onConfirm={handleVodRecoveryConfirm}
         onClose={handleVodRecoveryClose}
         onBack={() => { handleVodRecoveryClose(); setVodSelectOpen(true); }}
