@@ -2,7 +2,8 @@
   "name": "@dbd-utils/api",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler d1 migrations apply fila-dbd --local && wrangler dev",
+    "migrate:local": "wrangler d1 migrations apply fila-dbd --local",
     "deploy": "wrangler deploy --env production",
     "deploy:preview": "wrangler deploy --env preview",
     "deploy:migrations": "wrangler d1 migrations apply fila-dbd --remote --env production",

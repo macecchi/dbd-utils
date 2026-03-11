@@ -56,12 +56,19 @@ bun run deploy:party # Deploy PartyKit
 **Primary (real-time):** PartyKit room storage (Durable Objects)
 - Requests queue and sources settings per room
 - Write-through to D1 via async HTTP calls to Hono API
+- ⚠️ **128 KiB per-value limit** — `storage.put()` silently drops writes that exceed this. See Known Issues below.
 
-**D1 database (persistent backup):**
+**D1 database (persistent store):**
 - `rooms` table — flattened sources settings, Twitch profile cache (`avatar_url`, `banner_url`), room `status`
 - `requests` table — one row per request with `position` for ordering
-- Debounced sync (2s) for requests, immediate for sources and status
+- Debounced sync (10s) for requests, immediate for sources and status
 - Internal auth via `INTERNAL_API_SECRET` shared between Worker and PartyKit
+- ⚠️ **100 bound params per statement** — D1 free plan limit. Full sync's `NOT IN` clause fails at ≥100 requests. See Known Issues below.
+
+## Known Limits
+
+- **DO storage**: 128 KiB per value — `storage.put()` silently drops oversized writes
+- **D1 free plan**: 100 bound params per statement, 100 statements per `DB.batch()`
 
 **KV (CACHE namespace):**
 - Twitch app access token cache (client credentials flow)

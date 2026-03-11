@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useChannel, useSettings, SOURCES_DEFAULTS } from '../store';
+import type { SourceType as AllSourceTypes } from '../store/channel';
 import { donateBotName } from '../services/twitch';
 
-type SourceType = 'donation' | 'resub' | 'chat';
+type SourceType = Exclude<AllSourceTypes, 'manual'>;
 
 const SOURCE_LABELS: Record<SourceType, string> = {
   donation: 'Donates',
