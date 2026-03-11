@@ -271,6 +271,34 @@ internal.use("*", async (c, next) => {
   await next();
 });
 
+// GET /internal/rooms/:roomId/requests — read all requests from D1 (for recovery)
+internal.get("/rooms/:roomId/requests", async (c) => {
+  const roomId = c.req.param("roomId");
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, timestamp, donor, amount, amount_val AS amountVal, message,
+            character, type, done, source, sub_tier AS subTier,
+            needs_identification AS needsIdentification
+     FROM requests WHERE room_id = ? ORDER BY position ASC`
+  ).bind(roomId).all();
+
+  const requests = (results ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id,
+    timestamp: r.timestamp,
+    donor: r.donor,
+    amount: r.amount,
+    amountVal: r.amountVal,
+    message: r.message,
+    character: r.character,
+    type: r.type,
+    done: !!(r.done),
+    source: r.source,
+    subTier: r.subTier ?? undefined,
+    needsIdentification: !!(r.needsIdentification),
+  }));
+
+  return c.json({ requests });
+});
+
 // PUT /internal/rooms/:roomId/requests — upsert requests (full or partial mode)
 internal.put("/rooms/:roomId/requests", async (c) => {
   const roomId = c.req.param("roomId");

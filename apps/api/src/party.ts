@@ -40,6 +40,17 @@ export default class PartyServer implements Party.Server {
       this.sources = { ...SOURCES_DEFAULTS, ...storedSources };
       console.log(`${this.tag} Loaded sources config:`, JSON.stringify(this.sources.enabled));
     }
+
+    // Reconcile with D1: if D1 has fewer requests, it's likely the correct state
+    // (room storage may have accumulated stale requests that were cleaned from D1)
+    if (this.requests.length > 0) {
+      const d1Requests = await this.fetchRequestsFromD1();
+      if (d1Requests !== null && d1Requests.length < this.requests.length) {
+        console.log(`${this.tag} D1 has ${d1Requests.length} requests vs ${this.requests.length} in storage — recovering from D1`);
+        this.requests = d1Requests;
+        await this.room.storage.put('requests', this.requests);
+      }
+    }
   }
 
   async onRequest() {
@@ -267,6 +278,27 @@ export default class PartyServer implements Party.Server {
     if (this.syncRequestsTimer) clearTimeout(this.syncRequestsTimer);
     const delay = reorderOnly ? 60_000 : 10_000;
     this.syncRequestsTimer = setTimeout(() => this.syncRequestsToD1(), delay);
+  }
+
+  private async fetchRequestsFromD1(): Promise<SerializedRequest[] | null> {
+    const apiUrl = this.room.env.API_URL as string | undefined;
+    const secret = this.room.env.INTERNAL_API_SECRET as string | undefined;
+    if (!apiUrl || !secret) return null;
+
+    try {
+      const res = await fetch(`${apiUrl}/internal/rooms/${this.room.id}/requests`, {
+        headers: { 'Authorization': `Bearer internal:${secret}` },
+      });
+      if (!res.ok) {
+        console.error(`${this.tag} D1 fetch requests failed: ${res.status}`);
+        return null;
+      }
+      const data = await res.json() as { requests: SerializedRequest[] };
+      return data.requests;
+    } catch (e) {
+      console.error(`${this.tag} D1 fetch requests error:`, e);
+      return null;
+    }
   }
 
   private async syncRequestsToD1() {
