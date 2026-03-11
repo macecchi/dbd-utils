@@ -31,7 +31,11 @@ const SOURCE_ICONS: Record<SourceType, React.ReactNode> = {
   )
 };
 
-export function SourcesPanel() {
+interface SourcesPanelProps {
+  onRecover?: () => void;
+}
+
+export function SourcesPanel({ onRecover }: SourcesPanelProps) {
   const { useSources, canManageChannel } = useChannel();
   const {
     enabled, chatCommand, chatTiers, priority, sortMode, minDonation,
@@ -203,6 +207,18 @@ export function SourcesPanel() {
             ))}
           </div>
         </div>
+
+        {onRecover && !readOnly && (
+          <div className="recover-section">
+            <button className="btn btn-ghost recover-btn" onClick={onRecover}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12,6 12,12 16,14" />
+              </svg>
+              Recuperar pedidos de VODs anteriores
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

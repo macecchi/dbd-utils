@@ -313,6 +313,29 @@
   }
 }
 
+/* Recover section */
+.recover-section {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border);
+}
+
+.recover-btn {
+  width: 100%;
+  justify-content: center;
+  gap: var(--space-sm);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.recover-btn:hover {
+  color: var(--text);
+}
+
+.recover-btn svg {
+  color: var(--accent);
+}
+
 @media (max-width: 800px) and (min-width: 481px) {
   .source-sections {
     grid-template-columns: 1fr;
