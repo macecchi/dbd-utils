@@ -180,7 +180,7 @@ export async function fetchRecentVods(
   cursor?: string
 ): Promise<{ vods: VODInfo[]; hasMore: boolean; endCursor: string | null }> {
   const data = await fetchGQL({
-    query: `query($login:String!,$first:Int!,$after:String){user(login:$login){videos(first:$first,after:$after,type:ARCHIVE,sort:TIME){edges{node{id title createdAt lengthSeconds}cursor}pageInfo{hasNextPage}}}}`,
+    query: `query($login:String!,$first:Int!,$after:Cursor){user(login:$login){videos(first:$first,after:$after,type:ARCHIVE,sort:TIME){edges{node{id title createdAt lengthSeconds}cursor}pageInfo{hasNextPage}}}}`,
     variables: { login: channel, first: count, after: cursor || null }
   });
   const edges = data?.data?.user?.videos?.edges || [];
