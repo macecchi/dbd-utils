@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import type { Request } from '../types';
 import { CharacterAvatar } from './CharacterAvatar';
 import { getKillerPortrait } from '../data/characters';
@@ -25,16 +25,18 @@ function formatSourceBadge(source: string, amount: string): string {
   return label;
 }
 
-const TIME_FMT: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+const DATETIME_FMT: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
 
 export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('current');
   const [edits, setEdits] = useState<Map<number, Partial<Request>>>(new Map);
+  const lastClickedIdx = useRef<number | null>(null);
 
   // Reset edits when dialog opens/closes
   const handleClose = useCallback(() => {
     setEdits(new Map());
     setTab('current');
+    lastClickedIdx.current = null;
     onClose();
   }, [onClose]);
 
@@ -57,23 +59,54 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
     return ids;
   }, [requests, edits]);
 
-  const toggleDone = useCallback((id: number) => {
+  const setDone = useCallback((id: number, done: boolean) => {
     setEdits(prev => {
       const next = new Map(prev);
       const orig = requests.find(r => r.id === id);
       if (!orig) return prev;
-      const current = next.get(id);
-      const currentDone = current?.done !== undefined ? current.done : orig.done;
-      const newDone = !currentDone;
-      // If we're reverting to original, remove the edit
-      if (newDone === !!orig.done) {
+      if (done === !!orig.done) {
         next.delete(id);
       } else {
-        next.set(id, { ...current, done: newDone, doneAt: newDone ? new Date() : undefined });
+        const current = next.get(id);
+        next.set(id, { ...current, done, doneAt: done ? new Date() : undefined });
       }
       return next;
     });
   }, [requests]);
+
+  const toggleDone = useCallback((id: number) => {
+    const orig = requests.find(r => r.id === id);
+    if (!orig) return;
+    const edit = edits.get(id);
+    const currentDone = edit?.done !== undefined ? edit.done : orig.done;
+    setDone(id, !currentDone);
+  }, [requests, edits, setDone]);
+
+  const handleRowClick = useCallback((idx: number, e: React.MouseEvent) => {
+    const list = tab === 'changes'
+      ? editedRequests.filter(r => changedIds.has(r.id))
+      : editedRequests;
+    const clickedReq = list[idx];
+    if (!clickedReq) return;
+
+    if (e.shiftKey && lastClickedIdx.current !== null && lastClickedIdx.current !== idx) {
+      const from = Math.min(lastClickedIdx.current, idx);
+      const to = Math.max(lastClickedIdx.current, idx);
+      // Use the target state of the clicked row (toggle it)
+      const orig = requests.find(r => r.id === clickedReq.id);
+      if (!orig) return;
+      const edit = edits.get(clickedReq.id);
+      const currentDone = edit?.done !== undefined ? edit.done : orig.done;
+      const targetDone = !currentDone;
+      for (let i = from; i <= to; i++) {
+        const r = list[i];
+        if (r) setDone(r.id, targetDone);
+      }
+    } else {
+      toggleDone(clickedReq.id);
+    }
+    lastClickedIdx.current = idx;
+  }, [tab, editedRequests, changedIds, requests, edits, setDone, toggleDone]);
 
   const handleApply = useCallback(() => {
     if (changedIds.size === 0) return;
@@ -124,7 +157,7 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
           </button>
         </div>
 
-        <p className="dialog-help-text">Visualize e altere o status dos pedidos. Marque um pedido como feito ou adicione de volta à fila. Revise as alterações na aba "Alterações" e aplique quando estiver pronto.</p>
+        <p className="dialog-help-text">Visualize e altere o status dos pedidos. Marque um pedido como feito ou adicione de volta à fila. Segure Shift para selecionar vários de uma vez. Revise as alterações na aba "Alterações" e aplique quando estiver pronto.</p>
 
         <div className="review-tabs">
           <button
@@ -199,7 +232,7 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
                         ) : (
                           <button
                             className={`review-done-btn${doneNow ? ' checked' : ''}${changed ? ' changed' : ''}`}
-                            onClick={() => toggleDone(r.id)}
+                            onClick={e => handleRowClick(i, e)}
                             title={doneNow ? 'Marcar como não feito' : 'Marcar como feito'}
                           >
                             {doneNow ? (
@@ -216,12 +249,12 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
                       </td>
                       <td className="review-col-dates mono">
                         <div className="review-dates-wrap">
-                          <span>{r.timestamp.toLocaleTimeString('pt-BR', TIME_FMT)}</span>
-                          {r.doneAt && (
-                            <span className="review-done-time" title="Feito às">
-                              {'✓ '}{r.doneAt.toLocaleTimeString('pt-BR', TIME_FMT)}
-                            </span>
-                          )}
+                          <span className="review-date-icon"></span>
+                          <span>{r.timestamp.toLocaleString('pt-BR', DATETIME_FMT)}</span>
+                          {r.doneAt && (<>
+                            <span className="review-date-icon review-done-time">✓</span>
+                            <span className="review-done-time">{r.doneAt.toLocaleString('pt-BR', DATETIME_FMT)}</span>
+                          </>)}
                         </div>
                       </td>
                     </tr>

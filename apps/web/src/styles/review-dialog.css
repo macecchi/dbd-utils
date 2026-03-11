@@ -164,9 +164,15 @@
 }
 
 .review-dates-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.3rem;
+  align-items: baseline;
+}
+
+.review-date-icon {
+  width: 0.7rem;
+  text-align: center;
 }
 
 .review-done-time {

@@ -177,10 +177,10 @@ function ChannelApp() {
 
     setAll(merged);
     setRecoveryOpen(false);
-    show(
-      `${deduped.length} pedido${deduped.length !== 1 ? 's' : ''} recuperado${deduped.length !== 1 ? 's' : ''} da stream`,
-      'Pedidos recuperados'
-    );
+    const skipped = selected.length - deduped.length;
+    const parts = [`${deduped.length} adicionado${deduped.length !== 1 ? 's' : ''}`];
+    if (skipped > 0) parts.push(`${skipped} já estava${skipped !== 1 ? 'm' : ''} na fila`);
+    show(parts.join('\n'), 'Pedidos recuperados');
   }, [useRequests, useSources, setAll, show, saveRecoveryCheckpoint]);
 
   const handleRecoveryClose = useCallback(() => {
@@ -222,22 +222,25 @@ function ChannelApp() {
     }
   }, [useSources]);
 
-  const vodDisabledIds = useMemo(
-    () => new Set(requests.map(r => r.id)),
-    [requests]
-  );
 
   const handleVodRecoveryConfirm = useCallback((selected: Request[]) => {
     if (selected.length === 0) { setVodRecoveryOpen(false); return; }
 
     const currentRequests = useRequests.getState().requests;
     const { sortMode: currentSortMode, priority: currentPriority } = useSources.getState();
+    const selectedIds = new Set(selected.map(r => r.id));
     const existingIds = new Set(currentRequests.map(r => r.id));
-    const deduped = selected.filter(r => !existingIds.has(r.id));
+    const newRequests = selected.filter(r => !existingIds.has(r.id));
 
-    if (deduped.length === 0) { setVodRecoveryOpen(false); return; }
+    // Un-done existing requests that were selected
+    const updated = currentRequests.map(r =>
+      selectedIds.has(r.id) && r.done ? { ...r, done: false, doneAt: undefined } : r
+    );
+    const undoneCount = currentRequests.filter(r => selectedIds.has(r.id) && r.done).length;
 
-    const merged = [...currentRequests, ...deduped];
+    if (newRequests.length === 0 && undoneCount === 0) { setVodRecoveryOpen(false); return; }
+
+    const merged = [...updated, ...newRequests];
     if (currentSortMode === 'fifo') {
       merged.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     } else {
@@ -253,10 +256,10 @@ function ChannelApp() {
 
     setAll(merged);
     setVodRecoveryOpen(false);
-    show(
-      `${deduped.length} pedido${deduped.length !== 1 ? 's' : ''} recuperado${deduped.length !== 1 ? 's' : ''} de VODs`,
-      'Pedidos recuperados'
-    );
+    const parts = [];
+    if (newRequests.length > 0) parts.push(`${newRequests.length} recuperado${newRequests.length !== 1 ? 's' : ''}`);
+    if (undoneCount > 0) parts.push(`${undoneCount} reativado${undoneCount !== 1 ? 's' : ''}`);
+    show(parts.join(', '), 'Pedidos recuperados');
   }, [useRequests, useSources, setAll, show]);
 
   const handleVodRecoveryClose = useCallback(() => {
@@ -437,7 +440,7 @@ function ChannelApp() {
         loadingStatus={vodRecoveryStatus}
         onConfirm={handleVodRecoveryConfirm}
         onClose={handleVodRecoveryClose}
-        disabledIds={vodDisabledIds}
+        onBack={() => { handleVodRecoveryClose(); setVodSelectOpen(true); }}
         emptyText="Nenhum pedido encontrado nas VODs selecionadas."
         loadingText="Analisando VODs..."
         doneText="Encontramos"
