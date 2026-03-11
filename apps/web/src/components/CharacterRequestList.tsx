@@ -5,11 +5,7 @@ import { ContextMenu } from './ContextMenu';
 import { ContextMenuProvider } from '../context/ContextMenuContext';
 import { useChannel, useToasts } from '../store';
 
-interface Props {
-  showDone?: boolean;
-}
-
-export function CharacterRequestList({ showDone = false }: Props) {
+export function CharacterRequestList() {
   const { useRequests, useChannelInfo, isOwnChannel, canManageChannel } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
   const channelStatus = useChannelInfo((s) => s.status);
@@ -17,18 +13,16 @@ export function CharacterRequestList({ showDone = false }: Props) {
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const readOnly = !canManageChannel;
-  const filtered = showDone
-    ? [...requests].sort((a, b) => Number(a.done) - Number(b.done))
-    : requests.filter(r => !r.done);
+  const filtered = requests.filter(r => !r.done);
 
   const handleToggleDone = useCallback((id: number) => {
     if (readOnly) return;
     const request = requests.find(r => r.id === id);
-    if (request && !request.done && !showDone) {
+    if (request && !request.done) {
       showUndo('Marcado como feito', () => toggleDone(id));
     }
     toggleDone(id);
-  }, [requests, toggleDone, showDone, showUndo, readOnly]);
+  }, [requests, toggleDone, showUndo, readOnly]);
 
   const rerunExtraction = useCallback(async (id: number) => {
     const request = requests.find(r => r.id === id);
@@ -106,11 +100,9 @@ export function CharacterRequestList({ showDone = false }: Props) {
         </div>
       );
     }
-    const emptyMessage = showDone
-      ? 'Nenhum pedido'
-      : !isOwnChannel && channelStatus !== 'live'
-        ? 'Streamer offline'
-        : 'Aguardando pedidos...';
+    const emptyMessage = !isOwnChannel && channelStatus !== 'live'
+      ? 'Streamer offline'
+      : 'Aguardando pedidos...';
     return <div className="empty">{emptyMessage}</div>;
   }
 
@@ -127,7 +119,6 @@ export function CharacterRequestList({ showDone = false }: Props) {
                 request={r}
                 position={position}
                 onToggleDone={handleToggleDone}
-                showDone={showDone}
                 isDragging={draggedId === r.id}
                 isDragOver={dragOverId === r.id}
                 onDragStart={handleDragStart}

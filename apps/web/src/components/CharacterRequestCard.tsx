@@ -10,7 +10,6 @@ interface Props {
   request: Request;
   position?: number;
   onToggleDone: (id: number) => void;
-  showDone?: boolean;
   isDragging?: boolean;
   isDragOver?: boolean;
   onDragStart?: (id: number) => void;
@@ -20,7 +19,7 @@ interface Props {
 }
 
 export const CharacterRequestCard = memo(function CharacterRequestCard({
-  request, position, onToggleDone, showDone = false,
+  request, position, onToggleDone,
   isDragging, isDragOver, onDragStart, onDragOver, onDragEnd, readOnly = false
 }: Props) {
   const { show: showContextMenu } = useContextMenu();
@@ -36,12 +35,8 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
 
   const handleClick = () => {
     if (readOnly) return;
-    if (!r.done && !showDone) {
-      setExiting(true);
-      setTimeout(() => onToggleDone(r.id), 300);
-    } else {
-      onToggleDone(r.id);
-    }
+    setExiting(true);
+    setTimeout(() => onToggleDone(r.id), 300);
   };
   const handleContext = (e: React.MouseEvent) => {
     e.preventDefault();

@@ -1,10 +1,13 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Request } from '../types';
+import { deserializeRequests } from '../types';
+import { fetchRequestsHistory } from '../services/api';
 import { RequestsTable, type RequestsTableColumn } from './RequestsTable';
 
 interface Props {
   isOpen: boolean;
   requests: Request[];
+  channel: string;
   onApply: (requests: Request[]) => void;
   onClose: () => void;
 }
@@ -13,14 +16,32 @@ type Tab = 'current' | 'changes';
 
 const DATETIME_FMT: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
 
-export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Props) {
+export function RequestsReviewDialog({ isOpen, requests: storeRequests, channel, onApply, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('current');
   const [edits, setEdits] = useState<Map<number, Partial<Request>>>(new Map);
+  const [d1Requests, setD1Requests] = useState<Request[] | null>(null);
+  const [loading, setLoading] = useState(false);
   const lastClickedIdx = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    setD1Requests(null);
+    fetchRequestsHistory(channel)
+      .then(serialized => setD1Requests(deserializeRequests(serialized)))
+      .catch(err => {
+        console.warn('[review] D1 fetch failed, using store data:', err);
+        setD1Requests(null);
+      })
+      .finally(() => setLoading(false));
+  }, [isOpen, channel]);
+
+  const requests = d1Requests ?? storeRequests;
 
   const handleClose = useCallback(() => {
     setEdits(new Map());
     setTab('current');
+    setD1Requests(null);
     lastClickedIdx.current = null;
     onClose();
   }, [onClose]);
@@ -208,32 +229,38 @@ export function RequestsReviewDialog({ isOpen, requests, onApply, onClose }: Pro
 
         <p className="dialog-help-text">Visualize e altere o status dos pedidos. Marque um pedido como feito ou adicione de volta à fila. Segure Shift para selecionar vários de uma vez. Revise as alterações na aba "Alterações" e aplique quando estiver pronto.</p>
 
-        <div className="review-tabs">
-          <button
-            className={`review-tab${tab === 'current' ? ' active' : ''}`}
-            onClick={() => setTab('current')}
-          >
-            Todos ({requests.length})
-          </button>
-          <button
-            className={`review-tab${tab === 'changes' ? ' active' : ''}`}
-            onClick={() => setTab('changes')}
-          >
-            Alterações {changedIds.size > 0 && <span className="review-tab-badge">{changedIds.size}</span>}
-          </button>
-        </div>
+        {loading ? (
+          <div className="req-table-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem' }}>
+            <span className="loading-spinner" />
+          </div>
+        ) : (<>
+          <div className="review-tabs">
+            <button
+              className={`review-tab${tab === 'current' ? ' active' : ''}`}
+              onClick={() => setTab('current')}
+            >
+              Todos ({requests.length})
+            </button>
+            <button
+              className={`review-tab${tab === 'changes' ? ' active' : ''}`}
+              onClick={() => setTab('changes')}
+            >
+              Alterações {changedIds.size > 0 && <span className="review-tab-badge">{changedIds.size}</span>}
+            </button>
+          </div>
 
-        <div className="req-table-wrap">
-          <RequestsTable
-            requests={displayRequests}
-            leadColumns={leadColumns}
-            trailColumns={trailColumns}
-            showId
-            showTimestamp={false}
-            rowClassName={(r) => changedIds.has(r.id) ? 'review-row-changed' : undefined}
-            emptyText={changesTab ? 'Nenhuma alteração ainda. Mude o status na aba "Todos".' : 'Nenhum pedido na fila.'}
-          />
-        </div>
+          <div className="req-table-wrap">
+            <RequestsTable
+              requests={displayRequests}
+              leadColumns={leadColumns}
+              trailColumns={trailColumns}
+              showId
+              showTimestamp={false}
+              rowClassName={(r) => changedIds.has(r.id) ? 'review-row-changed' : undefined}
+              emptyText={changesTab ? 'Nenhuma alteração ainda. Mude o status na aba "Todos".' : 'Nenhum pedido na fila.'}
+            />
+          </div>
+        </>)}
 
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={handleClose}>Cancelar</button>

@@ -6,6 +6,14 @@ import { verifyJwt, type JwtPayload } from "./jwt";
 import { extractCharacter } from "./gemini";
 import { getAppToken, fetchProfiles, fetchStreams, cacheProfiles } from "./twitch";
 
+const BATCH_CHUNK_SIZE = 80;
+
+async function batchInChunks(db: D1Database, statements: D1PreparedStatement[]) {
+  for (let i = 0; i < statements.length; i += BATCH_CHUNK_SIZE) {
+    await db.batch(statements.slice(i, i + BATCH_CHUNK_SIZE));
+  }
+}
+
 type Bindings = {
   TWITCH_CLIENT_ID: string;
   TWITCH_CLIENT_SECRET: string;
@@ -40,6 +48,25 @@ app.use(
 );
 
 // ============ AUTH ROUTES ============
+
+// Dev-only login bypass (no Twitch OAuth needed)
+app.get("/auth/dev-login", async (c) => {
+  if (c.env.FRONTEND_URL !== "http://localhost:5173") {
+    return c.json({ error: "dev_only" }, 403);
+  }
+  const login = c.req.query("login") || "devuser";
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    sub: "dev-" + login,
+    login,
+    display_name: login,
+    profile_image_url: "",
+  };
+  const accessToken = await sign({ ...payload, exp: now + 60 * 60 * 24 }, c.env.JWT_SECRET, "HS256");
+  const refreshToken = await sign({ ...payload, exp: now + 60 * 60 * 24 * 90 }, c.env.JWT_SECRET, "HS256");
+  const params = new URLSearchParams({ access_token: accessToken, refresh_token: refreshToken });
+  return c.redirect(`${c.env.FRONTEND_URL}/mandymess?${params}`);
+});
 
 // Redirect to Twitch OAuth
 app.get("/auth/login", (c) => {
@@ -290,24 +317,20 @@ internal.put("/rooms/:roomId/requests", async (c) => {
     ).bind(roomId, roomId)
   );
 
-  // Full mode: soft-delete/restore to keep D1 in sync with DO
+  // Full mode: mark requests not in incoming list as done
+  // MAX_PENDING_REQUESTS (99) + 1 roomId = 100 bound params (D1 free plan limit)
   if (!isPartial) {
     const incomingIds = body.requests.map((r: Record<string, unknown>) => r.id);
     if (incomingIds.length > 0) {
       statements.push(
         c.env.DB.prepare(
-          `UPDATE requests SET deleted_at = datetime('now') WHERE room_id = ? AND deleted_at IS NULL AND id NOT IN (${incomingIds.map(() => '?').join(',')})`
-        ).bind(roomId, ...incomingIds)
-      );
-      statements.push(
-        c.env.DB.prepare(
-          `UPDATE requests SET deleted_at = NULL WHERE room_id = ? AND deleted_at IS NOT NULL AND id IN (${incomingIds.map(() => '?').join(',')})`
+          `UPDATE requests SET done = 1, done_at = datetime('now') WHERE room_id = ? AND done = 0 AND id NOT IN (${incomingIds.map(() => '?').join(',')})`
         ).bind(roomId, ...incomingIds)
       );
     } else {
       statements.push(
         c.env.DB.prepare(
-          "UPDATE requests SET deleted_at = datetime('now') WHERE room_id = ? AND deleted_at IS NULL"
+          "UPDATE requests SET done = 1, done_at = datetime('now') WHERE room_id = ? AND done = 0"
         ).bind(roomId)
       );
     }
@@ -348,7 +371,7 @@ internal.put("/rooms/:roomId/requests", async (c) => {
     );
   }
 
-  await c.env.DB.batch(statements);
+  await batchInChunks(c.env.DB, statements);
   return c.json({ ok: true, count: body.requests.length, mode: isPartial ? 'partial' : 'full' });
 });
 
@@ -414,7 +437,67 @@ internal.put("/rooms/:roomId/status", async (c) => {
   return c.json({ ok: true });
 });
 
+// GET /internal/rooms/:roomId/requests — return pending requests for D1 recovery
+internal.get("/rooms/:roomId/requests", async (c) => {
+  const roomId = c.req.param("roomId");
+  const { results } = await c.env.DB.prepare(
+    "SELECT * FROM requests WHERE room_id = ? AND done = 0 ORDER BY position ASC"
+  ).bind(roomId).all();
+
+  const requests = (results ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id,
+    timestamp: r.timestamp,
+    donor: r.donor,
+    amount: r.amount ?? "",
+    amountVal: r.amount_val ?? 0,
+    message: r.message ?? "",
+    character: r.character ?? "",
+    type: r.type ?? "unknown",
+    done: false,
+    doneAt: undefined,
+    source: r.source,
+    subTier: r.sub_tier ?? undefined,
+    needsIdentification: !!(r.needs_identification),
+  }));
+
+  return c.json({ requests });
+});
+
 app.route("/internal", internal);
+
+// GET /api/rooms/:roomId/requests — authenticated, owner-only, returns all requests from D1
+api.get("/rooms/:roomId/requests", async (c) => {
+  const roomId = c.req.param("roomId").toLowerCase();
+  const user = c.get("jwtPayload");
+  const isOwner = user.login.toLowerCase() === roomId;
+  const isDev = c.env.FRONTEND_URL === "http://localhost:5173";
+
+  if (!isOwner && !isDev) {
+    return c.json({ error: "forbidden" }, 403);
+  }
+
+  const { results } = await c.env.DB.prepare(
+    "SELECT * FROM requests WHERE room_id = ? AND deleted_at IS NULL ORDER BY position ASC"
+  ).bind(roomId).all();
+
+  const requests = (results ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id,
+    timestamp: r.timestamp,
+    donor: r.donor,
+    amount: r.amount ?? "",
+    amountVal: r.amount_val ?? 0,
+    message: r.message ?? "",
+    character: r.character ?? "",
+    type: r.type ?? "unknown",
+    done: !!(r.done),
+    doneAt: r.done_at ?? undefined,
+    source: r.source,
+    subTier: r.sub_tier ?? undefined,
+    needsIdentification: !!(r.needs_identification),
+  }));
+
+  return c.json({ requests });
+});
 
 // ============ PUBLIC API ROUTES ============
 

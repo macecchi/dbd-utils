@@ -240,6 +240,12 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
         channel,
         token,
         (msg) => {
+          if (msg.type === 'server-error') {
+            console.error(`[server-error] ${msg.code}: ${msg.message}`);
+            const { show } = useToasts.getState();
+            show(msg.message, 'Erro no servidor', '#ef4444', 0);
+            return;
+          }
           handleRequestsMessage(msg);
           handleSourcesMessage(msg);
           handleChannelInfoMessage(msg);

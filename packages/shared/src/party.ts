@@ -1,5 +1,7 @@
 import type { Request, SourcesEnabled } from './types';
 
+export const MAX_PENDING_REQUESTS = 99;
+
 export interface SourcesSettings {
   enabled: SourcesEnabled;
   chatCommand: string;
@@ -49,7 +51,8 @@ export type PartyMessage =
   | { type: 'claim-ownership' }
   | { type: 'release-ownership' }
   | { type: 'ownership-granted' }
-  | { type: 'ownership-denied'; currentOwner: string };
+  | { type: 'ownership-denied'; currentOwner: string }
+  | { type: 'server-error'; code: string; message: string };
 
 export function serializeRequest(req: Request): SerializedRequest {
   return {

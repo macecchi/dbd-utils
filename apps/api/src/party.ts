@@ -1,5 +1,6 @@
 import type * as Party from 'partykit/server';
 import { verifyJwt, type JwtPayload } from './jwt';
+import { MAX_PENDING_REQUESTS } from '@dbd-utils/shared';
 import type { SerializedRequest, SourcesSettings, ChannelState, PartyMessage } from '@dbd-utils/shared';
 
 const SOURCES_DEFAULTS: SourcesSettings = {
@@ -25,15 +26,31 @@ export default class PartyServer implements Party.Server {
   private dirtyRequestIds = new Set<number>();
   private needsFullSync = false;
   private lastSyncedStatus: string | null = null;
+  private d1SyncFailCount = 0;
+  private static readonly D1_SYNC_FAIL_NOTIFY = 3;
 
   constructor(public room: Party.Room) { }
 
   async onStart() {
     console.log(`${this.tag} Starting`);
     const storedRequests = await this.room.storage.get<SerializedRequest[]>('requests');
-    if (storedRequests) {
-      this.requests = storedRequests;
-      console.log(`${this.tag} Loaded ${storedRequests.length} requests from storage`);
+    if (storedRequests && storedRequests.length > 0) {
+      // Migration: filter out done requests from DO storage
+      const pending = storedRequests.filter(r => !r.done);
+      this.requests = pending;
+      if (pending.length !== storedRequests.length) {
+        console.log(`${this.tag} Migration: pruned ${storedRequests.length - pending.length} done requests from DO`);
+        await this.room.storage.put('requests', pending);
+      }
+      console.log(`${this.tag} Loaded ${pending.length} pending requests from storage`);
+    } else {
+      // DO empty — try D1 recovery
+      const recovered = await this.recoverFromD1();
+      if (recovered) {
+        this.requests = recovered;
+        await this.room.storage.put('requests', recovered);
+        console.log(`${this.tag} Recovered ${recovered.length} pending requests from D1`);
+      }
     }
     const storedSources = await this.room.storage.get<Partial<SourcesSettings>>('sources');
     if (storedSources) {
@@ -169,15 +186,21 @@ export default class PartyServer implements Party.Server {
     const user = connInfo?.user?.login ?? 'unknown';
     switch (msg.type) {
       case 'add-request': {
-        if (!this.requests.some(r => r.id === msg.request.id)) {
-          this.requests.push(msg.request);
-          this.dirtyRequestIds.add(msg.request.id);
-          await this.persist();
-          this.broadcast(message, sender.id);
-          console.log(`${this.tag} ${user}: add-request #${msg.request.id} "${msg.request.character}" (${msg.request.source})`);
-        } else {
+        if (this.requests.some(r => r.id === msg.request.id)) {
           console.log(`${this.tag} ${user}: add-request #${msg.request.id} skipped (duplicate)`);
+          break;
         }
+        const pendingCount = this.requests.filter(r => !r.done).length;
+        if (pendingCount >= MAX_PENDING_REQUESTS) {
+          this.sendError('pending_cap', `Fila cheia (${MAX_PENDING_REQUESTS}). Marque pedidos como feitos para liberar espaço.`);
+          console.warn(`${this.tag} ${user}: add-request #${msg.request.id} rejected (pending cap ${MAX_PENDING_REQUESTS})`);
+          break;
+        }
+        this.requests.push(msg.request);
+        this.dirtyRequestIds.add(msg.request.id);
+        await this.persist();
+        this.broadcast(message, sender.id);
+        console.log(`${this.tag} ${user}: add-request #${msg.request.id} "${msg.request.character}" (${msg.request.source})`);
         break;
       }
       case 'update-request': {
@@ -257,15 +280,32 @@ export default class PartyServer implements Party.Server {
     }
   }
 
+  private static readonly STORAGE_LIMIT = 131_072; // 128 KiB per-value limit
+  private static readonly STORAGE_WARN = 100_000;  // warn at ~76%
+
   private async persist(reorderOnly?: boolean) {
-    await this.room.storage.put('requests', this.requests);
-    this.scheduleSyncRequests(reorderOnly);
-    console.log(`${this.tag} Persisted ${this.requests.length} requests`);
+    try {
+      const pending = this.requests.filter(r => !r.done);
+      const raw = JSON.stringify(pending);
+      if (raw.length > PartyServer.STORAGE_LIMIT) {
+        console.error(`${this.tag} STORAGE OVERFLOW: ${pending.length} pending requests (${raw.length} bytes) exceeds 128 KiB limit`);
+        this.sendError('storage_overflow', 'Armazenamento local cheio. Dados podem ser perdidos ao reiniciar. Marque pedidos como feitos.');
+      } else if (raw.length > PartyServer.STORAGE_WARN) {
+        console.error(`${this.tag} STORAGE WARNING: ${pending.length} pending requests (${raw.length} bytes) approaching 128 KiB limit (${Math.round(raw.length / PartyServer.STORAGE_LIMIT * 100)}%)`);
+      }
+      await this.room.storage.put('requests', pending);
+      this.scheduleSyncRequests(reorderOnly);
+    } catch (e) {
+      console.error(`${this.tag} PERSIST FAILED (${this.requests.length} requests):`, e);
+      this.sendError('persist_failed', 'Erro ao salvar dados localmente. Tentando sincronizar com o banco de dados.');
+      this.needsFullSync = true;
+      this.scheduleSyncRequests();
+    }
   }
 
   private scheduleSyncRequests(reorderOnly?: boolean) {
     if (this.syncRequestsTimer) clearTimeout(this.syncRequestsTimer);
-    const delay = reorderOnly ? 60_000 : 10_000;
+    const delay = reorderOnly ? 30_000 : 2_000;
     this.syncRequestsTimer = setTimeout(() => this.syncRequestsToD1(), delay);
   }
 
@@ -274,8 +314,11 @@ export default class PartyServer implements Party.Server {
     const secret = this.room.env.INTERNAL_API_SECRET as string | undefined;
     if (!apiUrl || !secret) return;
 
+    // Snapshot and clear dirty IDs — new mutations during sync accumulate fresh
     const syncingIds = new Set(this.dirtyRequestIds);
+    this.dirtyRequestIds = new Set();
     const wasFullSync = this.needsFullSync || syncingIds.size === 0;
+    if (wasFullSync) this.needsFullSync = false;
     const mode = wasFullSync ? 'full' : 'partial';
     const allWithPositions = this.requests.map((r, i) => ({ ...r, _position: i }));
     const requestsToSync = wasFullSync
@@ -292,16 +335,55 @@ export default class PartyServer implements Party.Server {
         body: JSON.stringify({ requests: requestsToSync, mode }),
       });
       if (res.ok) {
-        for (const id of syncingIds) this.dirtyRequestIds.delete(id);
-        if (wasFullSync) this.needsFullSync = false;
+        this.d1SyncFailCount = 0;
+        // Prune done requests from memory unless they were re-dirtied during the sync
+        const before = this.requests.length;
+        this.requests = this.requests.filter(r => !r.done || this.dirtyRequestIds.has(r.id));
+        if (this.requests.length < before) {
+          console.log(`${this.tag} Pruned ${before - this.requests.length} done requests from memory`);
+        }
         console.log(`${this.tag} D1 synced ${requestsToSync.length} requests (${mode})`);
       } else {
         console.error(`${this.tag} D1 sync requests failed: ${res.status}`);
+        for (const id of syncingIds) this.dirtyRequestIds.add(id);
         this.needsFullSync = true;
+        this.handleD1SyncFailure();
       }
     } catch (e) {
       console.error(`${this.tag} D1 sync requests error:`, e);
+      for (const id of syncingIds) this.dirtyRequestIds.add(id);
       this.needsFullSync = true;
+      this.handleD1SyncFailure();
+    }
+  }
+
+  private handleD1SyncFailure() {
+    this.d1SyncFailCount++;
+    if (this.d1SyncFailCount === PartyServer.D1_SYNC_FAIL_NOTIFY) {
+      this.sendError('d1_sync_failed', 'Sincronização com o banco de dados falhou repetidamente. Dados estão seguros localmente, mas podem ser perdidos se o servidor reiniciar.');
+    }
+    // Schedule retry with backoff
+    this.scheduleSyncRequests();
+  }
+
+  private async recoverFromD1(): Promise<SerializedRequest[] | null> {
+    const apiUrl = this.room.env.API_URL as string | undefined;
+    const secret = this.room.env.INTERNAL_API_SECRET as string | undefined;
+    if (!apiUrl || !secret) return null;
+
+    try {
+      const res = await fetch(`${apiUrl}/internal/rooms/${this.room.id}/requests`, {
+        headers: { 'Authorization': `Bearer internal:${secret}` },
+      });
+      if (!res.ok) {
+        console.error(`${this.tag} D1 recovery failed: ${res.status}`);
+        return null;
+      }
+      const data = await res.json<{ requests: SerializedRequest[] }>();
+      return data.requests.length > 0 ? data.requests : null;
+    } catch (e) {
+      console.error(`${this.tag} D1 recovery error:`, e);
+      return null;
     }
   }
 
@@ -327,6 +409,21 @@ export default class PartyServer implements Party.Server {
     } catch (e) {
       console.error(`${this.tag} D1 sync sources error:`, e);
     }
+  }
+
+  private sendToOwner(msg: PartyMessage) {
+    if (!this.activeOwnerConnId) return;
+    for (const conn of this.room.getConnections()) {
+      if (conn.id === this.activeOwnerConnId) {
+        conn.send(JSON.stringify(msg));
+        break;
+      }
+    }
+  }
+
+  private sendError(code: string, message: string) {
+    this.sendToOwner({ type: 'server-error', code, message });
+    console.error(`${this.tag} Error sent to owner: [${code}] ${message}`);
   }
 
   private broadcast(message: string, excludeId: string) {

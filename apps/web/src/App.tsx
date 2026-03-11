@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatLog } from './components/ChatLog';
 import { ChannelHeader } from './components/ChannelHeader';
 import { DebugPanel } from './components/DebugPanel';
@@ -17,7 +17,9 @@ import { recoverMissedRequests, scanVODForRequests, type VODInfo } from './servi
 import { donateBotName } from './services/twitch';
 import { useSettings, useAuth, ChannelProvider, useChannel, useToasts, useLastChannel } from './store';
 import { navigate, handleLinkClick } from './utils/helpers';
+import { sortRequests, mergeRequests } from './utils/requests';
 import type { Request } from './types';
+import type { SourcesStoreApi } from './store/channel';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -29,6 +31,51 @@ const getChannelFromPath = () => {
 };
 const isDebugMode = () => window.location.hash === '#debug' || window.location.hash === '#debug=true';
 
+function makeSourcesConfig(sourcesState: ReturnType<SourcesStoreApi['getState']>, checkpoint?: { vodId: string; offset: number }) {
+  return {
+    botName: donateBotName,
+    minDonation: sourcesState.minDonation,
+    sourcesEnabled: sourcesState.enabled,
+    chatCommand: sourcesState.chatCommand,
+    ...(checkpoint && { checkpoint }),
+  };
+}
+
+function useAutoIdentify(requests: Request[], update: (id: number, updates: Partial<Request>) => void, readOnly: boolean) {
+  const inFlight = useRef(new Set<number>());
+  useEffect(() => {
+    if (readOnly) return;
+    const pending = requests.filter(r => r.needsIdentification && !inFlight.current.has(r.id));
+    for (const req of pending) {
+      inFlight.current.add(req.id);
+      identifyCharacter(req, undefined, (llmResult) => update(req.id, llmResult))
+        .then(result => update(req.id, { ...result, needsIdentification: false }))
+        .finally(() => inFlight.current.delete(req.id));
+    }
+  }, [requests, update, readOnly]);
+}
+
+function useRequestToasts(requests: Request[]) {
+  const { show } = useToasts();
+  const shownToasts = useRef(new Set<number>());
+  const isFirstLoad = useRef(true);
+  useEffect(() => {
+    const ready = requests.filter(r => !shownToasts.current.has(r.id) && !r.needsIdentification);
+    for (const req of ready) {
+      shownToasts.current.add(req.id);
+      if (isFirstLoad.current) continue;
+      const title = req.source === 'manual' ? 'Novo pedido' :
+        req.source === 'donation' ? 'Novo pedido por donate' :
+          req.source === 'resub' ? 'Novo pedido por resub' : 'Novo pedido pelo chat';
+      const message = req.character
+        ? `${req.donor} pediu ${req.character}${req.amount ? ` (${req.amount})` : ''}`
+        : `Novo pedido de ${req.donor}${req.amount ? ` (${req.amount})` : ''}`;
+      show(message, title);
+    }
+    if (ready.length > 0) isFirstLoad.current = false;
+  }, [requests, show]);
+}
+
 function ChannelApp() {
   const { channel, useRequests, useSources, useChannelInfo, canManageChannel } = useChannel();
   const requests = useRequests((s) => s.requests);
@@ -39,7 +86,6 @@ function ChannelApp() {
   const sortMode = useSources((s) => s.sortMode);
   const setSortMode = useSources((s) => s.setSortMode);
   const [manualOpen, setManualOpen] = useState(false);
-  const [showDone, setShowDone] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
 
   useEffect(() => {
@@ -47,8 +93,6 @@ function ChannelApp() {
     window.addEventListener('dbd:open-review', open);
     return () => window.removeEventListener('dbd:open-review', open);
   }, []);
-  const [shownToasts] = useState(() => new Set<number>());
-  const isFirstLoad = useRef(true);
   const readOnly = !canManageChannel;
 
   // Missed requests recovery state
@@ -75,15 +119,10 @@ function ChannelApp() {
     hasTriedRecovery.current = true;
 
     const sourcesState = useSources.getState();
-    const config = {
-      botName: donateBotName,
-      minDonation: sourcesState.minDonation,
-      sourcesEnabled: sourcesState.enabled,
-      chatCommand: sourcesState.chatCommand,
-      checkpoint: sourcesState.recoveryVodId
-        ? { vodId: sourcesState.recoveryVodId, offset: sourcesState.recoveryVodOffset ?? 0 }
-        : undefined,
-    };
+    const checkpoint = sourcesState.recoveryVodId
+      ? { vodId: sourcesState.recoveryVodId, offset: sourcesState.recoveryVodOffset ?? 0 }
+      : undefined;
+    const config = makeSourcesConfig(sourcesState, checkpoint);
 
     setRecoveredRequests([]);
     setRecoveryLoading(true);
@@ -118,7 +157,7 @@ function ChannelApp() {
       });
 
     return () => controller.abort();
-  }, [ircState, partySynced, canManageChannel, channel, useSources, useRequests]);
+  }, [ircState, partySynced, canManageChannel, channel]);
 
   // Reset recovery state when IRC disconnects
   useEffect(() => {
@@ -146,34 +185,14 @@ function ChannelApp() {
 
     const currentRequests = useRequests.getState().requests;
     const { sortMode: currentSortMode, priority: currentPriority } = useSources.getState();
+    const { merged, added, skipped } = mergeRequests(selected, currentRequests, currentSortMode, currentPriority);
 
-    // Filter out any that arrived via IRC during the scan
-    const existingIds = new Set(currentRequests.map(r => r.id));
-    const existingSigs = new Set(currentRequests.map(r => `${r.donor.toLowerCase()}:${r.message.toLowerCase()}`));
-    const deduped = selected.filter(r =>
-      !existingIds.has(r.id) && !existingSigs.has(`${r.donor.toLowerCase()}:${r.message.toLowerCase()}`)
-    );
-
-    if (deduped.length > 0) {
-      const merged = [...currentRequests, ...deduped];
-      if (currentSortMode === 'fifo') {
-        merged.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-      } else {
-        merged.sort((a, b) => {
-          if (a.done && !b.done) return 1;
-          if (!a.done && b.done) return -1;
-          const aPri = currentPriority.indexOf(a.source);
-          const bPri = currentPriority.indexOf(b.source);
-          if (aPri !== bPri) return aPri - bPri;
-          return a.timestamp.getTime() - b.timestamp.getTime();
-        });
-      }
+    if (added > 0) {
       setAll(merged);
     }
 
     setRecoveryOpen(false);
-    const skipped = selected.length - deduped.length;
-    const parts = [`${deduped.length} adicionado${deduped.length !== 1 ? 's' : ''}`];
+    const parts = [`${added} adicionado${added !== 1 ? 's' : ''}`];
     if (skipped > 0) parts.push(`${skipped} já estava${skipped !== 1 ? 'm' : ''} na fila`);
     show(parts.join('\n'), 'Pedidos recuperados');
   }, [useRequests, useSources, setAll, show, saveRecoveryCheckpoint]);
@@ -189,13 +208,7 @@ function ChannelApp() {
     setVodRecoveryLoading(true);
     setVodRecoveryOpen(true);
 
-    const sourcesState = useSources.getState();
-    const config = {
-      botName: donateBotName,
-      minDonation: sourcesState.minDonation,
-      sourcesEnabled: sourcesState.enabled,
-      chatCommand: sourcesState.chatCommand
-    };
+    const config = makeSourcesConfig(useSources.getState());
 
     const controller = new AbortController();
     vodRecoveryAbort.current = controller;
@@ -234,20 +247,7 @@ function ChannelApp() {
     const undoneCount = currentRequests.filter(r => selectedIds.has(r.id) && r.done).length;
 
     if (newRequests.length > 0 || undoneCount > 0) {
-      const merged = [...updated, ...newRequests];
-      if (currentSortMode === 'fifo') {
-        merged.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-      } else {
-        merged.sort((a, b) => {
-          if (a.done && !b.done) return 1;
-          if (!a.done && b.done) return -1;
-          const aPri = currentPriority.indexOf(a.source);
-          const bPri = currentPriority.indexOf(b.source);
-          if (aPri !== bPri) return aPri - bPri;
-          return a.timestamp.getTime() - b.timestamp.getTime();
-        });
-      }
-      setAll(merged);
+      setAll(sortRequests([...updated, ...newRequests], currentSortMode, currentPriority));
     }
 
     setVodRecoveryOpen(false);
@@ -263,39 +263,8 @@ function ChannelApp() {
     setVodRecoveryOpen(false);
   }, []);
 
-  // Auto-identify requests that need it (only owner should call extract API)
-  useEffect(() => {
-    if (readOnly) return;
-    const pending = requests.filter(r => r.needsIdentification);
-    for (const req of pending) {
-      identifyCharacter(
-        req,
-        undefined,
-        (llmResult) => update(req.id, llmResult)
-      ).then(result => {
-        update(req.id, { ...result, needsIdentification: false });
-      });
-    }
-  }, [requests, update, readOnly]);
-
-  // Handle toasts for ready requests (skip on first load)
-  useEffect(() => {
-    const ready = requests.filter(r => !shownToasts.has(r.id) && !r.needsIdentification);
-    for (const req of ready) {
-      shownToasts.add(req.id);
-      if (isFirstLoad.current) {
-        continue;
-      }
-      const title = req.source === 'manual' ? 'Novo pedido' :
-        req.source === 'donation' ? 'Novo pedido por donate' :
-          req.source === 'resub' ? 'Novo pedido por resub' : 'Novo pedido pelo chat';
-      const message = req.character
-        ? `${req.donor} pediu ${req.character}${req.amount ? ` (${req.amount})` : ''}`
-        : `Novo pedido de ${req.donor}${req.amount ? ` (${req.amount})` : ''}`;
-      show(message, title);
-    }
-    if (ready.length > 0) isFirstLoad.current = false;
-  }, [requests, show, shownToasts]);
+  useAutoIdentify(requests, update, readOnly);
+  useRequestToasts(requests);
 
   const pendingCount = requests.filter(d => !d.done).length;
 
@@ -351,13 +320,6 @@ function ChannelApp() {
                     <path d="M3 9h18M9 3v18" />
                   </svg>
                 </button>
-                <button className={`btn btn-ghost btn-small btn-small-icon${showDone ? ' active' : ''}`} onClick={() => setShowDone(v => !v)} title={showDone ? 'Esconder feitos' : 'Mostrar feitos'}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    {showDone ? <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /> : <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />}
-                    <circle cx="12" cy="12" r="3" style={{ display: showDone ? 'block' : 'none' }} />
-                    {!showDone && <line x1="1" y1="1" x2="23" y2="23" />}
-                  </svg>
-                </button>
                 {chatHidden && (
                   <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setChatHidden(false)} title="Mostrar chat">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -369,7 +331,7 @@ function ChannelApp() {
               </div>
             </div>
             <div className="panel-body">
-              <CharacterRequestList showDone={showDone} />
+              <CharacterRequestList />
             </div>
           </div>
 
@@ -412,6 +374,7 @@ function ChannelApp() {
       <RequestsReviewDialog
         isOpen={reviewOpen}
         requests={requests}
+        channel={channel}
         onApply={(edited) => { setAll(edited); setReviewOpen(false); }}
         onClose={() => setReviewOpen(false)}
       />
