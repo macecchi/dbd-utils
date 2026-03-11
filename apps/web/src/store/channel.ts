@@ -34,8 +34,10 @@ export function createRequestsStore(
   getContext: () => { partyConnected: boolean; isOwner: boolean }
 ) {
   // Saved before sync-full overwrites local state; merged when ownership is (re)claimed.
-  // Contains real in-memory state from this session only (no localStorage).
+  // Only populated on reconnects (second+ sync-full), never on cold start where
+  // local state is empty and must NOT be merged back.
   let preSyncRequests: Request[] | null = null;
+  let hasSynced = false;
   // Track IDs from the last server sync-full so we can distinguish
   // locally-created requests from server-deleted ones during merge.
   let lastKnownServerIds = new Set<number>();
@@ -142,10 +144,13 @@ export function createRequestsStore(
               const serverRequests = deserializeRequests(msg.requests);
               const localRequests = get().requests;
 
-              // Preserve in-memory state for merge on ownership re-grant.
-              // Only matters during mid-session reconnects where local state
-              // may have diverged (toggle done, add requests) during brief disconnect.
-              preSyncRequests = localRequests.length > 0 ? localRequests : null;
+              // On reconnect (not cold start), save local state before overwriting.
+              // This preserves done toggles and new requests made during a brief disconnect.
+              // On cold start, local state is empty — must NOT be merged back.
+              if (hasSynced && localRequests.length > 0) {
+                preSyncRequests = localRequests;
+              }
+              hasSynced = true;
 
               set({ requests: serverRequests });
               break;
