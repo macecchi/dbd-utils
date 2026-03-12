@@ -103,11 +103,15 @@ export default class PartyServer implements Party.Server {
       }
       const body = await req.json<{ action: string }>();
       if (body.action === 'recover-from-d1') {
-        await this.room.storage.delete('requests');
+        const existing = await this.room.storage.list({ prefix: 'req:' });
+        if (existing.size > 0) {
+          await this.room.storage.delete([...existing.keys()]);
+        }
+        await this.room.storage.delete('order');
         const recovered = await this.recoverFromD1();
         if (recovered) {
           this.requests = recovered;
-          await this.room.storage.put('requests', recovered);
+          await this.persistAll();
         } else {
           this.requests = [];
         }
@@ -401,11 +405,18 @@ export default class PartyServer implements Party.Server {
       });
       if (res.ok) {
         this.d1SyncFailCount = 0;
-        // Prune done requests from memory unless they were re-dirtied during the sync
+        // Delete done request keys from DO (unless re-dirtied during sync)
+        const doneKeys = this.requests
+          .filter(r => r.done && !this.dirtyRequestIds.has(r.id))
+          .map(r => `req:${r.id}`);
+        if (doneKeys.length > 0) {
+          await this.room.storage.delete(doneKeys);
+        }
         const before = this.requests.length;
         this.requests = this.requests.filter(r => !r.done || this.dirtyRequestIds.has(r.id));
         if (this.requests.length < before) {
-          console.log(`${this.tag} Pruned ${before - this.requests.length} done requests from memory`);
+          await this.room.storage.put('order', this.requests.map(r => r.id));
+          console.log(`${this.tag} Pruned ${before - this.requests.length} done requests`);
         }
         console.log(`${this.tag} D1 synced ${requestsToSync.length} requests (${mode})`);
       } else {

@@ -815,6 +815,28 @@ describe('PartyServer', () => {
       expect(errors).toHaveLength(1);
     });
 
+    it('deletes done request keys from DO after D1 sync', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: true }),
+        createTestRequest({ id: 3, done: false }),
+        createTestRequest({ id: 4, done: true }),
+      ];
+      // Simulate per-key storage
+      mockRoom.storage._store.set('req:1', server.requests[0]);
+      mockRoom.storage._store.set('req:2', server.requests[1]);
+      mockRoom.storage._store.set('req:3', server.requests[2]);
+      mockRoom.storage._store.set('req:4', server.requests[3]);
+
+      await (server as any).syncRequestsToD1();
+
+      expect(mockRoom.storage.delete).toHaveBeenCalledWith(['req:2', 'req:4']);
+      expect(mockRoom.storage._store.has('req:2')).toBe(false);
+      expect(mockRoom.storage._store.has('req:4')).toBe(false);
+    });
+
     it('restores dirty IDs on sync failure', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
 
