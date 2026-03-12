@@ -13,13 +13,34 @@ import { verifyJwt } from './jwt';
 // Helper to create mock Party.Room
 function createMockRoom(id: string = 'testchannel') {
   const connections = new Map<string, MockConnection>();
+  const store = new Map<string, unknown>();
 
   return {
     id,
     env: { JWT_SECRET: 'test-secret' },
     storage: {
-      get: vi.fn().mockResolvedValue(null),
-      put: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn((key: string) => Promise.resolve(store.get(key) ?? null)),
+      put: vi.fn((keyOrEntries: string | Record<string, unknown>, value?: unknown) => {
+        if (typeof keyOrEntries === 'string') {
+          store.set(keyOrEntries, value);
+        } else {
+          for (const [k, v] of Object.entries(keyOrEntries)) store.set(k, v);
+        }
+        return Promise.resolve();
+      }),
+      delete: vi.fn((keyOrKeys: string | string[]) => {
+        const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+        for (const k of keys) store.delete(k);
+        return Promise.resolve();
+      }),
+      list: vi.fn(({ prefix }: { prefix: string }) => {
+        const result = new Map<string, unknown>();
+        for (const [k, v] of store) {
+          if (k.startsWith(prefix)) result.set(k, v);
+        }
+        return Promise.resolve(result);
+      }),
+      _store: store,
     },
     getConnections: () => connections.values(),
     _connections: connections,
