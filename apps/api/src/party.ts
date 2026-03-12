@@ -79,21 +79,14 @@ export default class PartyServer implements Party.Server {
   }
 
   private orderRequests(entries: Map<string, SerializedRequest>, order: number[] | null): SerializedRequest[] {
-    if (!order) return [...entries.values()];
-
     const byId = new Map<number, SerializedRequest>();
     for (const [, req] of entries) byId.set(req.id, req);
+    if (!order) return [...byId.values()];
 
-    const ordered: SerializedRequest[] = [];
-    for (const id of order) {
-      const req = byId.get(id);
-      if (req) {
-        ordered.push(req);
-        byId.delete(id);
-      }
-    }
-    for (const req of byId.values()) ordered.push(req);
-    return ordered;
+    const orderSet = new Set(order);
+    const ordered = order.flatMap(id => byId.has(id) ? [byId.get(id)!] : []);
+    const orphans = [...byId.values()].filter(r => !orderSet.has(r.id));
+    return [...ordered, ...orphans];
   }
 
   private async persistAll() {
