@@ -3,13 +3,12 @@ import { identifyCharacter } from '../services';
 import { CharacterRequestCard } from './CharacterRequestCard';
 import { ContextMenu } from './ContextMenu';
 import { ContextMenuProvider } from '../context/ContextMenuContext';
-import { useChannel, useToasts } from '../store';
+import { useChannel } from '../store';
 
 export function CharacterRequestList() {
   const { useRequests, useChannelInfo, isOwnChannel, canManageChannel } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
   const channelStatus = useChannelInfo((s) => s.status);
-  const { showUndo } = useToasts();
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const readOnly = !canManageChannel;
@@ -17,12 +16,8 @@ export function CharacterRequestList() {
 
   const handleToggleDone = useCallback((id: number) => {
     if (readOnly) return;
-    const request = requests.find(r => r.id === id);
-    if (request && !request.done) {
-      showUndo('Marcado como feito', () => toggleDone(id));
-    }
     toggleDone(id);
-  }, [requests, toggleDone, showUndo, readOnly]);
+  }, [toggleDone, readOnly]);
 
   const rerunExtraction = useCallback(async (id: number) => {
     const request = requests.find(r => r.id === id);
