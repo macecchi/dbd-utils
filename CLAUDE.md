@@ -67,6 +67,7 @@ bun run deploy:party # Deploy PartyKit
 
 ## Known Limits
 
+- **DO storage**: 128 KiB per value — per-key storage avoids this for requests, but keep in mind for any future changes
 - **D1 free plan**: 100 bound params per statement, 100 statements per `DB.batch()`
 
 **KV (CACHE namespace):**
