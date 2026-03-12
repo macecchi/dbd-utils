@@ -41,13 +41,6 @@ export function createRequestsStore(
   getSourcesState: () => SourcesStore,
   getContext: () => { partyConnected: boolean }
 ) {
-  // Saved before sync-full overwrites local state; merged when ownership is (re)claimed.
-  // Contains real in-memory state from this session only (no localStorage).
-  let preSyncRequests: Request[] | null = null;
-  // Track IDs from the last server sync-full so we can distinguish
-  // locally-created requests from server-deleted ones during merge.
-  let lastKnownServerIds = new Set<number>();
-
   return create<RequestsStore>()(
       (set, get) => ({
         requests: [],
@@ -85,15 +78,7 @@ export function createRequestsStore(
         handlePartyMessage: (msg) => {
           switch (msg.type) {
             case 'sync-full': {
-              const serverRequests = deserializeRequests(msg.requests);
-              const localRequests = get().requests;
-
-              // Preserve in-memory state for merge on ownership re-grant.
-              // Only matters during mid-session reconnects where local state
-              // may have diverged (toggle done, add requests) during brief disconnect.
-              preSyncRequests = localRequests.length > 0 ? localRequests : null;
-
-              set({ requests: serverRequests });
+              set({ requests: deserializeRequests(msg.requests) });
               break;
             }
             case 'add-request': {
@@ -139,49 +124,8 @@ export function createRequestsStore(
               }));
               break;
             }
-            case 'ownership-granted': {
-              // After reconnect, merge any local changes made during the disconnect.
-              // Only the lock-holder can mutate requests, so pre-sync local state is
-              // authoritative for done flags and locally-added requests.
-              if (preSyncRequests && preSyncRequests.length > 0) {
-                const currentRequests = get().requests;
-                const localById = new Map(preSyncRequests.map(r => [r.id, r]));
-                const currentIds = new Set(currentRequests.map(r => r.id));
-
-                let hasChanges = false;
-
-                // Preserve local done states that diverged during disconnect
-                const merged = currentRequests.map(r => {
-                  const local = localById.get(r.id);
-                  if (local && local.done !== r.done) {
-                    hasChanges = true;
-                    return { ...r, done: local.done, doneAt: local.doneAt };
-                  }
-                  return r;
-                });
-
-                // Re-add requests created locally during disconnect
-                // (not in current server state AND never seen in any previous server sync)
-                for (const r of preSyncRequests) {
-                  if (!currentIds.has(r.id) && !lastKnownServerIds.has(r.id)) {
-                    merged.push(r);
-                    hasChanges = true;
-                  }
-                }
-
-                if (hasChanges) {
-                  set({ requests: merged });
-                  broadcastSetAll(merged);
-                }
-
-                preSyncRequests = null;
-              }
-              // Update known server IDs after merge
-              lastKnownServerIds = new Set(get().requests.map(r => r.id));
-              break;
-            }
+            case 'ownership-granted':
             case 'ownership-denied':
-              preSyncRequests = null;
               break;
             case 'toggle-done':
               set((s) => ({
