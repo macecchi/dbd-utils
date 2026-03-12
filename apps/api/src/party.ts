@@ -128,7 +128,7 @@ export default class PartyServer implements Party.Server {
     return Response.json({
       status: this.channel.status,
       connections: this.connections.size,
-      pending_count: this.requests.filter(r => !r.done).length,
+      pending_count: this.requests.filter(r => !r.done && r.type !== 'none').length,
     });
   }
 

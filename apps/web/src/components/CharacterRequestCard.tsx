@@ -17,11 +17,12 @@ interface Props {
   onDragEnd?: () => void;
   readOnly?: boolean;
   exiting?: boolean;
+  skipping?: boolean;
 }
 
 export const CharacterRequestCard = memo(function CharacterRequestCard({
   request, position, onToggleDone,
-  isDragging, isDragOver, onDragStart, onDragOver, onDragEnd, readOnly = false, exiting = false
+  isDragging, isDragOver, onDragStart, onDragOver, onDragEnd, readOnly = false, exiting = false, skipping = false
 }: Props) {
   const { show: showContextMenu } = useContextMenu();
   const r = request;
@@ -70,6 +71,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
     isDragging && 'dragging',
     isDragOver && 'drag-over',
     exiting && 'deleting',
+    skipping && 'skipping',
     readOnly && 'read-only'
   ].filter(Boolean).join(' ');
 

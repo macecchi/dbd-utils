@@ -108,6 +108,18 @@
   color: var(--text-muted) !important;
 }
 
+.req-table-pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.req-table-page-info {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
 /* Mobile */
 
 @media (max-width: 640px) {

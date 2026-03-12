@@ -13,9 +13,11 @@ export function CharacterRequestList() {
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const readOnly = !canControlConnection;
 
-  // Track done items exiting so they stay in the DOM for the animation
+  // Track done/skipped items exiting so they stay in the DOM for the animation
   const [exitingIds, setExitingIds] = useState<Set<number>>(new Set());
+  const [skippingIds, setSkippingIds] = useState<Set<number>>(new Set());
   const prevDoneIds = useRef<Set<number>>(new Set());
+  const prevNoneIds = useRef<Set<number>>(new Set());
   useEffect(() => {
     const currentDone = new Set(requests.filter(r => r.done).map(r => r.id));
     const newlyDone = [...currentDone].filter(id => !prevDoneIds.current.has(id));
@@ -32,7 +34,23 @@ export function CharacterRequestList() {
     return () => clearTimeout(timer);
   }, [requests]);
 
-  const filtered = requests.filter(r => !r.done || exitingIds.has(r.id));
+  useEffect(() => {
+    const currentNone = new Set(requests.filter(r => r.type === 'none').map(r => r.id));
+    const newlyNone = [...currentNone].filter(id => !prevNoneIds.current.has(id));
+    prevNoneIds.current = currentNone;
+    if (newlyNone.length === 0) return;
+    setSkippingIds(prev => new Set([...prev, ...newlyNone]));
+    const timer = setTimeout(() => {
+      setSkippingIds(prev => {
+        const next = new Set(prev);
+        newlyNone.forEach(id => next.delete(id));
+        return next;
+      });
+    }, 600); // matches skipSlide duration
+    return () => clearTimeout(timer);
+  }, [requests]);
+
+  const filtered = requests.filter(r => (!r.done && r.type !== 'none') || exitingIds.has(r.id) || skippingIds.has(r.id));
 
   const handleToggleDone = useCallback((id: number) => {
     if (readOnly) return;
@@ -47,6 +65,10 @@ export function CharacterRequestList() {
       update(id, result);
     }
   }, [requests, update]);
+
+  const skipRequest = useCallback((id: number) => {
+    update(id, { type: 'none', character: '', needsIdentification: false });
+  }, [update]);
 
   const handleDragStart = useCallback((id: number) => {
     if (readOnly) return;
@@ -141,6 +163,7 @@ export function CharacterRequestList() {
                 onDragEnd={handleDragEnd}
                 readOnly={readOnly}
                 exiting={exitingIds.has(r.id)}
+                skipping={skippingIds.has(r.id)}
               />
             );
           });
@@ -150,6 +173,7 @@ export function CharacterRequestList() {
         <ContextMenu
           onToggleDone={handleToggleDone}
           onRerun={rerunExtraction}
+          onSkip={skipRequest}
         />
       )}
     </ContextMenuProvider>

@@ -48,8 +48,8 @@ async function callAPI(
 export async function identifyCharacter(
   request: Request,
   onError?: (msg: string) => void,
-  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown'; validating: false }) => void
-): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown'; validating?: boolean }> {
+  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; validating: false }) => void
+): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; validating?: boolean }> {
   const local = tryLocalMatch(request.message);
   const isAuthenticated = useAuth.getState().isAuthenticated;
 
@@ -74,10 +74,10 @@ export async function identifyCharacter(
   if (!isAuthenticated) return { character: '', type: 'unknown' };
 
   const result = await callAPI(request.message, onError);
-  const type = result.type === 'none' ? 'unknown' : (result.type || 'unknown');
+  const type = result.type || 'unknown';
   return {
     character: result.character || '',
-    type: type as 'survivor' | 'killer' | 'unknown'
+    type: type as 'survivor' | 'killer' | 'unknown' | 'none'
   };
 }
 
@@ -112,7 +112,7 @@ export async function testExtraction(
   const llm = await callAPI(input, onError);
   return {
     character: llm.character || '',
-    type: llm.type === 'none' ? 'unknown' : (llm.type as 'killer' | 'survivor' | 'unknown') || 'unknown',
+    type: (llm.type as 'killer' | 'survivor' | 'unknown') || 'unknown',
     isLocal: false
   };
 }

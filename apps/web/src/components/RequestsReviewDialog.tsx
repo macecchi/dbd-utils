@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import type { Request } from '../types';
 import { deserializeRequests } from '../types';
 import { fetchRequestsHistory } from '../services/api';
-import { RequestsTable, type RequestsTableColumn } from './RequestsTable';
+import { RequestsTable, type RequestsTableColumn, type RequestsTableHandle } from './RequestsTable';
 
 interface Props {
   isOpen: boolean;
@@ -22,9 +22,23 @@ export function RequestsReviewDialog({ isOpen, requests: storeRequests, channel,
   const [d1Requests, setD1Requests] = useState<Request[] | null>(null);
   const [loading, setLoading] = useState(false);
   const lastClickedIdx = useRef<number | null>(null);
+  const tableRef = useRef<RequestsTableHandle>(null);
+  const tableWrapRef = useRef<HTMLDivElement>(null);
+  const needsScrollBottom = useRef(false);
+  const [pageInfo, setPageInfo] = useState({ page: 0, totalPages: 1 });
+  const handlePageChange = useCallback((page: number, totalPages: number) => setPageInfo({ page, totalPages }), []);
+
+  // Scroll to bottom after loading finishes
+  useLayoutEffect(() => {
+    if (!loading && isOpen && needsScrollBottom.current && tableWrapRef.current) {
+      needsScrollBottom.current = false;
+      tableWrapRef.current.scrollTop = tableWrapRef.current.scrollHeight;
+    }
+  }, [loading, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
+    needsScrollBottom.current = true;
     setLoading(true);
     setD1Requests(null);
     fetchRequestsHistory(channel)
@@ -59,7 +73,7 @@ export function RequestsReviewDialog({ isOpen, requests: storeRequests, channel,
     for (const [id, edit] of edits) {
       const orig = requests.find(r => r.id === id);
       if (!orig) continue;
-      if (edit.done !== undefined && edit.done !== orig.done) ids.add(id);
+      if ((edit.done !== undefined && edit.done !== orig.done) || (edit.type !== undefined && edit.type !== orig.type)) ids.add(id);
     }
     return ids;
   }, [requests, edits]);
@@ -69,11 +83,17 @@ export function RequestsReviewDialog({ isOpen, requests: storeRequests, channel,
       const next = new Map(prev);
       const orig = requests.find(r => r.id === id);
       if (!orig) return prev;
-      if (done === !!orig.done) {
+      const isRestore = !done && orig.type === 'none';
+      if (done === !!orig.done && !isRestore) {
         next.delete(id);
       } else {
         const current = next.get(id);
-        next.set(id, { ...current, done, doneAt: done ? new Date() : undefined });
+        next.set(id, {
+          ...current,
+          done,
+          doneAt: done ? new Date() : undefined,
+          ...(isRestore && { type: 'unknown' as const, character: '' }),
+        });
       }
       return next;
     });
@@ -83,6 +103,27 @@ export function RequestsReviewDialog({ isOpen, requests: storeRequests, channel,
     const orig = requests.find(r => r.id === id);
     if (!orig) return;
     const edit = edits.get(id);
+
+    // For dismissed requests, toggle restores to queue instead of toggling done
+    const currentType = edit?.type ?? orig.type;
+    if (currentType === 'none') {
+      setEdits(prev => {
+        const next = new Map(prev);
+        next.set(id, { ...prev.get(id), type: 'unknown' as const, character: '' });
+        return next;
+      });
+      return;
+    }
+    // If already restored, allow toggling back to dismissed
+    if (orig.type === 'none' && currentType === 'unknown') {
+      setEdits(prev => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+      return;
+    }
+
     const currentDone = edit?.done !== undefined ? edit.done : orig.done;
     setDone(id, !currentDone);
   }, [requests, edits, setDone]);
@@ -162,14 +203,46 @@ export function RequestsReviewDialog({ isOpen, requests: storeRequests, channel,
         const doneNow = !!r.done;
         const doneBefore = !!orig.done;
         const changed = changedIds.has(r.id);
+        const isDismissed = r.type === 'none';
+        const isRestored = orig.type === 'none' && r.type !== 'none';
 
         if (changesTab) {
+          if (isRestored) {
+            return (
+              <span className="review-done-diff">
+                <span className="review-diff-old">Ignorado</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                <span className="review-diff-new">Não</span>
+              </span>
+            );
+          }
           return (
             <span className="review-done-diff">
               <span className={doneBefore ? 'review-diff-old done' : 'review-diff-old'}>{doneBefore ? 'Sim' : 'Não'}</span>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               <span className={doneNow ? 'review-diff-new done' : 'review-diff-new'}>{doneNow ? 'Sim' : 'Não'}</span>
             </span>
+          );
+        }
+
+        if (isDismissed || isRestored) {
+          return (
+            <button
+              className={`review-done-btn${isRestored ? ' changed' : ''}`}
+              onClick={e => { e.stopPropagation(); toggleDone(r.id); }}
+              title={isDismissed ? 'Restaurar na fila' : 'Desfazer restauração'}
+            >
+              {isDismissed ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
           );
         }
 
@@ -249,8 +322,9 @@ export function RequestsReviewDialog({ isOpen, requests: storeRequests, channel,
             </button>
           </div>
 
-          <div className="req-table-wrap">
+          <div className="req-table-wrap" ref={tableWrapRef}>
             <RequestsTable
+              ref={tableRef}
               requests={displayRequests}
               leadColumns={leadColumns}
               trailColumns={trailColumns}
@@ -258,11 +332,26 @@ export function RequestsReviewDialog({ isOpen, requests: storeRequests, channel,
               showTimestamp={false}
               rowClassName={(r) => changedIds.has(r.id) ? 'review-row-changed' : undefined}
               emptyText={changesTab ? 'Nenhuma alteração ainda. Mude o status na aba "Todos".' : 'Nenhum pedido na fila.'}
+              pageSize={50}
+              initialPage="last"
+              onPageChange={handlePageChange}
             />
           </div>
         </>)}
 
         <div className="modal-footer">
+          {pageInfo.totalPages > 1 && (
+            <div className="req-table-pagination">
+              <button className="btn btn-ghost btn-small" onClick={() => tableRef.current?.setPage(pageInfo.page - 1)} disabled={pageInfo.page === 0}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+              <span className="req-table-page-info">{pageInfo.page + 1} / {pageInfo.totalPages}</span>
+              <button className="btn btn-ghost btn-small" onClick={() => tableRef.current?.setPage(pageInfo.page + 1)} disabled={pageInfo.page >= pageInfo.totalPages - 1}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6" /></svg>
+              </button>
+            </div>
+          )}
+          <div style={{ flex: 1 }} />
           <button className="btn btn-ghost" onClick={handleClose}>Cancelar</button>
           <button
             className="btn btn-ghost"

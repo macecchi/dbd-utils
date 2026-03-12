@@ -55,8 +55,8 @@ function useAutoIdentify(requests: Request[], update: (id: number, updates: Part
   }, [requests, update, readOnly]);
 }
 
-function useRequestToasts(requests: Request[]) {
-  const { show } = useToasts();
+function useRequestToasts(requests: Request[], update: (id: number, updates: Partial<Request>) => void) {
+  const { show, showUndo } = useToasts();
   const shownToasts = useRef(new Set<number>());
   const isFirstLoad = useRef(true);
   useEffect(() => {
@@ -64,6 +64,14 @@ function useRequestToasts(requests: Request[]) {
     for (const req of ready) {
       shownToasts.current.add(req.id);
       if (isFirstLoad.current) continue;
+      if (req.type === 'none') {
+        const msg = req.message.length > 50 ? req.message.slice(0, 50) + '…' : req.message;
+        showUndo(
+          `Ignorado: ${req.donor} — "${msg}"`,
+          () => update(req.id, { type: 'unknown', character: '' })
+        );
+        continue;
+      }
       const title = req.source === 'manual' ? 'Novo pedido' :
         req.source === 'donation' ? 'Novo pedido por donate' :
           req.source === 'resub' ? 'Novo pedido por resub' : 'Novo pedido pelo chat';
@@ -73,7 +81,7 @@ function useRequestToasts(requests: Request[]) {
       show(message, title);
     }
     if (ready.length > 0) isFirstLoad.current = false;
-  }, [requests, show]);
+  }, [requests, show, showUndo, update]);
 }
 
 function ChannelApp() {
@@ -264,9 +272,9 @@ function ChannelApp() {
   }, []);
 
   useAutoIdentify(requests, update, readOnly);
-  useRequestToasts(requests);
+  useRequestToasts(requests, update);
 
-  const pendingCount = requests.filter(d => !d.done).length;
+  const pendingCount = requests.filter(d => !d.done && d.type !== 'none').length;
 
   return (
     <>

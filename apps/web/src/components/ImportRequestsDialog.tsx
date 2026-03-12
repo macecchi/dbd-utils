@@ -21,10 +21,14 @@ export function ImportRequestsDialog({ isOpen, requests, isLoading, loadingStatu
 
   // Auto-select NEW requests, preserve user unchecks
   useEffect(() => {
-    const newIds = requests.filter(r => !seenIds.current.has(r.id)).map(r => r.id);
-    if (!newIds.length) return;
-    for (const id of newIds) seenIds.current.add(id);
-    setSelected(prev => { const next = new Set(prev); for (const id of newIds) next.add(id); return next; });
+    const newReqs = requests.filter(r => !seenIds.current.has(r.id));
+    if (!newReqs.length) return;
+    for (const r of newReqs) seenIds.current.add(r.id);
+    setSelected(prev => {
+      const next = new Set(prev);
+      for (const r of newReqs) { if (r.type !== 'none') next.add(r.id); }
+      return next;
+    });
   }, [requests]);
 
   // Reset tracking on dialog close/reopen

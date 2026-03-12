@@ -1,4 +1,4 @@
-import type { ReactNode, MouseEvent } from 'react';
+import { useState, useEffect, useCallback, useImperativeHandle, forwardRef, type ReactNode, type MouseEvent } from 'react';
 import { CharacterAvatar } from './CharacterAvatar';
 import { getKillerPortrait } from '../data/characters';
 import type { Request } from '../types';
@@ -33,11 +33,18 @@ interface Props {
   onRowClick?: (index: number, e: MouseEvent) => void;
   rowClassName?: (req: Request, index: number) => string | undefined;
   emptyText?: string;
+  pageSize?: number;
+  initialPage?: 'first' | 'last';
+  onPageChange?: (page: number, totalPages: number) => void;
+}
+
+export interface RequestsTableHandle {
+  setPage: (page: number) => void;
 }
 
 const TIME_FMT: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
 
-export function RequestsTable({
+export const RequestsTable = forwardRef<RequestsTableHandle, Props>(function RequestsTable({
   requests,
   leadColumns,
   trailColumns,
@@ -47,7 +54,30 @@ export function RequestsTable({
   onRowClick,
   rowClassName,
   emptyText = 'Nenhum pedido.',
-}: Props) {
+  pageSize,
+  initialPage = 'first',
+  onPageChange,
+}, ref) {
+  const totalPages = pageSize ? Math.max(1, Math.ceil(requests.length / pageSize)) : 1;
+  const [page, setPageRaw] = useState(initialPage === 'last' ? totalPages - 1 : 0);
+
+  const setPage = useCallback((p: number) => {
+    const clamped = Math.max(0, Math.min(p, totalPages - 1));
+    setPageRaw(clamped);
+  }, [totalPages]);
+
+  useImperativeHandle(ref, () => ({ setPage }), [setPage]);
+
+  useEffect(() => {
+    onPageChange?.(page, totalPages);
+  }, [page, totalPages, onPageChange]);
+
+  // Reset page when requests change significantly
+  useEffect(() => {
+    const maxPage = Math.max(0, totalPages - 1);
+    if (page > maxPage) setPageRaw(maxPage);
+  }, [totalPages, page]);
+
   if (requests.length === 0) {
     if (!emptyText) return null;
     return (
@@ -57,69 +87,79 @@ export function RequestsTable({
     );
   }
 
+  const pageRows = pageSize
+    ? requests.slice(page * pageSize, (page + 1) * pageSize)
+    : requests;
+  const pageOffset = pageSize ? page * pageSize : 0;
+
   return (
-    <table className="req-table">
-      <thead>
-        <tr>
-          {leadColumns?.map(col => (
-            <th key={col.key} className={col.className}>{col.header}</th>
-          ))}
-          {showId && <th className="req-col-id">ID</th>}
-          <th className="req-col-char">Personagem</th>
-          <th className="req-col-donor">Doador</th>
-          <th className="req-col-source">Fonte</th>
-          {showMessage && <th className="req-col-msg">Mensagem</th>}
-          {showTimestamp && <th className="req-col-dates">Horário</th>}
-          {trailColumns?.map(col => (
-            <th key={col.key} className={col.className}>{col.header}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {requests.map((r, i) => {
-          const portrait = r.type === 'killer' && r.character ? getKillerPortrait(r.character) : undefined;
-          return (
-            <tr
-              key={r.id}
-              className={rowClassName?.(r, i)}
-              onClick={onRowClick ? e => onRowClick(i, e) : undefined}
-              style={onRowClick ? { cursor: 'pointer' } : undefined}
-            >
-              {leadColumns?.map(col => (
-                <td key={col.key} className={col.className}>{col.render(r, i)}</td>
-              ))}
-              {showId && <td className="req-col-id mono">{r.id}</td>}
-              <td className="req-col-char">
-                <div className="req-char-wrap">
-                  <CharacterAvatar portrait={portrait} type={r.type} size="sm" />
-                  <span className="req-char-name" title={r.character || undefined}>
-                    {r.character || <span className="text-muted">—</span>}
+    <>
+      <table className="req-table">
+        <thead>
+          <tr>
+            {leadColumns?.map(col => (
+              <th key={col.key} className={col.className}>{col.header}</th>
+            ))}
+            {showId && <th className="req-col-id">ID</th>}
+            <th className="req-col-char">Personagem</th>
+            <th className="req-col-donor">Doador</th>
+            <th className="req-col-source">Fonte</th>
+            {showMessage && <th className="req-col-msg">Mensagem</th>}
+            {showTimestamp && <th className="req-col-dates">Horário</th>}
+            {trailColumns?.map(col => (
+              <th key={col.key} className={col.className}>{col.header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {pageRows.map((r, localIdx) => {
+            const globalIdx = pageOffset + localIdx;
+            const portrait = r.type === 'killer' && r.character ? getKillerPortrait(r.character) : undefined;
+            return (
+              <tr
+                key={r.id}
+                className={rowClassName?.(r, globalIdx)}
+                onClick={onRowClick ? e => onRowClick(globalIdx, e) : undefined}
+                style={onRowClick ? { cursor: 'pointer' } : undefined}
+              >
+                {leadColumns?.map(col => (
+                  <td key={col.key} className={col.className}>{col.render(r, globalIdx)}</td>
+                ))}
+                {showId && <td className="req-col-id mono">{r.id}</td>}
+                <td className="req-col-char">
+                  <div className="req-char-wrap">
+                    <CharacterAvatar portrait={portrait} type={r.type} size="sm" />
+                    <span className="req-char-name" title={r.character || undefined}>
+                      {r.type === 'none'
+                        ? <span className="text-muted">Ignorado</span>
+                        : r.character || <span className="text-muted">—</span>}
+                    </span>
+                  </div>
+                </td>
+                <td className="req-col-donor">{r.donor}</td>
+                <td className="req-col-source">
+                  <span className={`amount source-${r.source}`}>
+                    {formatSourceBadge(r)}
                   </span>
-                </div>
-              </td>
-              <td className="req-col-donor">{r.donor}</td>
-              <td className="req-col-source">
-                <span className={`amount source-${r.source}`}>
-                  {formatSourceBadge(r)}
-                </span>
-              </td>
-              {showMessage && (
-                <td className="req-col-msg">
-                  <span className="req-msg-text">{r.message || <span className="text-muted">—</span>}</span>
                 </td>
-              )}
-              {showTimestamp && (
-                <td className="req-col-dates mono">
-                  {r.timestamp.toLocaleString('pt-BR', TIME_FMT)}
-                </td>
-              )}
-              {trailColumns?.map(col => (
-                <td key={col.key} className={col.className}>{col.render(r, i)}</td>
-              ))}
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                {showMessage && (
+                  <td className="req-col-msg">
+                    <span className="req-msg-text">{r.message || <span className="text-muted">—</span>}</span>
+                  </td>
+                )}
+                {showTimestamp && (
+                  <td className="req-col-dates mono">
+                    {r.timestamp.toLocaleString('pt-BR', TIME_FMT)}
+                  </td>
+                )}
+                {trailColumns?.map(col => (
+                  <td key={col.key} className={col.className}>{col.render(r, globalIdx)}</td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </>
   );
-}
+});
