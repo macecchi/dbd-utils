@@ -6,12 +6,12 @@ import { ContextMenuProvider } from '../context/ContextMenuContext';
 import { useChannel } from '../store';
 
 export function CharacterRequestList() {
-  const { useRequests, useChannelInfo, isOwnChannel, canManageChannel } = useChannel();
+  const { useRequests, useChannelInfo, isOwnChannel, canControlConnection } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
   const channelStatus = useChannelInfo((s) => s.status);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
-  const readOnly = !canManageChannel;
+  const readOnly = !canControlConnection;
   const filtered = requests.filter(r => !r.done);
 
   const handleToggleDone = useCallback((id: number) => {

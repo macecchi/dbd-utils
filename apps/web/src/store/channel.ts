@@ -17,6 +17,12 @@ import {
 
 // ============ REQUESTS STORE ============
 
+function requireParty(getContext: () => { partyConnected: boolean }): boolean {
+  if (getContext().partyConnected) return true;
+  useToasts.getState().show('Sem conexão com o servidor. Tente novamente.', 'Erro');
+  return false;
+}
+
 interface RequestsStore {
   requests: Request[];
   add: (req: Request) => void;
@@ -33,7 +39,7 @@ export type RequestsStoreApi = ReturnType<typeof createRequestsStore>;
 export function createRequestsStore(
   channel: string,
   getSourcesState: () => SourcesStore,
-  getContext: () => { partyConnected: boolean; isOwner: boolean }
+  getContext: () => { partyConnected: boolean }
 ) {
   // Saved before sync-full overwrites local state; merged when ownership is (re)claimed.
   // Contains real in-memory state from this session only (no localStorage).
@@ -47,8 +53,7 @@ export function createRequestsStore(
         requests: [],
 
         add: (req) => {
-          const { partyConnected, isOwner } = getContext();
-          if (!isOwner) return;
+          if (!requireParty(getContext)) return;
           const existingRequests = get().requests;
           if (existingRequests.some(r => r.id === req.id)) return;
           if (existingRequests.filter(r => !r.done).length >= MAX_PENDING_REQUESTS) {
@@ -77,43 +82,35 @@ export function createRequestsStore(
             return { requests };
           });
 
-          if (partyConnected) {
-            broadcastAdd(req);
-          }
+          broadcastAdd(req);
         },
 
         update: (id, updates) => {
-          const { partyConnected, isOwner } = getContext();
+          if (!requireParty(getContext)) return;
           set((s) => ({
             requests: s.requests.map((r) => (r.id === id ? { ...r, ...updates } : r)),
           }));
-          if (partyConnected && isOwner) {
-            broadcastUpdate(id, updates);
-          }
+          broadcastUpdate(id, updates);
         },
 
         toggleDone: (id) => {
-          const { partyConnected, isOwner } = getContext();
+          if (!requireParty(getContext)) return;
           const doneAt = new Date();
           set((s) => ({
             requests: s.requests.map((r) => (r.id === id ? { ...r, done: !r.done, doneAt: !r.done ? doneAt : undefined } : r)),
           }));
-          if (partyConnected && isOwner) {
-            const req = get().requests.find(r => r.id === id);
-            broadcastToggleDone(id, req?.doneAt?.toISOString());
-          }
+          const req = get().requests.find(r => r.id === id);
+          broadcastToggleDone(id, req?.doneAt?.toISOString());
         },
 
         setAll: (requests) => {
-          const { partyConnected, isOwner } = getContext();
+          if (!requireParty(getContext)) return;
           set({ requests });
-          if (partyConnected && isOwner) {
-            broadcastSetAll(requests);
-          }
+          broadcastSetAll(requests);
         },
 
         reorder: (fromId, toId) => {
-          const { partyConnected, isOwner } = getContext();
+          if (!requireParty(getContext)) return;
           set((s) => {
             const requests = [...s.requests];
             const fromIdx = requests.findIndex(r => r.id === fromId);
@@ -123,19 +120,15 @@ export function createRequestsStore(
             requests.splice(toIdx, 0, moved);
             return { requests };
           });
-          if (partyConnected && isOwner) {
-            broadcastReorder(fromId, toId);
-          }
+          broadcastReorder(fromId, toId);
         },
 
         deleteRequest: (id) => {
-          const { partyConnected, isOwner } = getContext();
+          if (!requireParty(getContext)) return;
           set((s) => ({
             requests: s.requests.filter((r) => r.id !== id),
           }));
-          if (partyConnected && isOwner) {
-            broadcastDelete(id);
-          }
+          broadcastDelete(id);
         },
 
         handlePartyMessage: (msg) => {
@@ -315,13 +308,11 @@ export const SOURCES_DEFAULTS = {
 
 export function createSourcesStore(
   channel: string,
-  getContext: () => { partyConnected: boolean; isOwner: boolean }
+  getContext: () => { partyConnected: boolean }
 ) {
   const maybeBroadcast = (get: () => SourcesStore) => {
-    const { partyConnected, isOwner } = getContext();
-    if (partyConnected && isOwner) {
-      const sources = get();
-      broadcastSources(sources);
+    if (getContext().partyConnected) {
+      broadcastSources(get());
     }
   };
 
@@ -395,12 +386,12 @@ interface ChannelOwner {
 interface ChannelInfoStore {
   status: ChannelStatus;
   owner: ChannelOwner | null;
-  isOwner: boolean;
+  hasLock: boolean;
   partySynced: boolean;
   localIrcConnectionState: ConnectionState;
   localPartyConnectionState: ConnectionState;
-  setIsOwner: (isOwner: boolean) => void;
-  setIrcConnectionState: (state: ConnectionState) => void;
+  setHasLock: (hasLock: boolean) => void;
+  setIrcConnectionState: (state: ConnectionState, broadcast?: boolean) => void;
   setPartyConnectionState: (state: ConnectionState) => void;
   handlePartyMessage: (msg: PartyMessage) => void;
 }
@@ -411,16 +402,18 @@ export function createChannelInfoStore() {
   return create<ChannelInfoStore>()((set, get) => ({
     status: 'offline',
     owner: null,
-    isOwner: false,
+    hasLock: false,
     partySynced: false,
     localIrcConnectionState: 'disconnected',
     localPartyConnectionState: 'disconnected',
-    setIsOwner: (isOwner) => set({ isOwner }),
-    setIrcConnectionState: (state) => {
+    setHasLock: (hasLock) => set({ hasLock }),
+    setIrcConnectionState: (state, broadcast = true) => {
       set({ localIrcConnectionState: state });
-      const { isOwner } = get();
-      if (isOwner) {
-        broadcastIrcStatus(state === 'connected');
+      if (broadcast) {
+        const { hasLock } = get();
+        if (hasLock) {
+          broadcastIrcStatus(state === 'connected');
+        }
       }
     },
     setPartyConnectionState: (state) => {
@@ -434,17 +427,17 @@ export function createChannelInfoStore() {
         set({ partySynced: true });
       }
       if (msg.type === 'ownership-granted') {
-        set({ isOwner: true });
+        set({ hasLock: true });
       } else if (msg.type === 'ownership-denied') {
-        set({ isOwner: false });
+        set({ hasLock: false });
       } else if (msg.type === 'sync-full' || msg.type === 'update-channel') {
         const updates: Partial<ChannelInfoStore> = {
           status: msg.channel.status,
           owner: msg.channel.owner,
         };
-        // Reset isOwner when channel has no owner (released or disconnected)
+        // Reset hasLock when channel has no owner (released or disconnected)
         if (!msg.channel.owner) {
-          updates.isOwner = false;
+          updates.hasLock = false;
         }
         set(updates);
       }
@@ -467,14 +460,9 @@ export function createRoomStores(channel: string): ChannelStores {
   // ChannelInfoStore is created first - it has no dependencies
   const useChannelInfo = createChannelInfoStore();
 
-  // Helper to get connection context from ChannelInfoStore
-  const getContext = () => {
-    const { localPartyConnectionState, isOwner } = useChannelInfo.getState();
-    return {
-      partyConnected: localPartyConnectionState === 'connected',
-      isOwner,
-    };
-  };
+  const getContext = () => ({
+    partyConnected: useChannelInfo.getState().localPartyConnectionState === 'connected',
+  });
 
   let useSources: SourcesStoreApi;
 

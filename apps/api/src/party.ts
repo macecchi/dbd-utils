@@ -243,8 +243,27 @@ export default class PartyServer implements Party.Server {
       return;
     }
 
-    if (!isLockHolder) {
-      console.warn(`${this.tag} Rejected msg from non-owner ${sender.id}`);
+    // Lock-only: IRC status (controls channel live/online state)
+    if (msg.type === 'irc-status' && !isLockHolder) {
+      const errorMsg: PartyMessage = {
+        type: 'server-error',
+        code: 'not_lock_holder',
+        message: 'Você precisa estar conectado para gerenciar a fila.',
+      };
+      sender.send(JSON.stringify(errorMsg));
+      console.warn(`${this.tag} Rejected ${msg.type} from non-lock-holder ${connInfo?.user?.login ?? sender.id}`);
+      return;
+    }
+
+    // Everything else: room owner required
+    if (msg.type !== 'irc-status' && !isRoomOwner && !(this.isDev && connInfo?.user)) {
+      const errorMsg: PartyMessage = {
+        type: 'server-error',
+        code: 'not_room_owner',
+        message: 'Apenas o dono do canal pode gerenciar a fila.',
+      };
+      sender.send(JSON.stringify(errorMsg));
+      console.warn(`${this.tag} Rejected ${msg.type} from non-owner ${connInfo?.user?.login ?? sender.id}`);
       return;
     }
 

@@ -44,7 +44,7 @@ describe('channel stores', () => {
       const stores = createRoomStores('testchannel');
 
       const channelInfo = stores.useChannelInfo.getState();
-      expect(channelInfo.isOwner).toBe(false);
+      expect(channelInfo.hasLock).toBe(false);
       expect(channelInfo.localPartyConnectionState).toBe('disconnected');
 
       const requests = stores.useRequests.getState();
@@ -67,7 +67,7 @@ describe('channel stores', () => {
 
       // Add a request and verify broadcast is NOT called
       const request = createTestRequest();
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
       stores.useRequests.getState().add(request);
 
       expect(party.broadcastAdd).not.toHaveBeenCalled();
@@ -77,7 +77,7 @@ describe('channel stores', () => {
       const stores = createRoomStores('testchannel');
 
       stores.useChannelInfo.getState().setPartyConnectionState('connecting');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest();
       stores.useRequests.getState().add(request);
@@ -89,7 +89,7 @@ describe('channel stores', () => {
       const stores = createRoomStores('testchannel');
 
       stores.useChannelInfo.getState().setPartyConnectionState('error');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest();
       stores.useRequests.getState().add(request);
@@ -101,7 +101,7 @@ describe('channel stores', () => {
       const stores = createRoomStores('testchannel');
 
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest();
       stores.useRequests.getState().add(request);
@@ -115,7 +115,7 @@ describe('channel stores', () => {
       const stores = createRoomStores('testchannel');
 
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest();
       stores.useRequests.getState().add(request);
@@ -123,40 +123,29 @@ describe('channel stores', () => {
       expect(party.broadcastAdd).toHaveBeenCalledTimes(1);
     });
 
-    it('does NOT broadcast when connected but NOT owner', () => {
+    it('broadcasts when connected without lock', () => {
       const stores = createRoomStores('testchannel');
 
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(false);
+      stores.useChannelInfo.getState().setHasLock(false);
 
       const request = createTestRequest();
       stores.useRequests.getState().add(request);
 
-      expect(party.broadcastAdd).not.toHaveBeenCalled();
+      expect(party.broadcastAdd).toHaveBeenCalledTimes(1);
     });
 
-    it('does NOT broadcast when owner but NOT connected', () => {
+    it('does NOT add when not connected', () => {
       const stores = createRoomStores('testchannel');
 
       stores.useChannelInfo.getState().setPartyConnectionState('disconnected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest();
       stores.useRequests.getState().add(request);
 
       expect(party.broadcastAdd).not.toHaveBeenCalled();
-    });
-
-    it('does NOT broadcast when neither owner nor connected', () => {
-      const stores = createRoomStores('testchannel');
-
-      stores.useChannelInfo.getState().setPartyConnectionState('disconnected');
-      stores.useChannelInfo.getState().setIsOwner(false);
-
-      const request = createTestRequest();
-      stores.useRequests.getState().add(request);
-
-      expect(party.broadcastAdd).not.toHaveBeenCalled();
+      expect(stores.useRequests.getState().requests).toHaveLength(0);
     });
   });
 
@@ -164,7 +153,7 @@ describe('channel stores', () => {
     it('add() broadcasts when connected and owner', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest();
       stores.useRequests.getState().add(request);
@@ -176,7 +165,7 @@ describe('channel stores', () => {
     it('update() broadcasts when connected and owner', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest({ id: 123 });
       stores.useRequests.getState().add(request);
@@ -190,7 +179,7 @@ describe('channel stores', () => {
     it('toggleDone() broadcasts when connected and owner', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest({ id: 456 });
       stores.useRequests.getState().add(request);
@@ -204,7 +193,7 @@ describe('channel stores', () => {
     it('deleteRequest() broadcasts when connected and owner', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const request = createTestRequest({ id: 789 });
       stores.useRequests.getState().add(request);
@@ -219,7 +208,7 @@ describe('channel stores', () => {
     it('reorder() broadcasts when connected and owner', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const req1 = createTestRequest({ id: 1 });
       const req2 = createTestRequest({ id: 2 });
@@ -235,7 +224,7 @@ describe('channel stores', () => {
     it('setAll() broadcasts when connected and owner', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       const requests = [createTestRequest({ id: 1 }), createTestRequest({ id: 2 })];
       stores.useRequests.getState().setAll(requests);
@@ -246,7 +235,7 @@ describe('channel stores', () => {
     it('rejects add when pending cap reached', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       // Add 99 pending requests
       for (let i = 1; i <= 99; i++) {
@@ -265,7 +254,7 @@ describe('channel stores', () => {
     it('allows add when total is at cap but some are done', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       // 95 pending + 4 done = 99 total
       const requests: Request[] = [];
@@ -288,7 +277,7 @@ describe('channel stores', () => {
 
     it('does not add duplicate requests', () => {
       const stores = createRoomStores('testchannel');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setPartyConnectionState('connected');
 
       const request = createTestRequest({ id: 100 });
       stores.useRequests.getState().add(request);
@@ -299,10 +288,9 @@ describe('channel stores', () => {
   });
 
   describe('SourcesStore operations', () => {
-    it('broadcasts sources when connected and owner', () => {
+    it('broadcasts sources when connected', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(true);
 
       stores.useSources.getState().toggleSource('chat');
 
@@ -312,17 +300,6 @@ describe('channel stores', () => {
     it('does NOT broadcast sources when not connected', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('disconnected');
-      stores.useChannelInfo.getState().setIsOwner(true);
-
-      stores.useSources.getState().toggleSource('chat');
-
-      expect(party.broadcastSources).not.toHaveBeenCalled();
-    });
-
-    it('does NOT broadcast sources when not owner', () => {
-      const stores = createRoomStores('testchannel');
-      stores.useChannelInfo.getState().setPartyConnectionState('connected');
-      stores.useChannelInfo.getState().setIsOwner(false);
 
       stores.useSources.getState().toggleSource('chat');
 
@@ -333,7 +310,7 @@ describe('channel stores', () => {
   describe('ChannelInfoStore operations', () => {
     it('broadcasts IRC status when owner', () => {
       const stores = createRoomStores('testchannel');
-      stores.useChannelInfo.getState().setIsOwner(true);
+      stores.useChannelInfo.getState().setHasLock(true);
 
       stores.useChannelInfo.getState().setIrcConnectionState('connected');
 
@@ -342,7 +319,7 @@ describe('channel stores', () => {
 
     it('does NOT broadcast IRC status when not owner', () => {
       const stores = createRoomStores('testchannel');
-      stores.useChannelInfo.getState().setIsOwner(false);
+      stores.useChannelInfo.getState().setHasLock(false);
 
       stores.useChannelInfo.getState().setIrcConnectionState('connected');
 
