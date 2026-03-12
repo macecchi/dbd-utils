@@ -7,4 +7,4 @@ dist
 .worktrees
 .wrangler
 .partykit
-chat-*.csv
+.data

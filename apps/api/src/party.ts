@@ -33,30 +33,67 @@ export default class PartyServer implements Party.Server {
 
   async onStart() {
     console.log(`${this.tag} Starting`);
-    const storedRequests = await this.room.storage.get<SerializedRequest[]>('requests');
-    if (storedRequests && storedRequests.length > 0) {
-      // Migration: filter out done requests from DO storage
-      const pending = storedRequests.filter(r => !r.done);
-      this.requests = pending;
-      if (pending.length !== storedRequests.length) {
-        console.log(`${this.tag} Migration: pruned ${storedRequests.length - pending.length} done requests from DO`);
-        await this.room.storage.put('requests', pending);
-      }
-      console.log(`${this.tag} Loaded ${pending.length} pending requests from storage`);
+
+    const legacy = await this.room.storage.get<SerializedRequest[]>('requests');
+    if (legacy) {
+      await this.migrateLegacyStorage(legacy);
     } else {
-      // DO empty — try D1 recovery
-      const recovered = await this.recoverFromD1();
-      if (recovered) {
-        this.requests = recovered;
-        await this.room.storage.put('requests', recovered);
-        console.log(`${this.tag} Recovered ${recovered.length} pending requests from D1`);
-      }
+      await this.loadPerKeyStorage();
     }
+
     const storedSources = await this.room.storage.get<Partial<SourcesSettings>>('sources');
     if (storedSources) {
       this.sources = { ...SOURCES_DEFAULTS, ...storedSources };
       console.log(`${this.tag} Loaded sources config:`, JSON.stringify(this.sources.enabled));
     }
+  }
+
+  private async migrateLegacyStorage(legacy: SerializedRequest[]) {
+    await this.room.storage.delete('requests');
+    if (legacy.length === 0) return;
+
+    const pending = legacy.filter(r => !r.done);
+    const entries: Record<string, SerializedRequest> = {};
+    for (const r of pending) entries[`req:${r.id}`] = r;
+    await this.room.storage.put(entries);
+    await this.room.storage.put('order', pending.map(r => r.id));
+    this.requests = pending;
+    console.log(`${this.tag} Migrated ${pending.length} requests to per-key storage`);
+  }
+
+  private async loadPerKeyStorage() {
+    const entries = await this.room.storage.list<SerializedRequest>({ prefix: 'req:' });
+    const order = await this.room.storage.get<number[]>('order');
+
+    if (entries.size > 0) {
+      this.requests = this.orderRequests(entries, order ?? null);
+      console.log(`${this.tag} Loaded ${this.requests.length} requests from per-key storage`);
+    } else {
+      const recovered = await this.recoverFromD1();
+      if (recovered) {
+        this.requests = recovered;
+        await this.persistAll();
+        console.log(`${this.tag} Recovered ${recovered.length} requests from D1`);
+      }
+    }
+  }
+
+  private orderRequests(entries: Map<string, SerializedRequest>, orderedIds: number[] | null): SerializedRequest[] {
+    const byId = new Map<number, SerializedRequest>();
+    for (const [, req] of entries) byId.set(req.id, req);
+    if (!orderedIds) return [...byId.values()];
+
+    const idSet = new Set(orderedIds);
+    const ordered = orderedIds.flatMap(id => byId.has(id) ? [byId.get(id)!] : []);
+    const orphans = [...byId.values()].filter(r => !idSet.has(r.id));
+    return [...ordered, ...orphans];
+  }
+
+  private async persistAll() {
+    const entries: Record<string, SerializedRequest> = {};
+    for (const r of this.requests) entries[`req:${r.id}`] = r;
+    await this.room.storage.put(entries);
+    await this.room.storage.put('order', this.requests.map(r => r.id));
   }
 
   async onRequest(req: Party.Request) {
@@ -68,11 +105,15 @@ export default class PartyServer implements Party.Server {
       }
       const body = await req.json<{ action: string }>();
       if (body.action === 'recover-from-d1') {
-        await this.room.storage.delete('requests');
+        const existing = await this.room.storage.list({ prefix: 'req:' });
+        if (existing.size > 0) {
+          await this.room.storage.delete([...existing.keys()]);
+        }
+        await this.room.storage.delete('order');
         const recovered = await this.recoverFromD1();
         if (recovered) {
           this.requests = recovered;
-          await this.room.storage.put('requests', recovered);
+          await this.persistAll();
         } else {
           this.requests = [];
         }
@@ -269,6 +310,7 @@ export default class PartyServer implements Party.Server {
         const idx = this.requests.findIndex(r => r.id === msg.id);
         if (idx !== -1) {
           this.requests.splice(idx, 1);
+          await this.room.storage.delete(`req:${msg.id}`);
           this.needsFullSync = true;
           await this.persist();
           this.broadcast(message, sender.id);
@@ -277,9 +319,12 @@ export default class PartyServer implements Party.Server {
         break;
       }
       case 'set-all': {
+        const oldKeys = this.requests.map(r => `req:${r.id}`);
+        if (oldKeys.length > 0) await this.room.storage.delete(oldKeys);
         this.requests = msg.requests;
         this.needsFullSync = true;
-        await this.persist();
+        await this.persistAll();
+        this.scheduleSyncRequests();
         this.broadcast(message, sender.id);
         console.log(`${this.tag} ${user}: set-all (${msg.requests.length} requests)`);
         break;
@@ -304,20 +349,22 @@ export default class PartyServer implements Party.Server {
     }
   }
 
-  private static readonly STORAGE_LIMIT = 131_072; // 128 KiB per-value limit
-  private static readonly STORAGE_WARN = 100_000;  // warn at ~76%
-
   private async persist(reorderOnly?: boolean) {
     try {
-      const pending = this.requests.filter(r => !r.done);
-      const raw = JSON.stringify(pending);
-      if (raw.length > PartyServer.STORAGE_LIMIT) {
-        console.error(`${this.tag} STORAGE OVERFLOW: ${pending.length} pending requests (${raw.length} bytes) exceeds 128 KiB limit`);
-        this.sendError('storage_overflow', 'Armazenamento local cheio. Dados podem ser perdidos ao reiniciar. Marque pedidos como feitos.');
-      } else if (raw.length > PartyServer.STORAGE_WARN) {
-        console.error(`${this.tag} STORAGE WARNING: ${pending.length} pending requests (${raw.length} bytes) approaching 128 KiB limit (${Math.round(raw.length / PartyServer.STORAGE_LIMIT * 100)}%)`);
+      if (reorderOnly) {
+        await this.room.storage.put('order', this.requests.filter(r => !r.done).map(r => r.id));
+      } else {
+        const pending = this.requests.filter(r => !r.done);
+        const entries: Record<string, SerializedRequest> = {};
+        for (const id of this.dirtyRequestIds) {
+          const req = pending.find(r => r.id === id);
+          if (req) entries[`req:${req.id}`] = req;
+        }
+        if (Object.keys(entries).length > 0) {
+          await this.room.storage.put(entries);
+        }
+        await this.room.storage.put('order', pending.map(r => r.id));
       }
-      await this.room.storage.put('requests', pending);
       this.scheduleSyncRequests(reorderOnly);
     } catch (e) {
       console.error(`${this.tag} PERSIST FAILED (${this.requests.length} requests):`, e);
@@ -360,11 +407,18 @@ export default class PartyServer implements Party.Server {
       });
       if (res.ok) {
         this.d1SyncFailCount = 0;
-        // Prune done requests from memory unless they were re-dirtied during the sync
+        // Delete done request keys from DO (unless re-dirtied during sync)
+        const doneKeys = this.requests
+          .filter(r => r.done && !this.dirtyRequestIds.has(r.id))
+          .map(r => `req:${r.id}`);
+        if (doneKeys.length > 0) {
+          await this.room.storage.delete(doneKeys);
+        }
         const before = this.requests.length;
         this.requests = this.requests.filter(r => !r.done || this.dirtyRequestIds.has(r.id));
         if (this.requests.length < before) {
-          console.log(`${this.tag} Pruned ${before - this.requests.length} done requests from memory`);
+          await this.room.storage.put('order', this.requests.map(r => r.id));
+          console.log(`${this.tag} Pruned ${before - this.requests.length} done requests`);
         }
         console.log(`${this.tag} D1 synced ${requestsToSync.length} requests (${mode})`);
       } else {

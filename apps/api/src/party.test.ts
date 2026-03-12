@@ -13,13 +13,34 @@ import { verifyJwt } from './jwt';
 // Helper to create mock Party.Room
 function createMockRoom(id: string = 'testchannel') {
   const connections = new Map<string, MockConnection>();
+  const store = new Map<string, unknown>();
 
   return {
     id,
     env: { JWT_SECRET: 'test-secret' },
     storage: {
-      get: vi.fn().mockResolvedValue(null),
-      put: vi.fn().mockResolvedValue(undefined),
+      get: vi.fn((key: string) => Promise.resolve(store.get(key) ?? null)),
+      put: vi.fn((keyOrEntries: string | Record<string, unknown>, value?: unknown) => {
+        if (typeof keyOrEntries === 'string') {
+          store.set(keyOrEntries, value);
+        } else {
+          for (const [k, v] of Object.entries(keyOrEntries)) store.set(k, v);
+        }
+        return Promise.resolve();
+      }),
+      delete: vi.fn((keyOrKeys: string | string[]) => {
+        const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+        for (const k of keys) store.delete(k);
+        return Promise.resolve();
+      }),
+      list: vi.fn(({ prefix }: { prefix: string }) => {
+        const result = new Map<string, unknown>();
+        for (const [k, v] of store) {
+          if (k.startsWith(prefix)) result.set(k, v);
+        }
+        return Promise.resolve(result);
+      }),
+      _store: store,
     },
     getConnections: () => connections.values(),
     _connections: connections,
@@ -371,7 +392,9 @@ describe('PartyServer', () => {
 
       expect(server.requests).toHaveLength(1);
       expect(server.requests[0].id).toBe(100);
-      expect(mockRoom.storage.put).toHaveBeenCalledWith('requests', server.requests);
+      expect(mockRoom.storage.put).toHaveBeenCalledWith(
+        expect.objectContaining({ 'req:100': expect.objectContaining({ id: 100 }) })
+      );
 
       // Should broadcast to viewer but not owner
       expect(viewerConn.messages).toHaveLength(1);
@@ -415,6 +438,7 @@ describe('PartyServer', () => {
 
       expect(server.requests).toHaveLength(1);
       expect(server.requests[0].id).toBe(200);
+      expect(mockRoom.storage.delete).toHaveBeenCalledWith('req:100');
     });
 
     it('handles reorder', async () => {
@@ -516,35 +540,84 @@ describe('PartyServer', () => {
     });
   });
 
+  describe('onStart — per-key storage', () => {
+    it('loads requests from per-key storage', async () => {
+      const req1 = createTestRequest({ id: 1 });
+      const req2 = createTestRequest({ id: 2 });
+      mockRoom.storage._store.set('req:1', req1);
+      mockRoom.storage._store.set('req:2', req2);
+      mockRoom.storage._store.set('order', [1, 2]);
+
+      await server.onStart();
+
+      expect(server.requests).toHaveLength(2);
+      expect(server.requests[0].id).toBe(1);
+      expect(server.requests[1].id).toBe(2);
+    });
+
+    it('migrates legacy single-array format to per-key', async () => {
+      const stored = [createTestRequest({ id: 1 }), createTestRequest({ id: 2 })];
+      mockRoom.storage._store.set('requests', stored);
+
+      await server.onStart();
+
+      expect(server.requests).toHaveLength(2);
+      // Legacy key deleted
+      expect(mockRoom.storage._store.has('requests')).toBe(false);
+      // Per-key entries created
+      expect(mockRoom.storage._store.has('req:1')).toBe(true);
+      expect(mockRoom.storage._store.has('req:2')).toBe(true);
+      expect(mockRoom.storage._store.get('order')).toEqual([1, 2]);
+    });
+
+    it('respects order key for ordering', async () => {
+      mockRoom.storage._store.set('req:1', createTestRequest({ id: 1 }));
+      mockRoom.storage._store.set('req:2', createTestRequest({ id: 2 }));
+      mockRoom.storage._store.set('req:3', createTestRequest({ id: 3 }));
+      mockRoom.storage._store.set('order', [3, 1, 2]);
+
+      await server.onStart();
+
+      expect(server.requests.map(r => r.id)).toEqual([3, 1, 2]);
+    });
+
+    it('appends orphan requests not in order', async () => {
+      mockRoom.storage._store.set('req:1', createTestRequest({ id: 1 }));
+      mockRoom.storage._store.set('req:2', createTestRequest({ id: 2 }));
+      mockRoom.storage._store.set('order', [1]);
+
+      await server.onStart();
+
+      expect(server.requests).toHaveLength(2);
+      expect(server.requests[0].id).toBe(1);
+      expect(server.requests[1].id).toBe(2);
+    });
+  });
+
   describe('onStart — D1 recovery', () => {
     afterEach(() => {
       vi.unstubAllGlobals();
     });
 
-    it('prunes done requests from DO on load', async () => {
+    it('migrates and prunes done requests from DO on load', async () => {
       const stored = [
         createTestRequest({ id: 1, done: false }),
         createTestRequest({ id: 2, done: true }),
         createTestRequest({ id: 3, done: false }),
         createTestRequest({ id: 4, done: true }),
       ];
-      mockRoom.storage.get.mockImplementation((key: string) => {
-        if (key === 'requests') return Promise.resolve(stored);
-        return Promise.resolve(null);
-      });
+      mockRoom.storage._store.set('requests', stored);
 
       await server.onStart();
 
       expect(server.requests).toHaveLength(2);
       expect(server.requests.every(r => !r.done)).toBe(true);
       expect(server.requests.map(r => r.id)).toEqual([1, 3]);
-      expect(mockRoom.storage.put).toHaveBeenCalledWith(
-        'requests',
-        expect.arrayContaining([
-          expect.objectContaining({ id: 1 }),
-          expect.objectContaining({ id: 3 }),
-        ])
-      );
+      // Legacy key deleted, per-key entries created
+      expect(mockRoom.storage._store.has('requests')).toBe(false);
+      expect(mockRoom.storage._store.has('req:1')).toBe(true);
+      expect(mockRoom.storage._store.has('req:3')).toBe(true);
+      expect(mockRoom.storage._store.get('order')).toEqual([1, 3]);
     });
 
     it('recovers from D1 when DO is empty', async () => {
@@ -565,7 +638,9 @@ describe('PartyServer', () => {
       await d1Server.onStart();
 
       expect(d1Server.requests).toEqual(recovered);
-      expect(d1Room.storage.put).toHaveBeenCalledWith('requests', recovered);
+      expect(d1Room.storage._store.has('req:10')).toBe(true);
+      expect(d1Room.storage._store.has('req:20')).toBe(true);
+      expect(d1Room.storage._store.get('order')).toEqual([10, 20]);
     });
   });
 
@@ -592,7 +667,7 @@ describe('PartyServer', () => {
       vi.unstubAllGlobals();
     });
 
-    it('stores only pending requests', async () => {
+    it('stores only dirty request keys and order excludes done', async () => {
       server.requests = [
         createTestRequest({ id: 1, done: false }),
         createTestRequest({ id: 2, done: true }),
@@ -602,12 +677,14 @@ describe('PartyServer', () => {
       const newReq = createTestRequest({ id: 4, done: false });
       await server.onMessage(JSON.stringify({ type: 'add-request', request: newReq }), ownerConn as any);
 
-      const putCalls = mockRoom.storage.put.mock.calls.filter(
-        (c) => c[0] === 'requests'
+      // Only dirty request (id: 4) written as per-key entry
+      expect(mockRoom.storage.put).toHaveBeenCalledWith(
+        expect.objectContaining({ 'req:4': expect.objectContaining({ id: 4 }) })
       );
-      const lastPut = putCalls[putCalls.length - 1][1] as SerializedRequest[];
-      expect(lastPut.every(r => !r.done)).toBe(true);
-      expect(lastPut.some(r => r.id === 2)).toBe(false);
+      // Order contains only pending requests
+      expect(mockRoom.storage.put).toHaveBeenCalledWith(
+        'order', expect.not.arrayContaining([2])
+      );
     });
   });
 
@@ -738,6 +815,28 @@ describe('PartyServer', () => {
       await (server as any).syncRequestsToD1();
       errors = ownerConn.getAllMessages().filter(m => m.type === 'server-error' && (m as any).code === 'd1_sync_failed');
       expect(errors).toHaveLength(1);
+    });
+
+    it('deletes done request keys from DO after D1 sync', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: true }),
+        createTestRequest({ id: 3, done: false }),
+        createTestRequest({ id: 4, done: true }),
+      ];
+      // Simulate per-key storage
+      mockRoom.storage._store.set('req:1', server.requests[0]);
+      mockRoom.storage._store.set('req:2', server.requests[1]);
+      mockRoom.storage._store.set('req:3', server.requests[2]);
+      mockRoom.storage._store.set('req:4', server.requests[3]);
+
+      await (server as any).syncRequestsToD1();
+
+      expect(mockRoom.storage.delete).toHaveBeenCalledWith(['req:2', 'req:4']);
+      expect(mockRoom.storage._store.has('req:2')).toBe(false);
+      expect(mockRoom.storage._store.has('req:4')).toBe(false);
     });
 
     it('restores dirty IDs on sync failure', async () => {

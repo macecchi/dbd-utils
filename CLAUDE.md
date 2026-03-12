@@ -54,9 +54,9 @@ bun run deploy:party # Deploy PartyKit
 ## Data
 
 **Primary (real-time):** PartyKit room storage (Durable Objects)
-- Requests queue and sources settings per room
+- Requests stored as individual keys (`req:${id}`) with ordering in `order` key
+- Sources settings per room
 - Write-through to D1 via async HTTP calls to Hono API
-- ⚠️ **128 KiB per-value limit** — `storage.put()` silently drops writes that exceed this. See Known Issues below.
 
 **D1 database (persistent store):**
 - `rooms` table — flattened sources settings, Twitch profile cache (`avatar_url`, `banner_url`), room `status`
@@ -67,7 +67,7 @@ bun run deploy:party # Deploy PartyKit
 
 ## Known Limits
 
-- **DO storage**: 128 KiB per value — `storage.put()` silently drops oversized writes
+- **DO storage**: 128 KiB per value — per-key storage avoids this for requests, but keep in mind for any future changes
 - **D1 free plan**: 100 bound params per statement, 100 statements per `DB.batch()`
 
 **KV (CACHE namespace):**
