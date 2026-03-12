@@ -537,6 +537,60 @@ describe('PartyServer', () => {
     });
   });
 
+  describe('onStart — per-key storage', () => {
+    it('loads requests from per-key storage', async () => {
+      const req1 = createTestRequest({ id: 1 });
+      const req2 = createTestRequest({ id: 2 });
+      mockRoom.storage._store.set('req:1', req1);
+      mockRoom.storage._store.set('req:2', req2);
+      mockRoom.storage._store.set('order', [1, 2]);
+
+      await server.onStart();
+
+      expect(server.requests).toHaveLength(2);
+      expect(server.requests[0].id).toBe(1);
+      expect(server.requests[1].id).toBe(2);
+    });
+
+    it('migrates legacy single-array format to per-key', async () => {
+      const stored = [createTestRequest({ id: 1 }), createTestRequest({ id: 2 })];
+      mockRoom.storage._store.set('requests', stored);
+
+      await server.onStart();
+
+      expect(server.requests).toHaveLength(2);
+      // Legacy key deleted
+      expect(mockRoom.storage._store.has('requests')).toBe(false);
+      // Per-key entries created
+      expect(mockRoom.storage._store.has('req:1')).toBe(true);
+      expect(mockRoom.storage._store.has('req:2')).toBe(true);
+      expect(mockRoom.storage._store.get('order')).toEqual([1, 2]);
+    });
+
+    it('respects order key for ordering', async () => {
+      mockRoom.storage._store.set('req:1', createTestRequest({ id: 1 }));
+      mockRoom.storage._store.set('req:2', createTestRequest({ id: 2 }));
+      mockRoom.storage._store.set('req:3', createTestRequest({ id: 3 }));
+      mockRoom.storage._store.set('order', [3, 1, 2]);
+
+      await server.onStart();
+
+      expect(server.requests.map(r => r.id)).toEqual([3, 1, 2]);
+    });
+
+    it('appends orphan requests not in order', async () => {
+      mockRoom.storage._store.set('req:1', createTestRequest({ id: 1 }));
+      mockRoom.storage._store.set('req:2', createTestRequest({ id: 2 }));
+      mockRoom.storage._store.set('order', [1]);
+
+      await server.onStart();
+
+      expect(server.requests).toHaveLength(2);
+      expect(server.requests[0].id).toBe(1);
+      expect(server.requests[1].id).toBe(2);
+    });
+  });
+
   describe('onStart — D1 recovery', () => {
     afterEach(() => {
       vi.unstubAllGlobals();

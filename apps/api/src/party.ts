@@ -33,30 +33,65 @@ export default class PartyServer implements Party.Server {
 
   async onStart() {
     console.log(`${this.tag} Starting`);
-    const storedRequests = await this.room.storage.get<SerializedRequest[]>('requests');
-    if (storedRequests && storedRequests.length > 0) {
-      // Migration: filter out done requests from DO storage
-      const pending = storedRequests.filter(r => !r.done);
+
+    // Migration: convert legacy single-array to per-key format
+    const legacy = await this.room.storage.get<SerializedRequest[]>('requests');
+    if (legacy && legacy.length > 0) {
+      const pending = legacy.filter(r => !r.done);
+      const entries: Record<string, SerializedRequest> = {};
+      for (const r of pending) entries[`req:${r.id}`] = r;
+      await this.room.storage.put(entries);
+      await this.room.storage.put('order', pending.map(r => r.id));
+      await this.room.storage.delete('requests');
       this.requests = pending;
-      if (pending.length !== storedRequests.length) {
-        console.log(`${this.tag} Migration: pruned ${storedRequests.length - pending.length} done requests from DO`);
-        await this.room.storage.put('requests', pending);
-      }
-      console.log(`${this.tag} Loaded ${pending.length} pending requests from storage`);
-    } else {
-      // DO empty — try D1 recovery
-      const recovered = await this.recoverFromD1();
-      if (recovered) {
-        this.requests = recovered;
-        await this.room.storage.put('requests', recovered);
-        console.log(`${this.tag} Recovered ${recovered.length} pending requests from D1`);
+      console.log(`${this.tag} Migrated ${pending.length} requests to per-key storage`);
+    } else if (!legacy) {
+      // Load from per-key storage
+      const entries = await this.room.storage.list<SerializedRequest>({ prefix: 'req:' });
+      const order = await this.room.storage.get<number[]>('order');
+
+      if (entries.size > 0) {
+        const byId = new Map<number, SerializedRequest>();
+        for (const [, req] of entries) byId.set(req.id, req);
+
+        if (order) {
+          const ordered: SerializedRequest[] = [];
+          for (const id of order) {
+            const req = byId.get(id);
+            if (req) {
+              ordered.push(req);
+              byId.delete(id);
+            }
+          }
+          for (const req of byId.values()) ordered.push(req);
+          this.requests = ordered;
+        } else {
+          this.requests = [...entries.values()];
+        }
+        console.log(`${this.tag} Loaded ${this.requests.length} requests from per-key storage`);
+      } else {
+        // DO empty — try D1 recovery
+        const recovered = await this.recoverFromD1();
+        if (recovered) {
+          this.requests = recovered;
+          await this.persistAll();
+          console.log(`${this.tag} Recovered ${recovered.length} requests from D1`);
+        }
       }
     }
+
     const storedSources = await this.room.storage.get<Partial<SourcesSettings>>('sources');
     if (storedSources) {
       this.sources = { ...SOURCES_DEFAULTS, ...storedSources };
       console.log(`${this.tag} Loaded sources config:`, JSON.stringify(this.sources.enabled));
     }
+  }
+
+  private async persistAll() {
+    const entries: Record<string, SerializedRequest> = {};
+    for (const r of this.requests) entries[`req:${r.id}`] = r;
+    await this.room.storage.put(entries);
+    await this.room.storage.put('order', this.requests.map(r => r.id));
   }
 
   async onRequest(req: Party.Request) {
