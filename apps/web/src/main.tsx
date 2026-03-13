@@ -7,10 +7,12 @@ const base = import.meta.env.BASE_URL;
 document.documentElement.style.setProperty('--portrait-bg', `url('${base}images/CharPortrait_bg.webp')`);
 document.documentElement.style.setProperty('--portrait-role-bg', `url('${base}images/CharPortrait_roleBG.webp')`);
 
-registerSW({
+const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    location.reload();
+    // Don't force reload — just activate new SW so assets are cached.
+    // PartyKit version_mismatch will trigger the actual reload when needed.
+    updateSW(true);
   }
 });
 
