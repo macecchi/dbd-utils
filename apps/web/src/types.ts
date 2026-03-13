@@ -13,6 +13,7 @@ export type {
 } from '@dbd-utils/shared';
 
 export {
+  PROTOCOL_VERSION,
   serializeRequest,
   deserializeRequest,
   deserializeRequests,
@@ -33,4 +34,5 @@ export interface Toast {
   duration: number;
   type: 'default' | 'info' | 'undo';
   undoCallback?: () => void;
+  onClick?: () => void;
 }

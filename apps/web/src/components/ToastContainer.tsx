@@ -30,7 +30,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   const style = toast.color ? { borderColor: `var(--${toast.color})` } : undefined;
 
   return (
-    <div className={className} style={style}>
+    <div className={className} style={{ ...style, cursor: toast.onClick ? 'pointer' : undefined }} onClick={toast.onClick}>
       {toast.title && <span className="toast-title" style={toast.color ? { color: `var(--${toast.color})` } : undefined}>{toast.title}</span>}
       <span>{toast.message}</span>
       {toast.type === 'undo' && (

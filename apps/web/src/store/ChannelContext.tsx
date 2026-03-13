@@ -243,7 +243,16 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
           if (msg.type === 'server-error') {
             console.error(`[server-error] ${msg.code}: ${msg.message}`);
             if (msg.code === 'version_mismatch') {
-              window.location.reload();
+              disconnectParty();
+              const { add } = useToasts.getState();
+              add({
+                message: 'Novos pedidos não serão recebidos. Clique aqui para atualizar.',
+                title: 'Nova versão disponível',
+                duration: 0,
+                type: 'default',
+                onClick: () => location.reload(),
+              });
+              sendPushNotification('Nova versão disponível', 'Atualize a página para continuar recebendo pedidos.');
               return;
             }
             const { show } = useToasts.getState();

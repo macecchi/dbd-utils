@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import PartyServer from './party';
 import type { SerializedRequest, SourcesSettings, PartyMessage } from '@dbd-utils/shared';
-import { MAX_PENDING_REQUESTS } from '@dbd-utils/shared';
+import { MAX_PENDING_REQUESTS, PROTOCOL_VERSION } from '@dbd-utils/shared';
 
 // Mock jwt module
 vi.mock('./jwt', () => ({
@@ -70,10 +70,10 @@ class MockConnection {
   }
 }
 
-function createMockContext(token: string | null = null, version?: string) {
+function createMockContext(token: string | null = null, version: string = String(PROTOCOL_VERSION)) {
   const params = new URLSearchParams();
   if (token) params.set('token', token);
-  if (version) params.set('v', version);
+  params.set('v', version);
   const qs = params.toString();
   return {
     request: { url: `https://party.example.com/room${qs ? `?${qs}` : ''}` },
@@ -212,15 +212,11 @@ describe('PartyServer', () => {
       expect(server.connections.get('conn1')?.user).toBeNull();
     });
 
-    it('sends version_mismatch error when APP_VERSION is set and client differs', async () => {
-      const vRoom = createMockRoom();
-      vRoom.env = { JWT_SECRET: 'test-secret', APP_VERSION: '1.2.0' } as any;
-      const vServer = new PartyServer(vRoom as any);
-
+    it('sends version_mismatch error when client protocol is older', async () => {
       const conn = new MockConnection('conn1');
-      const ctx = createMockContext(null, '1.1.0');
+      const ctx = createMockContext(null, String(PROTOCOL_VERSION - 1));
 
-      await vServer.onConnect(conn as any, ctx as any);
+      await server.onConnect(conn as any, ctx as any);
 
       const msgs = conn.getAllMessages();
       expect(msgs).toHaveLength(1);
@@ -228,28 +224,36 @@ describe('PartyServer', () => {
       expect((msgs[0] as any).code).toBe('version_mismatch');
     });
 
-    it('sends sync-full when APP_VERSION matches', async () => {
-      const vRoom = createMockRoom();
-      vRoom.env = { JWT_SECRET: 'test-secret', APP_VERSION: '1.2.0' } as any;
-      const vServer = new PartyServer(vRoom as any);
-
+    it('sends sync-full when client protocol matches', async () => {
       const conn = new MockConnection('conn1');
-      const ctx = createMockContext(null, '1.2.0');
-
-      await vServer.onConnect(conn as any, ctx as any);
-
-      const msgs = conn.getAllMessages();
-      expect(msgs[0].type).toBe('sync-full');
-    });
-
-    it('skips version check when APP_VERSION is not set', async () => {
-      const conn = new MockConnection('conn1');
-      const ctx = createMockContext();
+      const ctx = createMockContext(null, String(PROTOCOL_VERSION));
 
       await server.onConnect(conn as any, ctx as any);
 
       const msgs = conn.getAllMessages();
       expect(msgs[0].type).toBe('sync-full');
+    });
+
+    it('sends sync-full when client protocol is newer', async () => {
+      const conn = new MockConnection('conn1');
+      const ctx = createMockContext(null, String(PROTOCOL_VERSION + 1));
+
+      await server.onConnect(conn as any, ctx as any);
+
+      const msgs = conn.getAllMessages();
+      expect(msgs[0].type).toBe('sync-full');
+    });
+
+    it('rejects client with non-numeric version', async () => {
+      const conn = new MockConnection('conn1');
+      const ctx = createMockContext(null, 'unknown');
+
+      await server.onConnect(conn as any, ctx as any);
+
+      const msgs = conn.getAllMessages();
+      expect(msgs).toHaveLength(1);
+      expect(msgs[0].type).toBe('server-error');
+      expect((msgs[0] as any).code).toBe('version_mismatch');
     });
   });
 

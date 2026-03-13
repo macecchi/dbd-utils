@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
+import { useToasts } from './store/toasts';
 
 // Set CSS custom properties for image paths that need base URL
 const base = import.meta.env.BASE_URL;
@@ -10,9 +11,15 @@ document.documentElement.style.setProperty('--portrait-role-bg', `url('${base}im
 const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    // Don't force reload — just activate new SW so assets are cached.
-    // PartyKit version_mismatch will trigger the actual reload when needed.
+    // Activate new SW so assets are cached, then prompt user to reload
     updateSW(true);
+    useToasts.getState().add({
+      message: 'Clique aqui para atualizar',
+      title: 'Nova versão disponível',
+      duration: 0,
+      type: 'default',
+      onClick: () => location.reload(),
+    });
   }
 });
 

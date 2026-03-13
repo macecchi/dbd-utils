@@ -1,6 +1,6 @@
 import type * as Party from 'partykit/server';
 import { verifyJwt, type JwtPayload } from './jwt';
-import { MAX_PENDING_REQUESTS } from '@dbd-utils/shared';
+import { MAX_PENDING_REQUESTS, PROTOCOL_VERSION } from '@dbd-utils/shared';
 import type { SerializedRequest, SourcesSettings, ChannelState, PartyMessage } from '@dbd-utils/shared';
 
 const SOURCES_DEFAULTS: SourcesSettings = {
@@ -160,16 +160,16 @@ export default class PartyServer implements Party.Server {
     this.connections.set(conn.id, { user });
     console.log(`${this.tag} Connected: ${conn.id} (${user?.login ?? 'anon'}) v${clientVersion} - ${this.connections.size} total`);
 
-    // Version check — outdated clients get an error and no sync
-    const expectedVersion = this.room.env.APP_VERSION as string | undefined;
-    if (expectedVersion && clientVersion !== expectedVersion) {
+    // Protocol version check — reject clients with incompatible protocol
+    const clientProto = parseInt(clientVersion, 10);
+    if (Number.isNaN(clientProto) || clientProto < PROTOCOL_VERSION) {
       const errorMsg: PartyMessage = {
         type: 'server-error',
         code: 'version_mismatch',
         message: 'Nova versão disponível. Recarregue a página.',
       };
       conn.send(JSON.stringify(errorMsg));
-      console.warn(`${this.tag} Version mismatch: client=${clientVersion}, server=${expectedVersion}`);
+      console.warn(`${this.tag} Protocol mismatch: client=${clientProto}, server=${PROTOCOL_VERSION}`);
       return;
     }
 
