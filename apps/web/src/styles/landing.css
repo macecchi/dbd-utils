@@ -3,7 +3,7 @@
 .landing {
   max-width: 800px;
   margin: 0 auto;
-  padding: 0 2rem 3rem;
+  padding: 0 2rem calc(3rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Hero */
@@ -379,7 +379,7 @@
 
 @media (max-width: 600px) {
   .landing {
-    padding: 0 1rem 2rem;
+    padding: 0 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
   }
 
   .landing-hero {
@@ -401,5 +401,12 @@
 
   .landing-features {
     grid-template-columns: 1fr;
+  }
+
+  .landing-footer {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    text-align: center;
   }
 }
