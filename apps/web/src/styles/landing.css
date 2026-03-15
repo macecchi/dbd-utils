@@ -402,4 +402,11 @@
   .landing-features {
     grid-template-columns: 1fr;
   }
+
+  .landing-footer {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    text-align: center;
+  }
 }
