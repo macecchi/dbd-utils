@@ -86,7 +86,7 @@ function useRequestToasts(requests: Request[], update: (id: number, updates: Par
 }
 
 function ChannelApp() {
-  const { t } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
   const { channel, useRequests, useSources, useChannelInfo, canControlConnection } = useChannel();
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
@@ -371,7 +371,12 @@ function ChannelApp() {
         {(import.meta.env.DEV || isDebugMode()) && <DebugPanel />}
 
         <footer className="footer">
-          <div>{t('app.title')}</div>
+          <div>
+            <div>{t('app.title')}</div>
+            <div className="footer-lang">
+              {t('lang.current')} <button className="btn-link" onClick={() => setLocale(locale === 'pt-BR' ? 'en' : 'pt-BR')}>[{t('lang.change')}]</button>
+            </div>
+          </div>
           <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span>{t('app.version', { version: __APP_VERSION__ })}</span>
             <span className="footer-separator">•</span>

@@ -270,7 +270,8 @@ const ptBR = {
   'debug.errorLlm': 'Erro LLM',
 
   // Language
-  'lang.toggle': 'EN',
+  'lang.current': 'Português',
+  'lang.change': 'mudar',
 } as const;
 
 export default ptBR;

@@ -16,7 +16,7 @@ interface RoomInfo {
 export function ChannelHeader() {
   const { channel, canControlConnection, useChannelInfo } = useChannel();
   const { isAuthenticated, logout } = useAuth();
-  const { t, locale, setLocale } = useTranslation();
+  const { t } = useTranslation();
   const owner = useChannelInfo((s) => s.owner);
   const hasLock = useChannelInfo((s) => s.hasLock);
   const twitchStatus = useChannelInfo((s) => s.localIrcConnectionState);
@@ -108,14 +108,6 @@ export function ChannelHeader() {
           </span>
         </div>
       </div>
-
-      <button
-        className="btn btn-ghost btn-small lang-toggle"
-        onClick={() => setLocale(locale === 'pt-BR' ? 'en' : 'pt-BR')}
-        title={locale === 'pt-BR' ? 'Switch to English' : 'Mudar para Português'}
-      >
-        {t('lang.toggle')}
-      </button>
 
       {canControlConnection && (
         <div className="channel-header-actions">
