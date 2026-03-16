@@ -203,12 +203,17 @@ export function LandingPage() {
         <p>{t('landing.madeWith')} <a href="https://github.com/macecchi" target="_blank">macecchi</a> {t('landing.forStreamer')} <a href="https://twitch.tv/mandymess" target="_blank">@MandyMess</a>.</p>
       </div>
       <footer className="landing-footer">
-        <div>
-          <div>Fila DBD</div>
-          <div className="footer-lang">
-            {t('lang.current')} <button className="btn-link" onClick={() => setLocale(locale === 'pt-BR' ? 'en' : 'pt-BR')}>[{t('lang.change')}]</button>
-          </div>
-        </div>
+        <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          Fila DBD
+          <span>•</span>
+          <span className="footer-lang">
+            {t('lang.label')}:{' '}
+            {locale === 'en'
+              ? <><strong>English</strong> / <button className="btn-link" onClick={() => setLocale('pt-BR')}>Português</button></>
+              : <><button className="btn-link" onClick={() => setLocale('en')}>English</button> / <strong>Português</strong></>
+            }
+          </span>
+        </span>
         <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {t('landing.helpAndFeedback')}
           <a href="https://github.com/macecchi/dbd-utils" target="_blank">GitHub</a>

@@ -272,8 +272,7 @@ const en: TranslationKeys = {
   'debug.errorLlm': 'LLM Error',
 
   // Language
-  'lang.current': 'English',
-  'lang.change': 'change',
+  'lang.label': 'Language',
 } as const;
 
 export default en;

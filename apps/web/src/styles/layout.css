@@ -223,11 +223,6 @@ a.brand {
   opacity: 0.5;
 }
 
-.footer-lang {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-
 .btn-link {
   background: none;
   border: none;

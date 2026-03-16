@@ -371,12 +371,17 @@ function ChannelApp() {
         {(import.meta.env.DEV || isDebugMode()) && <DebugPanel />}
 
         <footer className="footer">
-          <div>
-            <div>{t('app.title')}</div>
-            <div className="footer-lang">
-              {t('lang.current')} <button className="btn-link" onClick={() => setLocale(locale === 'pt-BR' ? 'en' : 'pt-BR')}>[{t('lang.change')}]</button>
-            </div>
-          </div>
+          <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {t('app.title')}
+            <span className="footer-separator">•</span>
+            <span className="footer-lang">
+              {t('lang.label')}:{' '}
+              {locale === 'en'
+                ? <><strong>English</strong> / <button className="btn-link" onClick={() => setLocale('pt-BR')}>Português</button></>
+                : <><button className="btn-link" onClick={() => setLocale('en')}>English</button> / <strong>Português</strong></>
+              }
+            </span>
+          </span>
           <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span>{t('app.version', { version: __APP_VERSION__ })}</span>
             <span className="footer-separator">•</span>
