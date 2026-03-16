@@ -4,11 +4,6 @@ import { App } from './App';
 import { I18nProvider, t } from './i18n';
 import { toast } from 'sonner';
 
-// Set CSS custom properties for image paths that need base URL
-const base = import.meta.env.BASE_URL;
-document.documentElement.style.setProperty('--portrait-bg', `url('${base}images/CharPortrait_bg.webp')`);
-document.documentElement.style.setProperty('--portrait-role-bg', `url('${base}images/CharPortrait_roleBG.webp')`);
-
 const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {

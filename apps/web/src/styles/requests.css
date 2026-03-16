@@ -277,7 +277,6 @@
   width: var(--defaultCharPortraitDimensions);
   height: var(--defaultCharPortraitDimensions);
   border-radius: var(--radius-sm);
-  background: var(--portrait-bg);
   background-size: contain;
   display: flex;
   align-items: center;
@@ -287,13 +286,17 @@
   position: relative;
 }
 
-.char-portrait-bg.killer {
+.char-portrait-bg {
   background: var(--portrait-role-bg);
-  background-size: contain;
+  -webkit-mask-size: contain;
+  mask-size: contain;
   width: var(--defaultCharPortraitDimensions);
   height: var(--defaultCharPortraitDimensions);
   position: absolute;
-  filter: sepia(1) saturate(30) hue-rotate(289.1deg) saturate(7) brightness(0.47)
+}
+
+.char-portrait-bg.killer {
+  --portrait-role-bg: #78202a;
 }
 
 .char-portrait {
