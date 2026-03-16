@@ -3,7 +3,8 @@ import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } 
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
-import { useChannel, useChat, useToasts, useAuth } from '../store';
+import { toast } from 'sonner';
+import { useChannel, useChat, useAuth } from '../store';
 import { donateBotName, simulateDisconnect } from '../services/twitch';
 import { useTranslation } from '../i18n';
 
@@ -14,7 +15,7 @@ export function DebugPanel() {
   const { isAuthenticated } = useAuth();
   const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
   const readOnly = !canControlConnection;
-  const { show: showToast } = useToasts();
+  const showToast = (msg: string, title: string, _color?: string) => toast.error(title, { description: msg });
   const { t } = useTranslation();
 
   const testMessages = ['Trapper', 'Nurse', 'Huntress', 'Wraith', 'Hillbilly'];

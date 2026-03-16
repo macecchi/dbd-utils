@@ -3,7 +3,8 @@ import { create } from 'zustand';
 import { MAX_PENDING_REQUESTS } from '@dbd-utils/shared';
 import type { ConnectionState, Request, SourcesEnabled, PartyMessage, ChannelStatus } from '../types';
 import { deserializeRequest, deserializeRequests } from '../types';
-import { useToasts } from './toasts';
+import { toast } from 'sonner';
+import { t } from '../i18n';
 import {
   broadcastAdd,
   broadcastUpdate,
@@ -19,7 +20,7 @@ import {
 
 function requireParty(getContext: () => { partyConnected: boolean }): boolean {
   if (getContext().partyConnected) return true;
-  useToasts.getState().show('Sem conexão com o servidor. Tente novamente.', 'Erro');
+  toast.error(t('toast.error'), { description: t('toast.noConnection') });
   return false;
 }
 

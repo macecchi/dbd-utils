@@ -4,7 +4,7 @@ import { createRoomStores, type ChannelStores } from './channel';
 import { setActiveStores, connect as connectIrc, disconnect as disconnectIrc } from '../services/twitch';
 import { connectParty, disconnectParty, broadcastIrcStatus, claimOwnership } from '../services/party';
 import { useAuth } from './auth';
-import { useToasts } from './toasts';
+import { toast } from 'sonner';
 import { t } from '../i18n';
 
 function sendPushNotification(title: string, body: string) {
@@ -44,8 +44,6 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
   const owner = stores.useChannelInfo((s) => s.owner);
   const localIrcState = stores.useChannelInfo((s) => s.localIrcConnectionState);
   const partyConnected = stores.useChannelInfo((s) => s.localPartyConnectionState) === 'connected';
-  const showToast = useToasts((s) => s.show);
-
   // Derive: someone else is managing (we're room owner but don't have the lock)
   const someoneElseIsOwner = isOwnChannel && !hasLock && owner !== null;
 
@@ -87,38 +85,31 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
   const prevSomeoneElseIsOwner = useRef(false);
   useEffect(() => {
     if (someoneElseIsOwner && !prevSomeoneElseIsOwner.current) {
-      showToast(
-        t('toast.channelAlreadyOpenDesc'),
-        t('toast.channelAlreadyOpen'),
-        '#f59e0b',
-        10000
-      );
+      toast.warning(t('toast.channelAlreadyOpen'), {
+        description: t('toast.channelAlreadyOpenDesc'),
+        duration: 10000,
+      });
     }
     prevSomeoneElseIsOwner.current = someoneElseIsOwner;
-  }, [someoneElseIsOwner, showToast]);
+  }, [someoneElseIsOwner]);
 
   // Request notification permission + show toast if denied (reactive to permission changes)
-  const notifToastId = useRef<number | null>(null);
+  const notifToastId = useRef<string | number | null>(null);
   useEffect(() => {
     if (!isOwnChannel || !('Notification' in window)) return;
-
-    const { add, remove } = useToasts.getState();
 
     const handlePermission = (state: string) => {
       if (state === 'default') {
         Notification.requestPermission();
       } else if (state === 'denied') {
         if (notifToastId.current === null) {
-          notifToastId.current = add({
-            message: t('toast.notificationsBlockedDesc'),
-            title: t('toast.notificationsBlocked'),
-            color: '#f59e0b',
-            duration: 0,
-            type: 'default',
+          notifToastId.current = toast.warning(t('toast.notificationsBlocked'), {
+            description: t('toast.notificationsBlockedDesc'),
+            duration: Infinity,
           });
         }
       } else if (state === 'granted' && notifToastId.current !== null) {
-        remove(notifToastId.current);
+        toast.dismiss(notifToastId.current);
         notifToastId.current = null;
       }
     };
@@ -140,7 +131,7 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
     return () => {
       permStatus?.removeEventListener('change', onChange);
       if (notifToastId.current !== null) {
-        remove(notifToastId.current);
+        toast.dismiss(notifToastId.current);
         notifToastId.current = null;
       }
     };
@@ -165,12 +156,12 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
 
     // IRC: connected → connecting (auto-reconnecting)
     if (wasIrcConnected && localIrcState === 'connecting') {
-      showToast(t('toast.ircReconnecting'), t('toast.twitchIrc'), '#f59e0b');
+      toast.warning(t('toast.twitchIrc'), { id: 'irc-status', description: t('toast.ircReconnecting') });
     }
 
     // IRC: connected/connecting → error (retries exhausted)
     if (wasIrcConnected && localIrcState === 'error') {
-      showToast(t('toast.ircLost'), t('toast.twitchIrc'), '#ef4444', 0);
+      toast.error(t('toast.twitchIrc'), { id: 'irc-status', description: t('toast.ircLost'), duration: Infinity });
       sendPushNotification(
         t('push.connectionLost'),
         t('push.ircLost'),
@@ -179,13 +170,13 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
 
     // IRC: reconnected successfully (not initial connect)
     if (prevIrcState.current === 'connecting' && localIrcState === 'connected' && ircEverConnected.current) {
-      showToast(t('toast.ircReconnected'), t('toast.twitchIrc'), '#22c55e');
+      toast.success(t('toast.twitchIrc'), { id: 'irc-status', description: t('toast.ircReconnected') });
     }
     if (localIrcState === 'connected') ircEverConnected.current = true;
 
     // PartyKit: disconnected — toast immediately, push after delay
     if (prevPartyState.current && !partyConnected) {
-      showToast(t('toast.serverReconnecting'), t('toast.server'), '#f59e0b');
+      toast.warning(t('toast.server'), { id: 'party-status', description: t('toast.serverReconnecting') });
       if (!partyPushTimer.current) {
         partyPushTimer.current = setTimeout(() => {
           partyPushTimer.current = null;
@@ -204,14 +195,14 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
         partyPushTimer.current = null;
       }
       if (partyEverConnected.current) {
-        showToast(t('toast.serverReconnected'), t('toast.server'), '#22c55e');
+        toast.success(t('toast.server'), { id: 'party-status', description: t('toast.serverReconnected') });
       }
     }
     if (partyConnected) partyEverConnected.current = true;
 
     prevIrcState.current = localIrcState;
     prevPartyState.current = partyConnected;
-  }, [localIrcState, partyConnected, isOwnChannel, showToast]);
+  }, [localIrcState, partyConnected, isOwnChannel]);
 
   // Cleanup party push timer on unmount
   useEffect(() => {
@@ -245,19 +236,19 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
             console.error(`[server-error] ${msg.code}: ${msg.message}`);
             if (msg.code === 'version_mismatch') {
               disconnectParty();
-              const { add } = useToasts.getState();
-              add({
-                message: t('toast.newVersionUpdate'),
-                title: t('toast.newVersionAvailable'),
-                duration: 0,
-                type: 'default',
-                onClick: () => location.reload(),
+              toast.warning(t('toast.newVersionAvailable'), {
+                description: t('toast.newVersionUpdate'),
+                duration: Infinity,
+                action: { label: t('toast.clickToUpdate'), onClick: () => location.reload() },
               });
               sendPushNotification(t('push.newVersionTitle'), t('push.newVersion'));
               return;
             }
-            const { show } = useToasts.getState();
-            show(msg.message, t('toast.serverError'), '#ef4444', 0);
+            toast.error(t('toast.serverError'), {
+              id: 'party-status',
+              description: msg.message,
+              duration: Infinity,
+            });
             return;
           }
           handleRequestsMessage(msg);

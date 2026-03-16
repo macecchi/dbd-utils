@@ -2,7 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
 import { I18nProvider, t } from './i18n';
-import { useToasts } from './store/toasts';
+import { toast } from 'sonner';
 
 // Set CSS custom properties for image paths that need base URL
 const base = import.meta.env.BASE_URL;
@@ -14,12 +14,10 @@ const updateSW = registerSW({
   onNeedRefresh() {
     // Activate new SW so assets are cached, then prompt user to reload
     updateSW(true);
-    useToasts.getState().add({
-      message: t('toast.clickToUpdate'),
-      title: t('toast.newVersionAvailable'),
-      duration: 0,
-      type: 'default',
-      onClick: () => location.reload(),
+    toast(t('toast.newVersionAvailable'), {
+      description: t('toast.clickToUpdate'),
+      duration: Infinity,
+      action: { label: t('toast.clickToUpdate'), onClick: () => location.reload() },
     });
   }
 });

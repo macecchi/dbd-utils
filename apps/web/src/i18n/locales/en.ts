@@ -183,6 +183,14 @@ const en: TranslationKeys = {
   'toast.alreadyInQueue_plural': '{count} were already in queue',
   'toast.reactivated': '{count} reactivated',
   'toast.reactivated_plural': '{count} reactivated',
+  'toast.noConnection': 'No server connection. Try again.',
+  'toast.error': 'Error',
+  'toast.linkCopied': 'Link copied to clipboard',
+  'toast.vodRecoveryFailed': 'Failed to recover missed requests.',
+
+  // What's new
+  'whatsNew.title': "What's new",
+  'whatsNew.langToggle': 'You can now switch between English and Portuguese in the footer.',
 
   // Push notifications
   'push.connectionLost': 'Fila DBD - Connection lost',
