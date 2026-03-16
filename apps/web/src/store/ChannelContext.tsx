@@ -156,12 +156,12 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
 
     // IRC: connected → connecting (auto-reconnecting)
     if (wasIrcConnected && localIrcState === 'connecting') {
-      toast.warning(t('toast.twitchIrc'), { description: t('toast.ircReconnecting') });
+      toast.warning(t('toast.twitchIrc'), { id: 'irc-status', description: t('toast.ircReconnecting') });
     }
 
     // IRC: connected/connecting → error (retries exhausted)
     if (wasIrcConnected && localIrcState === 'error') {
-      toast.error(t('toast.twitchIrc'), { description: t('toast.ircLost'), duration: Infinity });
+      toast.error(t('toast.twitchIrc'), { id: 'irc-status', description: t('toast.ircLost'), duration: Infinity });
       sendPushNotification(
         t('push.connectionLost'),
         t('push.ircLost'),
@@ -170,13 +170,13 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
 
     // IRC: reconnected successfully (not initial connect)
     if (prevIrcState.current === 'connecting' && localIrcState === 'connected' && ircEverConnected.current) {
-      toast.success(t('toast.twitchIrc'), { description: t('toast.ircReconnected') });
+      toast.success(t('toast.twitchIrc'), { id: 'irc-status', description: t('toast.ircReconnected') });
     }
     if (localIrcState === 'connected') ircEverConnected.current = true;
 
     // PartyKit: disconnected — toast immediately, push after delay
     if (prevPartyState.current && !partyConnected) {
-      toast.warning(t('toast.server'), { description: t('toast.serverReconnecting') });
+      toast.warning(t('toast.server'), { id: 'party-status', description: t('toast.serverReconnecting') });
       if (!partyPushTimer.current) {
         partyPushTimer.current = setTimeout(() => {
           partyPushTimer.current = null;
@@ -195,7 +195,7 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
         partyPushTimer.current = null;
       }
       if (partyEverConnected.current) {
-        toast.success(t('toast.server'), { description: t('toast.serverReconnected') });
+        toast.success(t('toast.server'), { id: 'party-status', description: t('toast.serverReconnected') });
       }
     }
     if (partyConnected) partyEverConnected.current = true;
@@ -245,6 +245,7 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
               return;
             }
             toast.error(t('toast.serverError'), {
+              id: 'party-status',
               description: msg.message,
               duration: Infinity,
             });
