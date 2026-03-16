@@ -186,6 +186,10 @@ const ptBR = {
   'toast.linkCopied': 'Link copiado',
   'toast.vodRecoveryFailed': 'Falha ao recuperar pedidos perdidos.',
 
+  // What's new
+  'whatsNew.title': 'Novidade',
+  'whatsNew.langToggle': 'Agora você pode alternar entre Português e Inglês no rodapé.',
+
   // Push notifications
   'push.connectionLost': 'Fila DBD - Conexão perdida',
   'push.ircLost': 'Conexão com o chat da Twitch caiu. Reconecte para continuar recebendo pedidos.',

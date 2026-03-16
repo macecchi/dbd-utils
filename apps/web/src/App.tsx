@@ -12,6 +12,7 @@ import { SourcesBadges } from './components/SourcesBadges';
 import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
 import { Toaster } from 'sonner';
+import { useWhatsNew } from './hooks/useWhatsNew';
 import { identifyCharacter } from './services';
 import { recoverMissedRequests, scanVODForRequests, type VODInfo } from './services/vod';
 import { donateBotName } from './services/twitch';
@@ -279,6 +280,7 @@ function ChannelApp() {
 
   useAutoIdentify(requests, update, readOnly);
   useRequestToasts(requests, update, hideNonRequests);
+  useWhatsNew(canControlConnection);
 
   const pendingCount = requests.filter(d => !d.done && (!hideNonRequests || d.type !== 'none')).length;
 

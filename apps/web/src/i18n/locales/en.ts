@@ -188,6 +188,10 @@ const en: TranslationKeys = {
   'toast.linkCopied': 'Link copied to clipboard',
   'toast.vodRecoveryFailed': 'Failed to recover missed requests.',
 
+  // What's new
+  'whatsNew.title': "What's new",
+  'whatsNew.langToggle': 'You can now switch between English and Portuguese in the footer.',
+
   // Push notifications
   'push.connectionLost': 'Fila DBD - Connection lost',
   'push.ircLost': 'Twitch chat connection dropped. Reconnect to keep receiving requests.',
