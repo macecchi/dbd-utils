@@ -136,6 +136,18 @@ a:hover {
   color: var(--text-muted);
 }
 
+/* Sonner toast close button */
+[data-sonner-toast] [data-close-button] {
+  background: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-secondary) !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: var(--border) !important;
+  color: var(--text) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

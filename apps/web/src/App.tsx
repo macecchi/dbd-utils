@@ -433,6 +433,7 @@ function ChannelApp() {
       <Toaster
         theme="dark"
         position="bottom-center"
+        closeButton
         toastOptions={{
           style: {
             background: 'rgba(30, 30, 30, 0.9)',
