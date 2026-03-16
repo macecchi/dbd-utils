@@ -377,8 +377,8 @@ function ChannelApp() {
             <span className="footer-lang">
               {t('lang.label')}:{' '}
               {locale === 'en'
-                ? <><strong>English</strong> / <button className="btn-link" onClick={() => setLocale('pt-BR')}>Português</button></>
-                : <><button className="btn-link" onClick={() => setLocale('en')}>English</button> / <strong>Português</strong></>
+                ? <>English / <button className="btn-link" onClick={() => setLocale('pt-BR')}>Português</button></>
+                : <><button className="btn-link" onClick={() => setLocale('en')}>English</button> / Português</>
               }
             </span>
           </span>
