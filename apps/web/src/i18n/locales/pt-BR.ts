@@ -181,6 +181,10 @@ const ptBR = {
   'toast.alreadyInQueue_plural': '{count} já estavam na fila',
   'toast.reactivated': '{count} reativado',
   'toast.reactivated_plural': '{count} reativados',
+  'toast.noConnection': 'Sem conexão com o servidor. Tente novamente.',
+  'toast.error': 'Erro',
+  'toast.linkCopied': 'Link copiado',
+  'toast.vodRecoveryFailed': 'Falha ao recuperar pedidos perdidos.',
 
   // Push notifications
   'push.connectionLost': 'Fila DBD - Conexão perdida',

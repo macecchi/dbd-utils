@@ -11,11 +11,12 @@ import { RequestsReviewDialog } from './components/RequestsReviewDialog';
 import { SourcesBadges } from './components/SourcesBadges';
 import { SourcesPanel } from './components/SourcesPanel';
 import { Stats } from './components/Stats';
-import { ToastContainer } from './components/ToastContainer';
+import { Toaster } from 'sonner';
 import { identifyCharacter } from './services';
 import { recoverMissedRequests, scanVODForRequests, type VODInfo } from './services/vod';
 import { donateBotName } from './services/twitch';
-import { useSettings, useAuth, ChannelProvider, useChannel, useToasts, useLastChannel } from './store';
+import { toast } from 'sonner';
+import { useSettings, useAuth, ChannelProvider, useChannel, useLastChannel } from './store';
 import { navigate, handleLinkClick } from './utils/helpers';
 import { sortRequests, mergeRequests } from './utils/requests';
 import { useTranslation, t } from './i18n';
@@ -57,7 +58,6 @@ function useAutoIdentify(requests: Request[], update: (id: number, updates: Part
 }
 
 function useRequestToasts(requests: Request[], update: (id: number, updates: Partial<Request>) => void, hideNonRequests: boolean) {
-  const { show, showUndo } = useToasts();
   const shownToasts = useRef(new Set<number>());
   const isFirstLoad = useRef(true);
   useEffect(() => {
@@ -67,10 +67,9 @@ function useRequestToasts(requests: Request[], update: (id: number, updates: Par
       if (isFirstLoad.current) continue;
       if (hideNonRequests && req.type === 'none') {
         const msg = req.message.length > 50 ? req.message.slice(0, 50) + '…' : req.message;
-        showUndo(
-          t('toast.ignored', { donor: req.donor, message: msg }),
-          () => update(req.id, { type: 'unknown', character: '' })
-        );
+        toast(t('toast.ignored', { donor: req.donor, message: msg }), {
+          action: { label: t('toast.undo'), onClick: () => update(req.id, { type: 'unknown', character: '' }) },
+        });
         continue;
       }
       const title = req.source === 'manual' ? t('toast.newRequest') :
@@ -79,10 +78,10 @@ function useRequestToasts(requests: Request[], update: (id: number, updates: Par
       const message = req.character
         ? (req.amount ? t('toast.requestedCharAmount', { donor: req.donor, character: req.character, amount: req.amount }) : t('toast.requestedChar', { donor: req.donor, character: req.character }))
         : (req.amount ? t('toast.newRequestFromAmount', { donor: req.donor, amount: req.amount }) : t('toast.newRequestFrom', { donor: req.donor }));
-      show(message, title);
+      toast(title, { description: message });
     }
     if (ready.length > 0) isFirstLoad.current = false;
-  }, [requests, show, showUndo, update, hideNonRequests]);
+  }, [requests, update, hideNonRequests]);
 }
 
 function ChannelApp() {
@@ -92,7 +91,6 @@ function ChannelApp() {
   const update = useRequests((s) => s.update);
   const setAll = useRequests((s) => s.setAll);
   const { chatHidden, setChatHidden } = useSettings();
-  const { show } = useToasts();
   const sortMode = useSources((s) => s.sortMode);
   const setSortMode = useSources((s) => s.setSortMode);
   const [manualOpen, setManualOpen] = useState(false);
@@ -164,6 +162,7 @@ function ChannelApp() {
         if (controller.signal.aborted) return;
         console.error('VOD recovery failed:', err);
         setRecoveryLoading(false);
+        toast.error(t('toast.vodRecoveryFailed'));
       });
 
     return () => controller.abort();
@@ -204,8 +203,8 @@ function ChannelApp() {
     setRecoveryOpen(false);
     const parts = [t('toast.added', { count: added })];
     if (skipped > 0) parts.push(t('toast.alreadyInQueue', { count: skipped }));
-    show(parts.join('\n'), t('toast.recoveredRequests'));
-  }, [useRequests, useSources, setAll, show, saveRecoveryCheckpoint]);
+    toast.success(t('toast.recoveredRequests'), { description: parts.join('\n') });
+  }, [useRequests, useSources, setAll, saveRecoveryCheckpoint]);
 
   const handleRecoveryClose = useCallback(() => {
     saveRecoveryCheckpoint();
@@ -233,7 +232,10 @@ function ChannelApp() {
         }, controller.signal);
       }
     } catch (err) {
-      if (!controller.signal.aborted) console.error('VOD scan failed:', err);
+      if (!controller.signal.aborted) {
+        console.error('VOD scan failed:', err);
+        toast.error(t('toast.vodRecoveryFailed'));
+      }
     } finally {
       setVodRecoveryLoading(false);
       vodRecoveryAbort.current = null;
@@ -265,8 +267,8 @@ function ChannelApp() {
     const parts = [t('toast.added', { count: newRequests.length })];
     if (undoneCount > 0) parts.push(t('toast.reactivated', { count: undoneCount }));
     if (skipped > 0) parts.push(t('toast.alreadyInQueue', { count: skipped }));
-    show(parts.join(' | '), t('toast.recoveredRequests'));
-  }, [useRequests, useSources, setAll, show]);
+    toast.success(t('toast.recoveredRequests'), { description: parts.join(' | ') });
+  }, [useRequests, useSources, setAll]);
 
   const handleVodRecoveryClose = useCallback(() => {
     vodRecoveryAbort.current?.abort();
@@ -426,7 +428,23 @@ function ChannelApp() {
         loadingText={t('import.analyzingVods')}
         doneText={t('import.found')}
       />
-      <ToastContainer />
+      <Toaster
+        theme="dark"
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            background: 'rgba(30, 30, 30, 0.9)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+            color: 'var(--text)',
+            fontFamily: "'DM Sans', 'DM Sans Fallback', sans-serif",
+            fontSize: '0.85rem',
+          },
+        }}
+      />
     </>
   );
 }

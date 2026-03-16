@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useChannel, useAuth } from '../store';
 import { connect, disconnect } from '../services/twitch';
 import { claimOwnership, releaseOwnership } from '../services/party';
@@ -41,11 +42,14 @@ export function ChannelHeader() {
 
   const handleCopyLink = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }, [shareUrl]);
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast.success(t('toast.linkCopied'));
+      })
+      .catch(() => toast.error(t('toast.error')));
+  }, [shareUrl, t]);
 
   const isConnected = twitchStatus === 'connected';
   const isConnecting = twitchStatus === 'connecting';

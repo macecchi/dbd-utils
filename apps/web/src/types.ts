@@ -26,13 +26,3 @@ export interface ChatMessage {
   color: string | null;
 }
 
-export interface Toast {
-  id: number;
-  message: string;
-  title?: string;
-  color?: string;
-  duration: number;
-  type: 'default' | 'info' | 'undo';
-  undoCallback?: () => void;
-  onClick?: () => void;
-}
