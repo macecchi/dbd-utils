@@ -26,9 +26,9 @@ describe('parseDonationMessage', () => {
 
   describe('StreamElements format', () => {
     it('parses "mandou X e disse:" without currency', () => {
-      const result = parseDonationMessage('MaChInEgUn3 mandou 5.00 e disse: Vai de Trapper pra gente ver também');
+      const result = parseDonationMessage('User123 mandou 5.00 e disse: Vai de Trapper pra gente ver também');
       expect(result).toEqual({
-        donor: 'MaChInEgUn3',
+        donor: 'User123',
         amount: '5.00',
         message: 'Vai de Trapper pra gente ver também'
       });

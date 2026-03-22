@@ -35,7 +35,7 @@ You need to keep the site open to receive requests.
 
 | Source | How it works |
 |--------|-------------|
-| **Donations** | Detects messages from the donation bot (e.g. LivePix). Filters by minimum amount |
+| **Donations** | Detects messages from donation bots (LivePix, StreamElements, etc.). Filters by minimum amount |
 | **Resubs** | Captures resub messages via Twitch IRC USERNOTICE |
 | **Chat** | Configurable command (default: `!fila`) for subscribers. Filters by minimum tier |
 | **Manual** | Manual character entry |
@@ -73,22 +73,27 @@ bun dev  # Local server with frontend + API + PartyKit
 The service is designed to be deployed on [Cloudflare Workers](https://workers.cloudflare.com/) and [PartyKit](https://www.partykit.io/).
 
 **Required GitHub secrets:**
+
 - `CLOUDFLARE_API_TOKEN` - token with Workers permission
 - `PARTYKIT_TOKEN` and `PARTYKIT_LOGIN` - obtained with `bunx partykit@latest token generate`
 
 **Cloudflare secrets (via `wrangler secret put`):**
+
 - `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` - Twitch app
 - `JWT_SECRET` - any secure string
 - `INTERNAL_API_SECRET` - shared secret between Worker and PartyKit
 
 **KV Namespace (via `wrangler kv namespace create CACHE`):**
+
 - Create the namespace and update the `id` in `wrangler.toml`
 
 **D1 Database (via `wrangler d1 create fila-dbd`):**
+
 - Create the database and update the `database_id` in `wrangler.toml`
 - Apply migrations: `wrangler d1 migrations apply fila-dbd`
 
 **PartyKit secrets (via `bunx partykit env add`):**
+
 - `JWT_SECRET` - same value as Cloudflare
 - `INTERNAL_API_SECRET` - same value as Cloudflare
 - `API_URL` - Production Worker URL (e.g. `https://dbd-tracker.<account>.workers.dev`)
@@ -107,9 +112,14 @@ Add `#debug` to the URL to activate the debug panel. Example: `http://localhost:
 dbdDebug.chat('User', 'msg')                      // chat sub tier 1
 dbdDebug.chat('User', 'msg', { tier: 2 })         // chat sub tier 2
 dbdDebug.chat('User', 'msg', { sub: false })      // chat non-sub
-dbdDebug.donate('Donor', 50, 'msg')               // donate R$50
+dbdDebug.donate('Donor', 50, 'msg')               // donate R$50 (LivePix format)
 dbdDebug.resub('User', 'msg')                     // resub
 dbdDebug.raw('@tags... PRIVMSG #ch :msg')         // raw IRC
+```
+
+To test StreamElements format:
+```js
+dbdDebug.raw('@display-name=StreamElements :streamelements!streamelements@streamelements.tmi.twitch.tv PRIVMSG #ch :Donor mandou 5.00 e disse: Huntress')
 ```
 
 ## License
@@ -122,6 +132,7 @@ All Dead by Daylight rights belong to Behaviour Interactive.
 
 - [MandyMess](https://twitch.tv/mandymess) - for inspiring me to create this project
 - [Dead by Daylight Wiki](https://deadbydaylight.wiki.gg/) - character database and images
+-
 
 ---
 
@@ -140,7 +151,6 @@ Use o nosso [Discord](https://discord.gg/6pY7Efhxd) ou o próprio GitHub para ma
 3. Identifica automaticamente o personagem mencionado, usando IA quando necessário
 4. Exibe fila ordenada com retratos dos personagens
 
-
 ### Como usar
 
 1. Acesse o site e clique em **Começar minha fila** para conectar com sua conta da Twitch
@@ -155,7 +165,7 @@ Use o nosso [Discord](https://discord.gg/6pY7Efhxd) ou o próprio GitHub para ma
 
 | Fonte | Como funciona |
 |-------|---------------|
-| **Donates** | Detecta mensagens do bot de doação (ex: LivePix). Filtra por valor mínimo |
+| **Donates** | Detecta mensagens de bots de doação (LivePix, StreamElements, etc.). Filtra por valor mínimo |
 | **Resubs** | Captura mensagens de resub via USERNOTICE do Twitch IRC |
 | **Chat** | Comando configurável (padrão: `!fila`) para inscritos. Filtra por tier mínimo |
 | **Manual** | Entrada manual de personagens |

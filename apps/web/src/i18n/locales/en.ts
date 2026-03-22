@@ -19,7 +19,7 @@ const en: TranslationKeys = {
   'landing.howItWorks': 'How it works',
   'landing.startIn3Steps': 'Get started in 3 steps',
   'landing.featureDetectionTitle': 'Automatic detection',
-  'landing.featureDetectionDesc': 'Captures requests from donations, resubs, and chat commands automatically.',
+  'landing.featureDetectionDesc': 'Captures requests from donations (LivePix, StreamElements), resubs, and chat commands automatically.',
   'landing.featureAITitle': 'AI character identification',
   'landing.featureAIDesc': 'Uses artificial intelligence to recognize characters, even with misspelled names or nicknames.',
   'landing.featureSyncTitle': 'Real-time sync',
@@ -191,6 +191,7 @@ const en: TranslationKeys = {
   // What's new
   'whatsNew.title': "What's new",
   'whatsNew.langToggle': 'You can now switch between English and Portuguese in the footer.',
+  'whatsNew.multiDonateBots': 'StreamElements (GGPix, and others) is now supported for donations, in addition to LivePix.',
 
   // Push notifications
   'push.connectionLost': 'Fila DBD - Connection lost',

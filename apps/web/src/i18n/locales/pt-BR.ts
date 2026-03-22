@@ -17,7 +17,7 @@ const ptBR = {
   'landing.howItWorks': 'Como funciona',
   'landing.startIn3Steps': 'Comece em 3 passos',
   'landing.featureDetectionTitle': 'Detecção automática',
-  'landing.featureDetectionDesc': 'Captura pedidos de donates, resubs e comandos de chat automaticamente.',
+  'landing.featureDetectionDesc': 'Captura pedidos de donates (LivePix, StreamElements), resubs e comandos de chat automaticamente.',
   'landing.featureAITitle': 'Identificação de personagens com IA',
   'landing.featureAIDesc': 'Usa inteligência artificial para reconhecer personagens, mesmo com nomes errados ou apelidos.',
   'landing.featureSyncTitle': 'Sync em tempo real',
@@ -189,6 +189,7 @@ const ptBR = {
   // What's new
   'whatsNew.title': 'Novidade',
   'whatsNew.langToggle': 'Agora você pode alternar entre Português e Inglês no rodapé.',
+  'whatsNew.multiDonateBots': 'StreamElements (GGPix, entre outros) agora é suportado para donates, além do LivePix.',
 
   // Push notifications
   'push.connectionLost': 'Fila DBD - Conexão perdida',

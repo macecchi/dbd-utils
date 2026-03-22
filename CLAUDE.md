@@ -53,7 +53,9 @@ bun run deploy:party # Deploy PartyKit
 ## Key functions
 
 - `connect()` - Twitch IRC WebSocket
-- `handleMessage()` - Parse donation bot + chat commands
+- `handleMessage()` - Parse donation bots (LivePix, StreamElements, etc.) + chat commands
+- `isDonateBot()` - Check if username is a known donation bot
+- `parseDonationMessage()` - Extract donor, amount, message from donation bot text
 - `handleUserNotice()` - Parse resub USERNOTICE
 - `handleChatCommand()` - Process chat requests with session limits
 - `callLLM()` - Gemini API with model fallback/retry

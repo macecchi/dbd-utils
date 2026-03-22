@@ -20,4 +20,9 @@ export const changelog: ChangelogEntry[] = [
     titleKey: 'whatsNew.title',
     descriptionKey: 'whatsNew.langToggle',
   },
+  {
+    id: 'whats-new-multi-donate-bots',
+    titleKey: 'whatsNew.title',
+    descriptionKey: 'whatsNew.multiDonateBots',
+  },
 ];
