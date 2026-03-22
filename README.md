@@ -118,6 +118,7 @@ dbdDebug.raw('@tags... PRIVMSG #ch :msg')         // raw IRC
 ```
 
 To test StreamElements format:
+
 ```js
 dbdDebug.raw('@display-name=StreamElements :streamelements!streamelements@streamelements.tmi.twitch.tv PRIVMSG #ch :Donor mandou 5.00 e disse: Huntress')
 ```
@@ -132,7 +133,7 @@ All Dead by Daylight rights belong to Behaviour Interactive.
 
 - [MandyMess](https://twitch.tv/mandymess) - for inspiring me to create this project
 - [Dead by Daylight Wiki](https://deadbydaylight.wiki.gg/) - character database and images
--
+- [MaChInEgUn3](https://www.twitch.tv/machinigun3) - added support for GGPix via StreamElements
 
 ---
 
