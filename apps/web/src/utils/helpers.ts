@@ -21,6 +21,12 @@ export function parseAmount(str: string): number {
   return m ? parseFloat(m[0].replace(',', '.')) : 0;
 }
 
+export const DONATE_BOT_NAMES = new Set(['livepix', 'streamelements']);
+
+export function isDonateBot(username: string): boolean {
+  return DONATE_BOT_NAMES.has(username.toLowerCase());
+}
+
 export interface ParsedDonationMessage {
   donor: string;
   amount: string;
@@ -40,11 +46,11 @@ export function handleLinkClick(e: React.MouseEvent<HTMLAnchorElement>) {
 }
 
 export function parseDonationMessage(message: string): ParsedDonationMessage | null {
-  const match = message.match(/^(.+?)\s+(?:doou|mandou)\s+(R\$\s?[\d,\.]+)(?::\s*|\s+e disse:\s*)(.*)$/i);
+  const match = message.match(/^(.+?)\s+(?:doou|mandou|just tipped)\s+((?:R\$|\$)?\s?[\d,.]+)(?:\s*:\s*|\s+e disse:\s*|\s*-\s*)(.+)$/i);
   if (!match) return null;
   return {
     donor: match[1].trim(),
-    amount: match[2],
+    amount: match[2].trim(),
     message: match[3].trim()
   };
 }

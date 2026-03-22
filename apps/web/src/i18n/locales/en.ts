@@ -43,7 +43,7 @@ const en: TranslationKeys = {
   'sources.donation': 'Donations',
   'sources.resub': 'Resubs',
   'sources.chat': 'Chat',
-  'sources.donationDesc': 'Requests via <strong>{botName}</strong> above the minimum amount',
+  'sources.donationDesc': 'Requests via <strong>{botNames}</strong> above the minimum amount',
   'sources.minimum': 'Minimum',
   'sources.resubDesc': 'Resubscription messages',
   'sources.chatDesc': 'Chat command for requests. Only subscribers with tier equal to or above the minimum can use it. Example: <pre>{example}</pre>',

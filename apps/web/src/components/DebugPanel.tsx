@@ -3,9 +3,10 @@ import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } 
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
+import { CHARACTERS } from '../data/characters';
 import { toast } from 'sonner';
 import { useChannel, useChat, useAuth } from '../store';
-import { donateBotName, simulateDisconnect } from '../services/twitch';
+import { DONATE_BOT_NAMES, simulateDisconnect } from '../services/twitch';
 import { useTranslation } from '../i18n';
 
 export function DebugPanel() {
@@ -18,8 +19,8 @@ export function DebugPanel() {
   const showToast = (msg: string, title: string, _color?: string) => toast.error(title, { description: msg });
   const { t } = useTranslation();
 
-  const testMessages = ['Trapper', 'Nurse', 'Huntress', 'Wraith', 'Hillbilly'];
-  const randomMsg = () => testMessages[Math.floor(Math.random() * testMessages.length)];
+  const allNames = CHARACTERS.killers.map(c => c.name);
+  const randomMsg = () => allNames[Math.floor(Math.random() * allNames.length)];
   const randomDonor = () => `TestUser${Math.floor(Math.random() * 1000)}`;
 
   const simulateIRC = (type: 'donation-above' | 'donation-below' | 'resub' | 'chat-sub' | 'chat-nosub') => {
@@ -47,12 +48,20 @@ export function DebugPanel() {
         break;
     }
 
-    const after = useRequests.getState().requests.length;
-    const added = after > before;
-    setSimResult({
+    const showResult = (added: boolean) => setSimResult({
       text: `<span style="color:${added ? 'var(--green)' : 'var(--text-muted)'}">${type}: ${added ? 'added' : 'filtered'}</span> <span style="color:var(--text-muted)">(${msg})</span>`,
       show: true
     });
+
+    // Store updates async (server roundtrip), so wait briefly for the echo
+    const unsub = useRequests.subscribe((s) => {
+      if (s.requests.length > before) {
+        showResult(true);
+        unsub();
+        clearTimeout(timer);
+      }
+    });
+    const timer = setTimeout(() => { unsub(); showResult(false); }, 2000);
   };
 
   const [input, setInput] = useState('');
@@ -64,7 +73,7 @@ export function DebugPanel() {
   const [vodStatus, setVodStatus] = useState('');
   const [isReplaying, setIsReplaying] = useState(false);
 
-  const vodConfig = { botName: donateBotName, minDonation, sourcesEnabled };
+  const vodConfig = { botNames: DONATE_BOT_NAMES, minDonation, sourcesEnabled };
 
   const handleTest = async (e: FormEvent) => {
     e.preventDefault();

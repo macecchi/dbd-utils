@@ -41,7 +41,7 @@ const ptBR = {
   'sources.donation': 'Donates',
   'sources.resub': 'Resubs',
   'sources.chat': 'Chat',
-  'sources.donationDesc': 'Pedidos feitos via <strong>{botName}</strong> a partir do valor mínimo definido',
+  'sources.donationDesc': 'Pedidos feitos via <strong>{botNames}</strong> a partir do valor mínimo definido',
   'sources.minimum': 'Mínimo',
   'sources.resubDesc': 'Mensagens de reinscrição',
   'sources.chatDesc': 'Comando de chat para pedidos. Somente inscritos com tier maior ou igual ao definido podem usar. Exemplo: <pre>{example}</pre>',

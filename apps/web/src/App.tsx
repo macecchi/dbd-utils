@@ -15,7 +15,7 @@ import { Toaster } from 'sonner';
 import { useWhatsNew } from './hooks/useWhatsNew';
 import { identifyCharacter } from './services';
 import { recoverMissedRequests, scanVODForRequests, type VODInfo } from './services/vod';
-import { donateBotName } from './services/twitch';
+import { DONATE_BOT_NAMES } from './services/twitch';
 import { toast } from 'sonner';
 import { useSettings, useAuth, ChannelProvider, useChannel, useLastChannel } from './store';
 import { navigate, handleLinkClick } from './utils/helpers';
@@ -36,7 +36,7 @@ const isDebugMode = () => window.location.hash === '#debug' || window.location.h
 
 function makeSourcesConfig(sourcesState: ReturnType<SourcesStoreApi['getState']>, checkpoint?: { vodId: string; offset: number }) {
   return {
-    botName: donateBotName,
+    botNames: DONATE_BOT_NAMES,
     minDonation: sourcesState.minDonation,
     sourcesEnabled: sourcesState.enabled,
     chatCommand: sourcesState.chatCommand,

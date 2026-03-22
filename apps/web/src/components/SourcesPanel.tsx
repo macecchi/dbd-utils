@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useChannel, useSettings, SOURCES_DEFAULTS } from '../store';
 import type { SourceType as AllSourceTypes } from '../store/channel';
-import { donateBotName } from '../services/twitch';
+import { DONATE_BOT_NAMES } from '../services/twitch';
 import { useTranslation } from '../i18n';
 
 type SourceType = Exclude<AllSourceTypes, 'manual'>;
@@ -105,7 +105,7 @@ export function SourcesPanel({ onRecover, onReview }: SourcesPanelProps) {
 
         {source === 'donation' && (
           <div className="source-section-body">
-            <span className="source-section-desc" dangerouslySetInnerHTML={{ __html: t('sources.donationDesc', { botName: donateBotName }) }} />
+            <span className="source-section-desc" dangerouslySetInnerHTML={{ __html: t('sources.donationDesc', { botNames: Array.from(DONATE_BOT_NAMES).join(', ') }) }} />
             <div className="source-field">
               <label htmlFor="donation-min">{t('sources.minimum')}</label>
               <div className="input-with-prefix">

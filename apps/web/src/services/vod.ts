@@ -7,7 +7,7 @@ const TWITCH_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
 let vodReplayAbort: boolean | null = null;
 
 export interface VODConfig {
-  botName: string;
+  botNames: ReadonlySet<string>;
   minDonation: number;
   sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
 }
@@ -50,7 +50,6 @@ export async function loadAndReplayVOD(
 ) {
   if (!vodId) return;
   vodReplayAbort = false;
-  const botName = config.botName.toLowerCase();
   let offset = 0, total = 0, donates = 0;
   const seen = new Set<string>();
 
@@ -71,7 +70,7 @@ export async function loadAndReplayVOD(
       lastOffset = node.contentOffsetSeconds || lastOffset;
       total++;
 
-      const isDonate = username === botName;
+      const isDonate = config.botNames.has(username);
       if (isDonate) donates++;
       callbacks.onChat({ user: displayName, message, isDonate, color: null });
 
@@ -118,7 +117,7 @@ export function cancelVODReplay() {
 // ============ VOD RECOVERY ============
 
 export interface RecoveryConfig {
-  botName: string;
+  botNames: ReadonlySet<string>;
   minDonation: number;
   // resub: included for type compat but VOD GQL has no USERNOTICE data
   sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
@@ -193,7 +192,7 @@ export async function fetchRecentVods(
 }
 
 export interface ScanConfig {
-  botName: string;
+  botNames: ReadonlySet<string>;
   minDonation: number;
   sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
   chatCommand: string;
@@ -212,7 +211,6 @@ export async function scanVODForRequests(
   signal?: AbortSignal
 ): Promise<Request[]> {
   const vodStart = new Date(vodCreatedAt).getTime();
-  const botName = config.botName.toLowerCase();
   const chatCommand = config.chatCommand.toLowerCase();
   const requests: Request[] = [];
   const seen = new Set<string>();
@@ -236,7 +234,7 @@ export async function scanVODForRequests(
       lastOffset = node.contentOffsetSeconds || lastOffset;
       const timestamp = new Date(vodStart + (node.contentOffsetSeconds || 0) * 1000);
 
-      if (username === botName && config.sourcesEnabled.donation) {
+      if (config.botNames.has(username) && config.sourcesEnabled.donation) {
         const parsed = parseDonationMessage(message);
         if (parsed) {
           const amountVal = parseAmount(parsed.amount);
@@ -261,7 +259,7 @@ export async function scanVODForRequests(
       }
 
       // Chat commands (VOD GQL does not expose subscriber badges, so tier filtering is not possible here)
-      if (username !== botName && message.toLowerCase().startsWith(chatCommand) && config.sourcesEnabled.chat) {
+      if (!config.botNames.has(username) && message.toLowerCase().startsWith(chatCommand) && config.sourcesEnabled.chat) {
         const requestText = message.slice(chatCommand.length).trim();
         if (requestText) {
           const local = tryLocalMatch(requestText);
@@ -307,7 +305,6 @@ export async function recoverMissedRequests(
 
   const { vodId, createdAt } = vodInfo;
   const vodStart = new Date(createdAt).getTime();
-  const botName = config.botName.toLowerCase();
   const chatCommand = config.chatCommand.toLowerCase();
   const requests: Request[] = [];
   const seen = new Set<string>();
@@ -344,7 +341,7 @@ export async function recoverMissedRequests(
       const timestamp = new Date(vodStart + (node.contentOffsetSeconds || 0) * 1000);
 
       // Check for donations
-      if (username === botName && config.sourcesEnabled.donation) {
+      if (config.botNames.has(username) && config.sourcesEnabled.donation) {
         const parsed = parseDonationMessage(message);
         if (parsed) {
           const amountVal = parseAmount(parsed.amount);
@@ -373,7 +370,7 @@ export async function recoverMissedRequests(
       }
 
       // Check for chat commands
-      if (username !== botName && message.toLowerCase().startsWith(chatCommand) && config.sourcesEnabled.chat) {
+      if (!config.botNames.has(username) && message.toLowerCase().startsWith(chatCommand) && config.sourcesEnabled.chat) {
         const requestText = message.slice(chatCommand.length).trim();
         if (requestText) {
           const reqId = hashStringToNumber(`vod:${node.id}`);

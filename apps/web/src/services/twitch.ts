@@ -1,8 +1,10 @@
 import { tryLocalMatch } from '../data/characters';
-import { parseAmount, parseDonationMessage } from '../utils/helpers';
+import { parseAmount, parseDonationMessage, isDonateBot } from '../utils/helpers';
 import { useSettings, useChat } from '../store';
 import type { Request } from '../types';
 import type { ChannelStores } from '../store/channel';
+
+export { DONATE_BOT_NAMES, isDonateBot } from '../utils/helpers';
 
 let ws: WebSocket | null = null;
 let activeStores: ChannelStores | null = null;
@@ -11,8 +13,6 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_BASE_DELAY = 2000;
-
-export const donateBotName = 'livepix';
 
 export function setActiveStores(stores: ChannelStores | null) {
   activeStores = stores;
@@ -242,7 +242,7 @@ export function handleMessage(raw: string) {
   const message = msgMatch[1].trim();
   const color = colorMatch?.[1] || null;
 
-  addChat({ user: displayName, message, isDonate: username === donateBotName, color });
+  addChat({ user: displayName, message, isDonate: isDonateBot(username), color });
 
   if (message.toLowerCase().startsWith(chatCommand.toLowerCase())) {
     const requestText = message.slice(chatCommand.length).trim();
@@ -254,7 +254,7 @@ export function handleMessage(raw: string) {
     return;
   }
 
-  if (username !== donateBotName) return;
+  if (!isDonateBot(username)) return;
   const parsed = parseDonationMessage(message);
   if (!parsed || !enabled.donation) return;
 
@@ -317,7 +317,7 @@ window.dbdDebug = {
   },
   donate: (donor: string, amount: number, message: string) => {
     if (!checkWriteMode()) return;
-    const raw = `@display-name=${donateBotName};color=#FF0000 :${donateBotName.toLowerCase()}!${donateBotName.toLowerCase()}@${donateBotName.toLowerCase()}.tmi.twitch.tv PRIVMSG #test :${donor} doou R$ ${amount},00: ${message}`;
+    const raw = `@display-name=livepix;color=#FF0000 :livepix!livepix@livepix.tmi.twitch.tv PRIVMSG #test :${donor} doou R$ ${amount},00: ${message}`;
     handleMessage(raw);
   },
   resub: (user: string, message: string) => {
