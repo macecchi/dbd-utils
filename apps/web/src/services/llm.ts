@@ -9,7 +9,7 @@ declare const __APP_VERSION__: string;
 async function callAPI(
   message: string,
   onError?: (msg: string) => void
-): Promise<{ character: string; type: string }> {
+): Promise<{ character: string; type: string; matchedTerm?: string }> {
   const token = await useAuth.getState().getAccessToken();
   if (!token) {
     return { character: '', type: 'none' };
@@ -48,8 +48,8 @@ async function callAPI(
 export async function identifyCharacter(
   request: Request,
   onError?: (msg: string) => void,
-  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; validating: false }) => void
-): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; validating?: boolean }> {
+  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; validating: false }) => void
+): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; validating?: boolean }> {
   const local = tryLocalMatch(request.message);
   const isAuthenticated = useAuth.getState().isAuthenticated;
 
@@ -60,6 +60,7 @@ export async function identifyCharacter(
           onLLMUpdate({
             character: llmResult.character,
             type: llmResult.type as 'survivor' | 'killer' | 'unknown',
+            matchedTerm: llmResult.matchedTerm,
             validating: false
           });
         } else {
@@ -77,7 +78,8 @@ export async function identifyCharacter(
   const type = result.type || 'unknown';
   return {
     character: result.character || '',
-    type: type as 'survivor' | 'killer' | 'unknown' | 'none'
+    type: type as 'survivor' | 'killer' | 'unknown' | 'none',
+    matchedTerm: result.matchedTerm
   };
 }
 
