@@ -251,6 +251,26 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
             });
             return;
           }
+          if (msg.type === 'update-sources') {
+            const s = msg.sources;
+            const parts: string[] = [];
+            if (s.enabled.donation) parts.push(t('toast.sourcesDonations', { amount: String(s.minDonation) }));
+            if (s.enabled.chat) {
+              const minTier = s.chatTiers.length ? Math.min(...s.chatTiers) : 1;
+              parts.push(t('toast.sourcesChat', { command: s.chatCommand, tier: String(minTier) }));
+            }
+            if (s.enabled.resub) parts.push(t('toast.sourcesResubs'));
+            let description: string;
+            if (parts.length === 0) {
+              description = t('toast.sourcesNoneActive');
+            } else if (parts.length === 1) {
+              description = t('toast.sourcesAccepting', { sources: parts[0] });
+            } else {
+              const last = parts.pop()!;
+              description = t('toast.sourcesAccepting', { sources: `${parts.join(', ')} ${t('toast.sourcesAnd')} ${last}` });
+            }
+            toast.info(t('toast.sourcesUpdated'), { description });
+          }
           handleRequestsMessage(msg);
           handleSourcesMessage(msg);
           handleChannelInfoMessage(msg);

@@ -186,6 +186,13 @@ const en: TranslationKeys = {
   'toast.noConnection': 'No server connection. Try again.',
   'toast.error': 'Error',
   'toast.linkCopied': 'Link copied to clipboard',
+  'toast.sourcesUpdated': 'Queue settings updated',
+  'toast.sourcesAccepting': 'Now accepting: {sources}.',
+  'toast.sourcesDonations': 'donations (R$ {amount}+)',
+  'toast.sourcesChat': '{command} commands (tier {tier}+)',
+  'toast.sourcesResubs': 'resubs',
+  'toast.sourcesAnd': 'and',
+  'toast.sourcesNoneActive': 'No sources active.',
   'toast.vodRecoveryFailed': 'Failed to recover missed requests.',
 
   // What's new

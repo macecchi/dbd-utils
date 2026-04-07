@@ -184,6 +184,13 @@ const ptBR = {
   'toast.noConnection': 'Sem conexão com o servidor. Tente novamente.',
   'toast.error': 'Erro',
   'toast.linkCopied': 'Link copiado',
+  'toast.sourcesUpdated': 'Configurações da fila atualizadas',
+  'toast.sourcesAccepting': 'Aceitando: {sources}.',
+  'toast.sourcesDonations': 'donates (R$ {amount}+)',
+  'toast.sourcesChat': 'comandos {command} (tier {tier}+)',
+  'toast.sourcesResubs': 'resubs',
+  'toast.sourcesAnd': 'e',
+  'toast.sourcesNoneActive': 'Nenhuma fonte ativa.',
   'toast.vodRecoveryFailed': 'Falha ao recuperar pedidos perdidos.',
 
   // What's new
