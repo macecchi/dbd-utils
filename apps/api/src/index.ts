@@ -78,7 +78,7 @@ app.get("/auth/login", (c) => {
   );
 
   const state = crypto.randomUUID();
-  const url = twitch.createAuthorizationURL(state, ["user:read:email"]);
+  const url = twitch.createAuthorizationURL(state, []);
 
   return c.redirect(url.toString());
 });
