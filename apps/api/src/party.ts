@@ -422,7 +422,7 @@ export default class PartyServer implements Party.Server {
     this.syncRequestsTimer = setTimeout(() => this.syncRequestsToD1(), delay);
   }
 
-  private async syncRequestsToD1() {
+  private async syncRequestsToD1(pruneDiscarded = false) {
     const apiUrl = this.room.env.API_URL as string | undefined;
     const secret = this.room.env.INTERNAL_API_SECRET as string | undefined;
     if (!apiUrl || !secret) return;
@@ -449,18 +449,20 @@ export default class PartyServer implements Party.Server {
       });
       if (res.ok) {
         this.d1SyncFailCount = 0;
-        // Delete done request keys from DO (unless re-dirtied during sync)
-        const doneKeys = this.requests
-          .filter(r => r.done && !this.dirtyRequestIds.has(r.id))
+        // Delete done (and optionally type='none') request keys from DO (unless re-dirtied during sync)
+        const shouldPrune = (r: SerializedRequest) =>
+          r.done || (pruneDiscarded && r.type === 'none');
+        const pruneKeys = this.requests
+          .filter(r => shouldPrune(r) && !this.dirtyRequestIds.has(r.id))
           .map(r => `req:${r.id}`);
-        if (doneKeys.length > 0) {
-          await this.room.storage.delete(doneKeys);
+        if (pruneKeys.length > 0) {
+          await this.room.storage.delete(pruneKeys);
         }
         const before = this.requests.length;
-        this.requests = this.requests.filter(r => !r.done || this.dirtyRequestIds.has(r.id));
+        this.requests = this.requests.filter(r => !shouldPrune(r) || this.dirtyRequestIds.has(r.id));
         if (this.requests.length < before) {
           await this.room.storage.put('order', this.requests.map(r => r.id));
-          console.log(`${this.tag} Pruned ${before - this.requests.length} done requests`);
+          console.log(`${this.tag} Pruned ${before - this.requests.length} requests (done + ${pruneDiscarded ? 'discarded' : 'none'})`);
         }
         console.log(`${this.tag} D1 synced ${requestsToSync.length} requests (${mode})`);
       } else {
@@ -575,7 +577,7 @@ export default class PartyServer implements Party.Server {
       this.syncRequestsTimer = null;
     }
     this.needsFullSync = true;
-    this.syncRequestsToD1();
+    this.syncRequestsToD1(true);
   }
 
   private broadcastChannel() {

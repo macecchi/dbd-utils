@@ -905,6 +905,172 @@ describe('PartyServer', () => {
       expect(dirtyIds.has(1)).toBe(true);
       expect(dirtyIds.has(2)).toBe(true);
     });
+
+    it('does not prune type=none requests on regular sync', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: false, type: 'none', character: '' }),
+        createTestRequest({ id: 3, done: false }),
+        createTestRequest({ id: 4, done: false, type: 'none', character: '' }),
+      ];
+      mockRoom.storage._store.set('req:1', server.requests[0]);
+      mockRoom.storage._store.set('req:2', server.requests[1]);
+      mockRoom.storage._store.set('req:3', server.requests[2]);
+      mockRoom.storage._store.set('req:4', server.requests[3]);
+
+      await (server as any).syncRequestsToD1();
+
+      // type=none requests should remain in memory and DO
+      expect(server.requests).toHaveLength(4);
+      expect(mockRoom.storage._store.has('req:2')).toBe(true);
+      expect(mockRoom.storage._store.has('req:4')).toBe(true);
+    });
+
+    it('prunes type=none requests when pruneDiscarded is true', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: false, type: 'none', character: '' }),
+        createTestRequest({ id: 3, done: true }),
+        createTestRequest({ id: 4, done: false, type: 'none', character: '' }),
+        createTestRequest({ id: 5, done: false }),
+      ];
+      mockRoom.storage._store.set('req:1', server.requests[0]);
+      mockRoom.storage._store.set('req:2', server.requests[1]);
+      mockRoom.storage._store.set('req:3', server.requests[2]);
+      mockRoom.storage._store.set('req:4', server.requests[3]);
+      mockRoom.storage._store.set('req:5', server.requests[4]);
+
+      await (server as any).syncRequestsToD1(true);
+
+      // Only pending non-none requests remain
+      expect(server.requests).toHaveLength(2);
+      expect(server.requests.map(r => r.id)).toEqual([1, 5]);
+      // Pruned keys removed from DO
+      expect(mockRoom.storage._store.has('req:2')).toBe(false);
+      expect(mockRoom.storage._store.has('req:3')).toBe(false);
+      expect(mockRoom.storage._store.has('req:4')).toBe(false);
+      // Kept keys still in DO
+      expect(mockRoom.storage._store.has('req:1')).toBe(true);
+      expect(mockRoom.storage._store.has('req:5')).toBe(true);
+    });
+
+    it('does not prune type=none requests re-dirtied during sync', async () => {
+      // Simulate a mutation happening during the async D1 fetch
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => {
+        // While fetch is in flight, the request gets modified (e.g. undo skip)
+        (server as any).dirtyRequestIds.add(2);
+        return { ok: true };
+      }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: false, type: 'none', character: '' }),
+      ];
+      mockRoom.storage._store.set('req:1', server.requests[0]);
+      mockRoom.storage._store.set('req:2', server.requests[1]);
+
+      await (server as any).syncRequestsToD1(true);
+
+      // Re-dirtied request kept even though type=none
+      expect(server.requests).toHaveLength(2);
+      expect(mockRoom.storage._store.has('req:2')).toBe(true);
+    });
+  });
+
+  describe('flushAndSyncOffline', () => {
+    let ownerConn: MockConnection;
+
+    beforeEach(async () => {
+      vi.useFakeTimers();
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '123',
+        login: 'testchannel',
+        display_name: 'TestChannel',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      mockRoom.env = { JWT_SECRET: 'test-secret', API_URL: 'https://api.test', INTERNAL_API_SECRET: 'secret' } as any;
+
+      ownerConn = new MockConnection('owner');
+      mockRoom._connections.set('owner', ownerConn);
+      await server.onConnect(ownerConn as any, createMockContext('owner-token') as any);
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), ownerConn as any);
+      ownerConn.messages = [];
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it('prunes type=none requests from DO when queue goes offline via disconnect', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: false, type: 'none', character: '' }),
+        createTestRequest({ id: 3, done: false, type: 'none', character: '' }),
+      ];
+      mockRoom.storage._store.set('req:1', server.requests[0]);
+      mockRoom.storage._store.set('req:2', server.requests[1]);
+      mockRoom.storage._store.set('req:3', server.requests[2]);
+
+      // Owner disconnects → triggers flushAndSyncOffline
+      server.onClose(ownerConn as any);
+
+      // Wait for async sync to complete
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(server.channel.status).toBe('offline');
+      expect(server.requests).toHaveLength(1);
+      expect(server.requests[0].id).toBe(1);
+      expect(mockRoom.storage._store.has('req:2')).toBe(false);
+      expect(mockRoom.storage._store.has('req:3')).toBe(false);
+    });
+
+    it('prunes type=none requests from DO when owner releases ownership', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: false, type: 'none', character: '' }),
+      ];
+      mockRoom.storage._store.set('req:1', server.requests[0]);
+      mockRoom.storage._store.set('req:2', server.requests[1]);
+
+      // Owner releases ownership → triggers flushAndSyncOffline
+      await server.onMessage(JSON.stringify({ type: 'release-ownership' }), ownerConn as any);
+
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(server.channel.status).toBe('offline');
+      expect(server.requests).toHaveLength(1);
+      expect(server.requests[0].id).toBe(1);
+      expect(mockRoom.storage._store.has('req:2')).toBe(false);
+    });
+
+    it('keeps type=none requests in DO if D1 sync fails on offline', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+
+      server.requests = [
+        createTestRequest({ id: 1, done: false }),
+        createTestRequest({ id: 2, done: false, type: 'none', character: '' }),
+      ];
+      mockRoom.storage._store.set('req:1', server.requests[0]);
+      mockRoom.storage._store.set('req:2', server.requests[1]);
+
+      server.onClose(ownerConn as any);
+
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Both requests still in memory and DO since D1 sync failed
+      expect(server.requests).toHaveLength(2);
+      expect(mockRoom.storage._store.has('req:2')).toBe(true);
+    });
   });
 
   describe('server-error', () => {
