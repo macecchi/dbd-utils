@@ -92,6 +92,11 @@ The service is designed to be deployed on [Cloudflare Workers](https://workers.c
 - Create the database and update the `database_id` in `wrangler.toml`
 - Apply migrations: `wrangler d1 migrations apply fila-dbd`
 
+**Cloudflare Pages environment variables:**
+
+- `VITE_TWITCH_CLIENT_ID` - same Twitch app Client ID (used by frontend for OAuth redirect)
+- `VITE_API_URL` - Production Worker URL
+
 **PartyKit secrets (via `bunx partykit env add`):**
 
 - `JWT_SECRET` - same value as Cloudflare

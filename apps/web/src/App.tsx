@@ -26,11 +26,26 @@ import type { SourcesStoreApi } from './store/channel';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
-const getChannelFromPath = () => {
+const getPathSegments = () => {
   const path = window.location.pathname.startsWith(basePath)
     ? window.location.pathname.slice(basePath.length)
     : window.location.pathname;
-  return path.replace(/^\//, '').split('/')[0] || null;
+  return path.replace(/^\//, '').split('/');
+};
+
+const isAuthCallback = () => {
+  const segments = getPathSegments();
+  return segments[0] === 'auth' && segments[1] === 'callback';
+};
+
+const getChannelFromPath = () => {
+  if (isAuthCallback()) return null;
+  return getPathSegments()[0] || null;
+};
+
+const hasAuthParams = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has('access_token') || params.has('code');
 };
 const isDebugMode = () => window.location.hash === '#debug' || window.location.hash === '#debug=true';
 
@@ -460,17 +475,8 @@ export function App() {
       window.history.replaceState(null, '', path);
     }
 
-    // Handle OAuth callback
-    const success = useAuth.getState().handleCallback();
-    if (success) {
-      const freshUser = useAuth.getState().user;
-      if (freshUser?.login) {
-        const ch = freshUser.login.toLowerCase();
-        useLastChannel.getState().setLastChannel(ch);
-        navigate(`/${ch}`);
-        return ch;
-      }
-    }
+    // If handling auth callback, don't set channel yet — useEffect will handle it
+    if (isAuthCallback() || hasAuthParams()) return null;
 
     // Set channel from path — if none, show landing page
     const pathChannel = getChannelFromPath();
@@ -481,6 +487,26 @@ export function App() {
     }
     return null;
   });
+
+  // Handle OAuth callback (async token exchange) or dev-login tokens
+  const [authPending, setAuthPending] = useState(() => isAuthCallback() || hasAuthParams());
+  useEffect(() => {
+    if (!isAuthCallback() && !hasAuthParams()) return;
+    useAuth.getState().handleCallback().then((success) => {
+      setAuthPending(false);
+      if (success) {
+        const freshUser = useAuth.getState().user;
+        if (freshUser?.login) {
+          const ch = freshUser.login.toLowerCase();
+          useLastChannel.getState().setLastChannel(ch);
+          navigate(`/${ch}`);
+          setChannel(ch);
+          return;
+        }
+      }
+      navigate('/');
+    });
+  }, []);
 
   // Handle navigation (popstate for browser back/forward + programmatic navigate)
   useEffect(() => {
@@ -500,6 +526,7 @@ export function App() {
     };
   }, []);
 
+  if (authPending) return null;
   if (!channel) return <LandingPage />;
 
   return (

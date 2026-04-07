@@ -9,8 +9,8 @@ Backend API for Twitch authentication and LLM character extraction.
 1. Go to [Twitch Developer Console](https://dev.twitch.tv/console/apps)
 2. Create a new application
 3. Set OAuth Redirect URL to:
-   - Development: `http://localhost:8787/auth/callback`
-   - Production: `https://your-worker.your-subdomain.workers.dev/auth/callback`
+   - Development: `http://localhost:5173/auth/callback`
+   - Production: `https://filadbd.pages.dev/auth/callback`
 4. Copy the Client ID and generate a Client Secret
 
 ### 2. Configure secrets
@@ -50,8 +50,7 @@ bun run deploy
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/auth/login` | Redirects to Twitch OAuth |
-| GET | `/auth/callback` | Handles OAuth callback, issues JWT |
+| POST | `/auth/token` | Exchanges OAuth code for JWT tokens |
 | POST | `/auth/refresh` | Refreshes access token |
 | GET | `/auth/me` | Returns current user info |
 
@@ -65,14 +64,16 @@ All `/api/*` routes require `Authorization: Bearer <token>` header.
 
 ## Frontend configuration
 
-Set the API URL in your frontend `.env`:
+Set environment variables in your frontend `.env`:
 
 ```bash
 VITE_API_URL=http://localhost:8787
+VITE_TWITCH_CLIENT_ID=your_client_id
 ```
 
 For production:
 
 ```bash
 VITE_API_URL=https://your-worker.your-subdomain.workers.dev
+VITE_TWITCH_CLIENT_ID=your_client_id
 ```

@@ -150,17 +150,21 @@ describe('Hono API', () => {
     });
   });
 
-  // Note: OAuth routes (/auth/login, /auth/callback) require integration testing
+  // Note: OAuth token exchange (POST /auth/token) requires integration testing
   // with the arctic library and Twitch API, which is complex to mock properly.
   // These are tested manually and in staging environments.
 
-  describe('GET /auth/callback', () => {
-    it('redirects with error when code is missing', async () => {
-      const res = await app.request('/auth/callback', {}, TEST_ENV);
+  describe('POST /auth/token', () => {
+    it('returns 400 when code or redirect_uri is missing', async () => {
+      const res = await app.request('/auth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      }, TEST_ENV);
 
-      expect(res.status).toBe(302);
-      const location = res.headers.get('Location');
-      expect(location).toContain('error=missing_code');
+      expect(res.status).toBe(400);
+      const body = await res.json() as ErrorResponse;
+      expect(body.error).toBe('missing_code_or_redirect_uri');
     });
   });
 

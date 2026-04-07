@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const TWITCH_CLIENT_ID = import.meta.env.VITE_TWITCH_CLIENT_ID || '';
 
 interface TwitchUser {
   id: string;
@@ -25,7 +26,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: () => void;
   logout: () => void;
-  handleCallback: () => boolean;
+  handleCallback: () => Promise<boolean>;
   refresh: () => Promise<boolean>;
   getAccessToken: () => Promise<string | null>;
 }
@@ -53,7 +54,16 @@ export const useAuth = create<AuthState>()(
       isAuthenticated: false,
 
       login: () => {
-        window.location.href = `${API_URL}/auth/login`;
+        const redirectUri = `${window.location.origin}/auth/callback`;
+        const state = crypto.randomUUID();
+        sessionStorage.setItem('oauth_state', state);
+        const params = new URLSearchParams({
+          client_id: TWITCH_CLIENT_ID,
+          redirect_uri: redirectUri,
+          response_type: 'code',
+          state,
+        });
+        window.location.href = `https://id.twitch.tv/oauth2/authorize?${params}`;
       },
 
       logout: () => {
@@ -65,27 +75,19 @@ export const useAuth = create<AuthState>()(
         });
       },
 
-      handleCallback: () => {
+      handleCallback: async () => {
         const params = new URLSearchParams(window.location.search);
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        const error = params.get('error');
 
-        if (accessToken || refreshToken || error) {
+        // Dev-login: tokens passed directly in URL
+        const directAccessToken = params.get('access_token');
+        const directRefreshToken = params.get('refresh_token');
+        if (directAccessToken && directRefreshToken) {
           window.history.replaceState(null, '', window.location.pathname);
-        }
-
-        if (error) {
-          console.error('Auth error:', error);
-          return false;
-        }
-
-        if (accessToken && refreshToken) {
           try {
-            const payload = decodeJwtPayload(accessToken);
+            const payload = decodeJwtPayload(directAccessToken);
             set({
-              accessToken,
-              refreshToken,
+              accessToken: directAccessToken,
+              refreshToken: directRefreshToken,
               user: {
                 id: payload.sub,
                 login: payload.login,
@@ -96,12 +98,63 @@ export const useAuth = create<AuthState>()(
             });
             return true;
           } catch (e) {
-            console.error('Failed to decode token:', e);
+            console.error('Failed to decode dev token:', e);
             return false;
           }
         }
 
-        return false;
+        // OAuth callback: exchange code for tokens
+        const code = params.get('code');
+        const state = params.get('state');
+        const error = params.get('error');
+
+        if (!code && !error) return false;
+
+        window.history.replaceState(null, '', window.location.pathname);
+
+        if (error) {
+          console.error('Auth error:', error);
+          return false;
+        }
+
+        const savedState = sessionStorage.getItem('oauth_state');
+        sessionStorage.removeItem('oauth_state');
+        if (state !== savedState) {
+          console.error('OAuth state mismatch');
+          return false;
+        }
+
+        try {
+          const redirectUri = `${window.location.origin}/auth/callback`;
+          const res = await fetch(`${API_URL}/auth/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, redirect_uri: redirectUri }),
+          });
+
+          if (!res.ok) {
+            console.error('Token exchange failed:', await res.text());
+            return false;
+          }
+
+          const data = await res.json() as { access_token: string; refresh_token: string };
+          const payload = decodeJwtPayload(data.access_token);
+          set({
+            accessToken: data.access_token,
+            refreshToken: data.refresh_token,
+            user: {
+              id: payload.sub,
+              login: payload.login,
+              display_name: payload.display_name,
+              profile_image_url: payload.profile_image_url,
+            },
+            isAuthenticated: true,
+          });
+          return true;
+        } catch (e) {
+          console.error('Token exchange error:', e);
+          return false;
+        }
       },
 
       refresh: async () => {

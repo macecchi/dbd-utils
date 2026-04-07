@@ -68,40 +68,23 @@ app.get("/auth/dev-login", async (c) => {
   return c.redirect(`${c.env.FRONTEND_URL}/mandymess?${params}`);
 });
 
-// Redirect to Twitch OAuth
-app.get("/auth/login", (c) => {
-  const origin = new URL(c.req.url).origin;
-  const twitch = new Twitch(
-    c.env.TWITCH_CLIENT_ID,
-    c.env.TWITCH_CLIENT_SECRET,
-    `${origin}/auth/callback`
-  );
+// Exchange Twitch OAuth code for JWT tokens
+app.post("/auth/token", async (c) => {
+  const body = await c.req.json<{ code: string; redirect_uri: string }>();
 
-  const state = crypto.randomUUID();
-  const url = twitch.createAuthorizationURL(state, []);
-
-  return c.redirect(url.toString());
-});
-
-// Twitch callback - exchange code, verify identity, issue JWT
-app.get("/auth/callback", async (c) => {
-  const code = c.req.query("code");
-  if (!code) {
-    return c.redirect(`${c.env.FRONTEND_URL}?error=missing_code`);
+  if (!body.code || !body.redirect_uri) {
+    return c.json({ error: "missing_code_or_redirect_uri" }, 400);
   }
 
-  const origin = new URL(c.req.url).origin;
   const twitch = new Twitch(
     c.env.TWITCH_CLIENT_ID,
     c.env.TWITCH_CLIENT_SECRET,
-    `${origin}/auth/callback`
+    body.redirect_uri
   );
 
   try {
-    // Exchange code for Twitch tokens
-    const tokens = await twitch.validateAuthorizationCode(code);
+    const tokens = await twitch.validateAuthorizationCode(body.code);
 
-    // Get user info from Twitch
     const userRes = await fetch("https://api.twitch.tv/helix/users", {
       headers: {
         Authorization: `Bearer ${tokens.accessToken()}`,
@@ -110,7 +93,7 @@ app.get("/auth/callback", async (c) => {
     });
 
     if (!userRes.ok) {
-      return c.redirect(`${c.env.FRONTEND_URL}?error=twitch_api_error`);
+      return c.json({ error: "twitch_api_error" }, 502);
     }
 
     const userData = (await userRes.json()) as {
@@ -124,7 +107,7 @@ app.get("/auth/callback", async (c) => {
     const user = userData.data[0];
 
     if (!user) {
-      return c.redirect(`${c.env.FRONTEND_URL}?error=no_user`);
+      return c.json({ error: "no_user" }, 502);
     }
 
     const now = Math.floor(Date.now() / 1000);
@@ -135,7 +118,6 @@ app.get("/auth/callback", async (c) => {
       profile_image_url: user.profile_image_url,
     };
 
-    // Issue access token (1 hour) and refresh token (90 days)
     const accessToken = await sign(
       { ...payload, exp: now + 60 * 60 },
       c.env.JWT_SECRET,
@@ -147,15 +129,10 @@ app.get("/auth/callback", async (c) => {
       "HS256"
     );
 
-    // Redirect back to frontend with tokens
-    const params = new URLSearchParams({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
-    return c.redirect(`${c.env.FRONTEND_URL}?${params}`);
+    return c.json({ access_token: accessToken, refresh_token: refreshToken });
   } catch (error) {
     console.error("Auth error:", error);
-    return c.redirect(`${c.env.FRONTEND_URL}?error=auth_failed`);
+    return c.json({ error: "auth_failed" }, 500);
   }
 });
 
