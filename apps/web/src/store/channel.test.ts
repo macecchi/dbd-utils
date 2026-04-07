@@ -35,8 +35,6 @@ function createTestRequest(overrides: Partial<Request> = {}): Request {
 describe('channel stores', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Clear localStorage between tests
-    localStorage.clear();
   });
 
   describe('createRoomStores', () => {
