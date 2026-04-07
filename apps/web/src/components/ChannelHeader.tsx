@@ -123,7 +123,14 @@ export function ChannelHeader() {
             {isConnecting ? t('status.connecting') : isConnected ? t('header.closeQueue') : t('header.openQueue')}
           </button>
           {isAuthenticated && (
-            <a className="channel-header-logout" href="#" onClick={(e) => { e.preventDefault(); logout(); }}>
+            <a className="channel-header-logout" href="#" onClick={(e) => {
+              e.preventDefault();
+              if (isConnected) {
+                disconnect();
+                releaseOwnership();
+              }
+              logout();
+            }}>
               {t('header.disconnectTwitch')}
             </a>
           )}

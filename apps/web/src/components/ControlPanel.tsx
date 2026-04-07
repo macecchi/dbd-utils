@@ -75,7 +75,13 @@ export function ControlPanel() {
             {isIrcConnecting ? t('control.connecting') : isIrcConnected ? t('control.disconnect') : t('control.connect')}
           </button>
           <div className="channel auth-info">
-            <button className="btn btn-ghost" onClick={logout}>{t('control.logout')}</button>
+            <button className="btn btn-ghost" onClick={() => {
+              if (isIrcConnected) {
+                disconnect();
+                releaseOwnership();
+              }
+              logout();
+            }}>{t('control.logout')}</button>
           </div>
         </>
       );
