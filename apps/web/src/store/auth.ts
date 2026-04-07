@@ -77,33 +77,6 @@ export const useAuth = create<AuthState>()(
 
       handleCallback: async () => {
         const params = new URLSearchParams(window.location.search);
-
-        // Dev-login: tokens passed directly in URL
-        const directAccessToken = params.get('access_token');
-        const directRefreshToken = params.get('refresh_token');
-        if (directAccessToken && directRefreshToken) {
-          window.history.replaceState(null, '', window.location.pathname);
-          try {
-            const payload = decodeJwtPayload(directAccessToken);
-            set({
-              accessToken: directAccessToken,
-              refreshToken: directRefreshToken,
-              user: {
-                id: payload.sub,
-                login: payload.login,
-                display_name: payload.display_name,
-                profile_image_url: payload.profile_image_url,
-              },
-              isAuthenticated: true,
-            });
-            return true;
-          } catch (e) {
-            console.error('Failed to decode dev token:', e);
-            return false;
-          }
-        }
-
-        // OAuth callback: exchange code for tokens
         const code = params.get('code');
         const state = params.get('state');
         const error = params.get('error');

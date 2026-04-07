@@ -43,10 +43,6 @@ const getChannelFromPath = () => {
   return getPathSegments()[0] || null;
 };
 
-const hasAuthParams = () => {
-  const params = new URLSearchParams(window.location.search);
-  return params.has('access_token') || params.has('code');
-};
 const isDebugMode = () => window.location.hash === '#debug' || window.location.hash === '#debug=true';
 
 function makeSourcesConfig(sourcesState: ReturnType<SourcesStoreApi['getState']>, checkpoint?: { vodId: string; offset: number }) {
@@ -476,7 +472,7 @@ export function App() {
     }
 
     // If handling auth callback, don't set channel yet — useEffect will handle it
-    if (isAuthCallback() || hasAuthParams()) return null;
+    if (isAuthCallback()) return null;
 
     // Set channel from path — if none, show landing page
     const pathChannel = getChannelFromPath();
@@ -488,10 +484,10 @@ export function App() {
     return null;
   });
 
-  // Handle OAuth callback (async token exchange) or dev-login tokens
-  const [authPending, setAuthPending] = useState(() => isAuthCallback() || hasAuthParams());
+  // Handle OAuth callback (async token exchange)
+  const [authPending, setAuthPending] = useState(isAuthCallback);
   useEffect(() => {
-    if (!isAuthCallback() && !hasAuthParams()) return;
+    if (!isAuthCallback()) return;
     useAuth.getState().handleCallback().then((success) => {
       setAuthPending(false);
       if (success) {

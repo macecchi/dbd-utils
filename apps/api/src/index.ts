@@ -49,31 +49,17 @@ app.use(
 
 // ============ AUTH ROUTES ============
 
-// Dev-only login bypass (no Twitch OAuth needed)
-app.get("/auth/dev-login", async (c) => {
-  if (c.env.FRONTEND_URL !== "http://localhost:5173") {
-    return c.json({ error: "dev_only" }, 403);
-  }
-  const login = c.req.query("login") || "devuser";
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    sub: "dev-" + login,
-    login,
-    display_name: login,
-    profile_image_url: "",
-  };
-  const accessToken = await sign({ ...payload, exp: now + 60 * 60 * 24 }, c.env.JWT_SECRET, "HS256");
-  const refreshToken = await sign({ ...payload, exp: now + 60 * 60 * 24 * 90 }, c.env.JWT_SECRET, "HS256");
-  const params = new URLSearchParams({ access_token: accessToken, refresh_token: refreshToken });
-  return c.redirect(`${c.env.FRONTEND_URL}/mandymess?${params}`);
-});
-
 // Exchange Twitch OAuth code for JWT tokens
 app.post("/auth/token", async (c) => {
   const body = await c.req.json<{ code: string; redirect_uri: string }>();
 
   if (!body.code || !body.redirect_uri) {
     return c.json({ error: "missing_code_or_redirect_uri" }, 400);
+  }
+
+  const allowed = `${c.env.FRONTEND_URL}/auth/callback`;
+  if (body.redirect_uri !== allowed) {
+    return c.json({ error: "invalid_redirect_uri" }, 400);
   }
 
   const twitch = new Twitch(
