@@ -201,7 +201,7 @@
 
 .matched-term {
   background: none;
-  color: var(--text);
+  color: inherit;
   font-weight: 600;
   font-style: italic;
 }
