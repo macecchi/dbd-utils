@@ -199,6 +199,13 @@
   margin-right: 0.4em;
 }
 
+.matched-term {
+  background: none;
+  color: var(--text);
+  font-weight: 600;
+  font-style: italic;
+}
+
 .amount {
   font-family: 'JetBrains Mono', monospace;
   font-size: var(--text-sm);

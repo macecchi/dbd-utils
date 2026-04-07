@@ -24,6 +24,7 @@ export interface Request {
   subTier?: number;
   needsIdentification?: boolean;
   validating?: boolean;
+  matchedTerm?: string;
 }
 
 export type CharacterRequest = Request;

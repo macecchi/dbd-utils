@@ -38,6 +38,7 @@ export interface SerializedRequest {
   subTier?: number;
   needsIdentification?: boolean;
   validating?: boolean;
+  matchedTerm?: string;
 }
 
 export type PartyMessage =

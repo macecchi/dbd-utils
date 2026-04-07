@@ -1,11 +1,26 @@
-import { memo } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import type { Request } from '../types';
 import { useContextMenu } from '../context/ContextMenuContext';
-import { getKillerPortrait } from '../data/characters';
+import { getKillerPortrait, tryLocalMatch } from '../data/characters';
 import { CharacterAvatar } from './CharacterAvatar';
 import { useTranslation } from '../i18n';
 import { getLocale } from '../i18n';
 import { formatRelativeTime } from '../utils/helpers';
+
+function highlightTerm(message: string, term: string): ReactNode[] {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'i');
+  const parts = message.split(regex);
+  return parts.map((part, i) =>
+    regex.test(part) ? <mark key={i} className="matched-term">{part}</mark> : part
+  );
+}
+
+function getMatchedTerm(r: Request): string | undefined {
+  if (r.matchedTerm) return r.matchedTerm;
+  if (!r.message || !r.character || r.type === 'unknown' || r.type === 'none') return undefined;
+  return tryLocalMatch(r.message)?.matchedTerm;
+}
 
 interface Props {
   request: Request;
@@ -36,6 +51,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
     (!r.character || r.type === 'unknown') ? t('card.unidentified') :
       r.character;
   const isCollapsed = r.done;
+  const matchedTerm = useMemo(() => getMatchedTerm(r), [r.matchedTerm, r.message, r.character, r.type]);
 
   const handleClick = () => {
     if (readOnly) return;
@@ -131,7 +147,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
           </div>
           <div className="request-card-body">
             <span className="donor-name">{r.donor}</span>
-            {r.message}
+            {matchedTerm ? highlightTerm(r.message, matchedTerm) : r.message}
           </div>
         </div>
         <div className="request-card-meta">

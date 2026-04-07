@@ -114,11 +114,11 @@ const GENERIC_SURVIVOR_PATTERNS = [
     /\bsobrevivente\b/i,
 ];
 
-export type LocalMatchResult = { character: string; type: 'killer' | 'survivor'; ambiguous?: boolean };
+export type LocalMatchResult = { character: string; type: 'killer' | 'survivor'; ambiguous?: boolean; matchedTerm?: string };
 
 export function tryLocalMatch(message: string): LocalMatchResult | null {
     const lower = message.toLowerCase();
-    const matches: { character: string; type: 'killer' | 'survivor'; position: number }[] = [];
+    const matches: { character: string; type: 'killer' | 'survivor'; position: number; matchedTerm: string }[] = [];
 
     for (const type of ['killers', 'survivors'] as const) {
         for (const char of CHARACTERS[type]) {
@@ -129,7 +129,8 @@ export function tryLocalMatch(message: string): LocalMatchResult | null {
                     matches.push({
                         character: char.name,
                         type: type === 'killers' ? 'killer' : 'survivor',
-                        position: match.index
+                        position: match.index,
+                        matchedTerm: message.substring(match.index, match.index + match[0].length)
                     });
                 }
             }
@@ -138,8 +139,9 @@ export function tryLocalMatch(message: string): LocalMatchResult | null {
 
     if (matches.length === 0) {
         for (const pattern of GENERIC_SURVIVOR_PATTERNS) {
-            if (pattern.test(lower)) {
-                return { character: 'Survivor', type: 'survivor' };
+            const m = pattern.exec(lower);
+            if (m) {
+                return { character: 'Survivor', type: 'survivor', matchedTerm: message.substring(m.index, m.index + m[0].length) };
             }
         }
         return null;
@@ -151,6 +153,7 @@ export function tryLocalMatch(message: string): LocalMatchResult | null {
     return {
         character: lastMatch.character,
         type: lastMatch.type,
-        ambiguous: uniqueChars.size > 1
+        ambiguous: uniqueChars.size > 1,
+        matchedTerm: lastMatch.matchedTerm
     };
 }

@@ -10,6 +10,7 @@ let currentModelIndex = 0;
 export type ExtractionResult = {
   character: string;
   type: 'survivor' | 'killer' | 'none';
+  matchedTerm?: string;
 };
 
 export async function extractCharacter(
@@ -48,7 +49,8 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
 - If user requests a generic survivor (e.g. "joga de surv", "uma de survivor"), return character "Survivor" with type "survivor".
 - Recognize creative spellings, slang, and affectionate variations of character names (e.g. "Drakuluxuuu" = Dracula, "demogogo" = Demogorgon, "pigzinha" = Pig).
 - If exact character unknown, return empty character.
-- If no character mentioned or requested, return type "none".`;
+- If no character mentioned or requested, return type "none".
+- In "matchedTerm", return the EXACT substring from the user message that refers to the character, preserving the original casing and spelling (e.g. if the message says "Drácula", return "Drácula"; if "death slinger", return "death slinger").`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -68,6 +70,7 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
             properties: {
               character: { type: 'string' },
               type: { type: 'string', enum: ['survivor', 'killer', 'none'] },
+              matchedTerm: { type: 'string' },
             },
             required: ['character', 'type'],
           },
