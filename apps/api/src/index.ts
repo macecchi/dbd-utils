@@ -458,7 +458,7 @@ internal.put("/rooms/:roomId/status", async (c) => {
 internal.get("/rooms/:roomId/requests", async (c) => {
   const roomId = c.req.param("roomId");
   const { results } = await c.env.DB.prepare(
-    "SELECT * FROM requests WHERE room_id = ? AND done = 0 ORDER BY position ASC"
+    "SELECT * FROM requests WHERE room_id = ? AND done = 0 AND deleted_at IS NULL ORDER BY position ASC"
   ).bind(roomId).all();
 
   const requests = (results ?? []).map((r: Record<string, unknown>) => ({
@@ -503,14 +503,14 @@ app.get("/rooms/active", async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT r.id, r.channel_login, r.avatar_url, r.banner_url, r.status,
             COUNT(req.id) AS request_count,
-            SUM(CASE WHEN req.done = 0 THEN 1 ELSE 0 END) AS pending_count,
+            SUM(CASE WHEN req.done = 0 AND COALESCE(req.type, '') != 'none' THEN 1 ELSE 0 END) AS pending_count,
             r.updated_at
      FROM rooms r
      LEFT JOIN requests req ON req.room_id = r.id AND req.deleted_at IS NULL
      WHERE r.updated_at > datetime('now', '-24 hours')
      GROUP BY r.id
      ORDER BY CASE WHEN r.status != 'offline' THEN 0 ELSE 1 END,
-              SUM(CASE WHEN req.done = 0 THEN 1 ELSE 0 END) DESC,
+              SUM(CASE WHEN req.done = 0 AND COALESCE(req.type, '') != 'none' THEN 1 ELSE 0 END) DESC,
               r.updated_at DESC
      LIMIT 20`
   ).all<RoomRow>();

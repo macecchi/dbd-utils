@@ -389,12 +389,21 @@ export default class PartyServer implements Party.Server {
       } else {
         const pending = this.requests.filter(r => !r.done);
         const entries: Record<string, SerializedRequest> = {};
+        const doneKeys: string[] = [];
         for (const id of this.dirtyRequestIds) {
-          const req = pending.find(r => r.id === id);
-          if (req) entries[`req:${req.id}`] = req;
+          const req = this.requests.find(r => r.id === id);
+          if (!req) continue;
+          if (req.done) {
+            doneKeys.push(`req:${id}`);
+          } else {
+            entries[`req:${id}`] = req;
+          }
         }
         if (Object.keys(entries).length > 0) {
           await this.room.storage.put(entries);
+        }
+        if (doneKeys.length > 0) {
+          await this.room.storage.delete(doneKeys);
         }
         await this.room.storage.put('order', pending.map(r => r.id));
       }

@@ -24,7 +24,8 @@ export function CharacterRequestList() {
   const prevRequestIds = useRef<Set<number>>(new Set());
   useEffect(() => {
     const currentDone = new Set(requests.filter(r => r.done).map(r => r.id));
-    const newlyDone = [...currentDone].filter(id => !prevDoneIds.current.has(id));
+    // Only animate items that transitioned to done, not items that arrived as done from sync
+    const newlyDone = [...currentDone].filter(id => !prevDoneIds.current.has(id) && prevRequestIds.current.has(id));
     prevDoneIds.current = currentDone;
     if (newlyDone.length === 0) return;
     setExitingIds(prev => new Set([...prev, ...newlyDone]));
@@ -40,7 +41,8 @@ export function CharacterRequestList() {
 
   useEffect(() => {
     const currentNone = new Set(requests.filter(r => r.type === 'none').map(r => r.id));
-    const newlyNone = [...currentNone].filter(id => !prevNoneIds.current.has(id));
+    // Only animate items that transitioned to 'none', not items that arrived as 'none' from sync
+    const newlyNone = [...currentNone].filter(id => !prevNoneIds.current.has(id) && prevRequestIds.current.has(id));
     prevNoneIds.current = currentNone;
     if (newlyNone.length === 0) return;
     setSkippingIds(prev => new Set([...prev, ...newlyNone]));
