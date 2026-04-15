@@ -14,6 +14,7 @@ import { Stats } from './components/Stats';
 import { Toaster } from 'sonner';
 import { useWhatsNew } from './hooks/useWhatsNew';
 import { identifyCharacter } from './services';
+import { tryLocalMatch } from './data/characters';
 import { recoverMissedRequests, scanVODForRequests, type VODInfo } from './services/vod';
 import { DONATE_BOT_NAMES } from './services/twitch';
 import { toast } from 'sonner';
@@ -65,6 +66,27 @@ function useAutoIdentify(requests: Request[], update: (id: number, updates: Part
       identifyCharacter(req, undefined, (llmResult) => update(req.id, llmResult))
         .then(result => update(req.id, { ...result, needsIdentification: false }))
         .finally(() => inFlight.current.delete(req.id));
+    }
+  }, [requests, update, readOnly]);
+}
+
+// One-shot migration: re-runs the local matcher on existing non-manual requests
+// stuck on "Lich" (the previous regex incorrectly preferred the "Vecna" alias
+// of Lich over the longer "Vecna Novo"/"Vecna Stranger Things" aliases of
+// The First). Narrow on purpose to avoid clobbering manual edits.
+function useFixVecnaRegression(requests: Request[], update: (id: number, updates: Partial<Request>) => void, readOnly: boolean) {
+  const fixed = useRef(new Set<number>());
+  useEffect(() => {
+    if (readOnly) return;
+    for (const req of requests) {
+      if (fixed.current.has(req.id)) continue;
+      if (req.source === 'manual') continue;
+      if (req.character !== 'Lich') continue;
+      const rematch = tryLocalMatch(req.message);
+      if (rematch && rematch.character === 'The First') {
+        fixed.current.add(req.id);
+        update(req.id, { character: rematch.character, type: rematch.type, matchedTerm: rematch.matchedTerm });
+      }
     }
   }, [requests, update, readOnly]);
 }
@@ -290,6 +312,7 @@ function ChannelApp() {
   const hideNonRequests = useSources((s) => s.hideNonRequests);
 
   useAutoIdentify(requests, update, readOnly);
+  useFixVecnaRegression(requests, update, readOnly);
   useRequestToasts(requests, update, hideNonRequests);
   useWhatsNew(canControlConnection);
 
