@@ -147,8 +147,20 @@ export function tryLocalMatch(message: string): LocalMatchResult | null {
         return null;
     }
 
-    const uniqueChars = new Set(matches.map(m => m.character));
-    const lastMatch = matches.reduce((a, b) => b.position > a.position ? b : a);
+    // Drop matches fully covered by a longer overlapping match, so multi-word
+    // aliases like "Vecna Novo" win over the substring "Vecna".
+    const filtered = matches.filter(m => {
+        const end = m.position + m.matchedTerm.length;
+        return !matches.some(other =>
+            other !== m &&
+            other.matchedTerm.length > m.matchedTerm.length &&
+            other.position <= m.position &&
+            other.position + other.matchedTerm.length >= end
+        );
+    });
+
+    const uniqueChars = new Set(filtered.map(m => m.character));
+    const lastMatch = filtered.reduce((a, b) => b.position > a.position ? b : a);
 
     return {
         character: lastMatch.character,
