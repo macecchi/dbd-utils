@@ -91,14 +91,14 @@ function useFixVecnaRegression(requests: Request[], update: (id: number, updates
   }, [requests, update, readOnly]);
 }
 
-function useRequestToasts(requests: Request[], update: (id: number, updates: Partial<Request>) => void, hideNonRequests: boolean) {
+function useRequestToasts(requests: Request[], update: (id: number, updates: Partial<Request>) => void, hideNonRequests: boolean, readOnly: boolean) {
   const shownToasts = useRef(new Set<number>());
   const isFirstLoad = useRef(true);
   useEffect(() => {
     const ready = requests.filter(r => !shownToasts.current.has(r.id) && !r.needsIdentification);
     for (const req of ready) {
       shownToasts.current.add(req.id);
-      if (isFirstLoad.current) continue;
+      if (isFirstLoad.current || readOnly) continue;
       if (hideNonRequests && req.type === 'none') {
         const msg = req.message.length > 50 ? req.message.slice(0, 50) + '…' : req.message;
         toast(t('toast.ignored', { donor: req.donor, message: msg }), {
@@ -115,7 +115,7 @@ function useRequestToasts(requests: Request[], update: (id: number, updates: Par
       toast(title, { description: message });
     }
     if (ready.length > 0) isFirstLoad.current = false;
-  }, [requests, update, hideNonRequests]);
+  }, [requests, update, hideNonRequests, readOnly]);
 }
 
 function ChannelApp() {
@@ -313,7 +313,7 @@ function ChannelApp() {
 
   useAutoIdentify(requests, update, readOnly);
   useFixVecnaRegression(requests, update, readOnly);
-  useRequestToasts(requests, update, hideNonRequests);
+  useRequestToasts(requests, update, hideNonRequests, readOnly);
   useWhatsNew(canControlConnection);
 
   const pendingCount = requests.filter(d => !d.done && (!hideNonRequests || d.type !== 'none')).length;

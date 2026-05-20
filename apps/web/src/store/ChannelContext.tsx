@@ -251,7 +251,7 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
             });
             return;
           }
-          if (msg.type === 'update-sources') {
+          if (msg.type === 'update-sources' && isOwnChannel) {
             const s = msg.sources;
             const parts: string[] = [];
             if (s.enabled.donation) parts.push(t('toast.sourcesDonations', { amount: String(s.minDonation) }));
