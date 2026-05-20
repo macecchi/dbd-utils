@@ -4,7 +4,7 @@ import { sign } from "hono/jwt";
 import { Twitch } from "arctic";
 import { verifyJwt, type JwtPayload } from "./jwt";
 import { extractCharacter } from "./gemini";
-import { getAppToken, fetchProfiles, fetchStreams, cacheProfiles } from "./twitch";
+import { getAppToken, fetchProfiles, fetchStreams, cacheProfiles, sendChatMessage, checkBotIsMod } from "./twitch";
 
 const BATCH_CHUNK_SIZE = 80;
 
@@ -240,6 +240,20 @@ api.post("/extract-character", async (c) => {
   }
 });
 
+// GET /api/chat/mod-status — verifies @filadbd is a moderator in the room owner's channel.
+// Used by the SourcesPanel to surface a ✓ verified / ⚠️ not modded indicator when the
+// "confirm in chat" toggle is on. Implicit channel = JWT login (the room owner).
+api.get("/chat/mod-status", async (c) => {
+  const user = c.get("jwtPayload");
+  const broadcasterLogin = user.login.toLowerCase();
+
+  const result = await checkBotIsMod(c.env, broadcasterLogin);
+  if (!result.ok) {
+    console.warn(`[mod-status] ${broadcasterLogin} → ${result.reason}${result.detail ? ` (${result.detail})` : ''}`);
+  }
+  return c.json(result);
+});
+
 // GET /api/rooms/:roomId/requests — authenticated, owner-only, returns all requests from D1
 api.get("/rooms/:roomId/requests", async (c) => {
   const roomId = c.req.param("roomId").toLowerCase();
@@ -452,6 +466,29 @@ internal.put("/rooms/:roomId/status", async (c) => {
   ).bind(roomId, roomId, body.status).run();
 
   return c.json({ ok: true });
+});
+
+// POST /internal/chat/send — send a chat message from the @filadbd bot account.
+// Sender identity comes from the bot user token stored in KV (see scripts/authorize-bot.ts).
+internal.post("/chat/send", async (c) => {
+  const body = await c.req.json<{ broadcaster_login?: string; message?: string }>();
+  const broadcasterLogin = body.broadcaster_login?.trim().toLowerCase();
+  const message = body.message?.trim();
+
+  if (!broadcasterLogin || !message) {
+    return c.json({ ok: false, reason: 'bad_request' }, 400);
+  }
+
+  // Twitch hard-caps chat messages at 500 chars.
+  if (message.length > 500) {
+    return c.json({ ok: false, reason: 'message_too_long' }, 400);
+  }
+
+  const result = await sendChatMessage(c.env, broadcasterLogin, message);
+  if (!result.ok) {
+    console.warn(`[chat-send] ${broadcasterLogin} failed: ${result.reason}${result.detail ? ` (${result.detail})` : ''}`);
+  }
+  return c.json(result, result.ok ? 200 : 502);
 });
 
 // GET /internal/rooms/:roomId/requests — return pending requests for D1 recovery

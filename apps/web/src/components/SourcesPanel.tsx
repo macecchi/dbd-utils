@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useChannel, useSettings, SOURCES_DEFAULTS } from '../store';
 import type { SourceType as AllSourceTypes } from '../store/channel';
 import { DONATE_BOT_NAMES } from '../services/twitch';
+import { fetchBotModStatus } from '../services/api';
+import { BotModStatusDialog, type BotModDialogMode } from './BotModStatusDialog';
 import { useTranslation } from '../i18n';
 
 type SourceType = Exclude<AllSourceTypes, 'manual'>;
@@ -42,13 +44,85 @@ export function SourcesPanel({ onRecover, onReview }: SourcesPanelProps) {
   const { t } = useTranslation();
   const { useSources, canControlConnection } = useChannel();
   const {
-    enabled, chatCommand, chatTiers, priority, sortMode, minDonation, hideNonRequests,
-    setEnabled, setChatCommand, setChatTiers, setPriority, setMinDonation, setHideNonRequests
+    enabled, chatCommand, chatTiers, priority, sortMode, minDonation, hideNonRequests, confirmInChat,
+    setEnabled, setChatCommand, setChatTiers, setPriority, setMinDonation, setHideNonRequests, setConfirmInChat
   } = useSources();
   const readOnly = !canControlConnection;
 
   const [isOpen, setIsOpen] = useState(true);
   const [draggedItem, setDraggedItem] = useState<SourceType | null>(null);
+
+  // Mod-status dialog — only opens when the bot isn't a mod yet:
+  //   • 'enabling'  → user is trying to turn the toggle on; we block until verified.
+  //   • 'lost-mod'  → toggle was already on but a session-start check found the bot
+  //                    is no longer a mod (someone /unmod-ed it).
+  const [dialogMode, setDialogMode] = useState<BotModDialogMode | null>(null);
+  // Prevents double-running the session-start lost-mod check across remounts.
+  const lostModCheckRanRef = useRef(false);
+  // Tracks an in-flight "click toggle" check so we can disable the toggle visually.
+  const [togglePending, setTogglePending] = useState(false);
+
+  // Session-start verification: if the feature is already on, confirm the bot is
+  // still modded. If not, surface the lost-mod dialog so the streamer can either
+  // re-add the bot or turn the feature off cleanly.
+  useEffect(() => {
+    if (!confirmInChat || readOnly) return;
+    if (lostModCheckRanRef.current) return;
+    lostModCheckRanRef.current = true;
+
+    void (async () => {
+      try {
+        const status = await fetchBotModStatus();
+        if (status.ok && !status.is_mod) {
+          setDialogMode('lost-mod');
+        }
+        // Other failure modes (no_bot_token, twitch_error) deliberately stay silent
+        // here — the chat send path already surfaces a server-error toast on the
+        // first failed message, and we don't want to nag on transient API hiccups.
+      } catch {
+        // Transient — same as above, stay quiet.
+      }
+    })();
+  }, [confirmInChat, readOnly]);
+
+  const handleConfirmInChatClick = async () => {
+    if (readOnly || togglePending) return;
+
+    // Turning OFF is always allowed without a check.
+    if (confirmInChat) {
+      setConfirmInChat(false);
+      return;
+    }
+
+    // Turning ON — verify mod status first; only enable when confirmed.
+    setTogglePending(true);
+    try {
+      const status = await fetchBotModStatus();
+      if (status.ok && status.is_mod) {
+        setConfirmInChat(true);
+      } else {
+        setDialogMode('enabling');
+      }
+    } catch {
+      setDialogMode('enabling');
+    } finally {
+      setTogglePending(false);
+    }
+  };
+
+  const handleDialogVerified = () => {
+    setDialogMode(null);
+    setConfirmInChat(true);
+  };
+
+  const handleDialogCancel = () => {
+    setDialogMode(null);
+  };
+
+  const handleDialogTurnOff = () => {
+    setDialogMode(null);
+    setConfirmInChat(false);
+  };
 
   const handleDragStart = (source: SourceType) => {
     if (readOnly) return;
@@ -227,6 +301,22 @@ export function SourcesPanel({ onRecover, onReview }: SourcesPanelProps) {
               <span className="toggle-slider" />
             </label>
           </div>
+
+          <div className="priority-section">
+            <div className="priority-header">{t('chatConfirm.toggle')}</div>
+            <p className="priority-desc">
+              {t('chatConfirm.toggleDesc')}
+            </p>
+            <label className="source-toggle">
+              <input
+                type="checkbox"
+                checked={confirmInChat}
+                onChange={() => void handleConfirmInChatClick()}
+                disabled={readOnly || togglePending}
+              />
+              <span className="toggle-slider" />
+            </label>
+          </div>
         </div>
 
         {!readOnly && (onRecover || onReview) && (
@@ -253,6 +343,14 @@ export function SourcesPanel({ onRecover, onReview }: SourcesPanelProps) {
         )}
         </div>
       </div>
+
+      <BotModStatusDialog
+        isOpen={dialogMode !== null}
+        mode={dialogMode ?? 'enabling'}
+        onVerified={handleDialogVerified}
+        onCancel={handleDialogCancel}
+        onTurnOff={handleDialogTurnOff}
+      />
     </section>
   );
 }

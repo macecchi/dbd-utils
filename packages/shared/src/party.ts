@@ -12,6 +12,7 @@ export interface SourcesSettings {
   sortMode: 'priority' | 'fifo';
   minDonation: number;
   hideNonRequests?: boolean;
+  confirmInChat?: boolean;
   recoveryVodId?: string;
   recoveryVodOffset?: number;
 }

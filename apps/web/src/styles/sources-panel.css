@@ -193,11 +193,12 @@
 /* Priority Section */
 .settings-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-xl);
   margin-top: var(--space-lg);
   padding-top: var(--space-lg);
   border-top: 1px solid var(--border);
+  align-items: start;
 }
 
 .priority-section {

@@ -11,7 +11,10 @@ const SOURCES_DEFAULTS: SourcesSettings = {
   sortMode: 'fifo',
   minDonation: 5,
   hideNonRequests: true,
+  confirmInChat: false,
 };
+
+const CHAT_NOT_MOD_NOTIFY_INTERVAL_MS = 5 * 60 * 1000;
 
 interface ConnectionInfo {
   user: JwtPayload | null;
@@ -28,6 +31,7 @@ export default class PartyServer implements Party.Server {
   private needsFullSync = false;
   private lastSyncedStatus: string | null = null;
   private d1SyncFailCount = 0;
+  private notModNotifiedAt = 0;
   private static readonly D1_SYNC_FAIL_NOTIFY = 3;
 
   constructor(public room: Party.Room) { }
@@ -299,16 +303,22 @@ export default class PartyServer implements Party.Server {
         await this.persist();
         this.broadcast(message);
         console.log(`${this.tag} ${user}: add-request #${msg.request.id} "${msg.request.character}" (${msg.request.source})`);
+        void this.sendChatConfirmation(msg.request);
         break;
       }
       case 'update-request': {
         const idx = this.requests.findIndex(r => r.id === msg.id);
         if (idx !== -1) {
-          this.requests[idx] = { ...this.requests[idx], ...msg.updates };
+          const before = this.requests[idx];
+          const after = { ...before, ...msg.updates };
+          this.requests[idx] = after;
           this.dirtyRequestIds.add(msg.id);
           await this.persist();
           this.broadcast(message);
           console.log(`${this.tag} ${user}: update-request #${msg.id}`, Object.keys(msg.updates));
+          if (before.needsIdentification && !after.needsIdentification) {
+            void this.sendChatConfirmation(after);
+          }
         }
         break;
       }
@@ -546,6 +556,84 @@ export default class PartyServer implements Party.Server {
   private sendError(code: string, message: string) {
     this.sendToOwner({ type: 'server-error', code, message });
     console.error(`${this.tag} Error sent to owner: [${code}] ${message}`);
+  }
+
+  // 1-based position the request will appear at in the queue users see.
+  // Mirrors the frontend's add-request ordering in store/channel.ts so the chat
+  // message matches what the streamer/viewer actually sees.
+  private queuePositionFor(req: SerializedRequest): number {
+    const pending = this.requests.filter(r => !r.done);
+
+    if (this.sources.sortMode === 'fifo') {
+      const idx = pending.findIndex(r => r.id === req.id);
+      return idx === -1 ? pending.length : idx + 1;
+    }
+
+    const priority = this.sources.priority;
+    const reqPri = priority.indexOf(req.source);
+    let before = 0;
+    for (const r of pending) {
+      if (r.id === req.id) continue;
+      const rPri = priority.indexOf(r.source);
+      if (rPri < reqPri) before++;
+      else if (rPri === reqPri && r.timestamp <= req.timestamp) before++;
+    }
+    return before + 1;
+  }
+
+  // Posts a confirmation in chat via the @filadbd bot account. For viewer-originated
+  // requests it @-mentions the donor; for manual (streamer-added) it drops the mention
+  // since the donor field is just a placeholder. Skips pending-identification requests
+  // — the update-request hook re-fires once the LLM resolves the character.
+  private async sendChatConfirmation(req: SerializedRequest) {
+    if (!this.sources.confirmInChat) return;
+    if (req.needsIdentification) return;
+    if (!req.character || req.type === 'none') return;
+
+    const apiUrl = this.room.env.API_URL as string | undefined;
+    const secret = this.room.env.INTERNAL_API_SECRET as string | undefined;
+    if (!apiUrl || !secret) return;
+
+    const position = this.queuePositionFor(req);
+    const message = req.source === 'manual'
+      ? `Pedido de ${req.character} entrou na fila na posição ${position}! 🎯`
+      : `@${req.donor} seu pedido de ${req.character} entrou na fila na posição ${position}! 🎯`;
+
+    try {
+      const res = await fetch(`${apiUrl}/internal/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer internal:${secret}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ broadcaster_login: this.room.id, message }),
+      });
+
+      if (res.ok) {
+        console.log(`${this.tag} chat-confirm sent for #${req.id}`);
+        return;
+      }
+
+      const body = await res.json<{ reason?: string; detail?: string }>().catch(() => ({} as { reason?: string; detail?: string }));
+      console.warn(`${this.tag} chat-confirm failed: ${body.reason ?? res.status}${body.detail ? ` (${body.detail})` : ''}`);
+
+      // not_mod = Helix outright rejected (bot isn't a mod). message_rejected with
+      // followers_only_mode / subs_only_mode / etc. = bot got past the API check
+      // but Twitch chat blocked it — almost always also a mod-status issue, since
+      // moderators bypass those modes. Surface the same hint for both.
+      if (body.reason === 'not_mod' || body.reason === 'message_rejected') {
+        const now = Date.now();
+        if (now - this.notModNotifiedAt > CHAT_NOT_MOD_NOTIFY_INTERVAL_MS) {
+          this.notModNotifiedAt = now;
+          this.sendError(
+            'chat_send_not_mod',
+            'Confirme que @filadbd está como mod no seu canal (/mod filadbd) para as mensagens de confirmação funcionarem.'
+          );
+        }
+      }
+    } catch (e) {
+      console.warn(`${this.tag} chat-confirm error`, e);
+    }
   }
 
   private broadcast(message: string, excludeId?: string) {

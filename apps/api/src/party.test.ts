@@ -1106,6 +1106,258 @@ describe('PartyServer', () => {
     });
   });
 
+  describe('chat confirmation', () => {
+    let ownerConn: MockConnection;
+
+    beforeEach(async () => {
+      vi.mocked(verifyJwt).mockResolvedValue({
+        sub: '123',
+        login: 'testchannel',
+        display_name: 'TestChannel',
+        profile_image_url: 'https://example.com/avatar.png',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      mockRoom.env = { JWT_SECRET: 'test-secret', API_URL: 'https://api.test', INTERNAL_API_SECRET: 'secret' } as any;
+
+      ownerConn = new MockConnection('owner');
+      mockRoom._connections.set('owner', ownerConn);
+      await server.onConnect(ownerConn as any, createMockContext('owner-token') as any);
+      await server.onMessage(JSON.stringify({ type: 'claim-ownership' }), ownerConn as any);
+      ownerConn.messages = [];
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    function chatSendCalls(spy: ReturnType<typeof vi.fn>): Array<{ url: string; body: Record<string, unknown> }> {
+      return spy.mock.calls
+        .map((args) => {
+          const [url, init] = args as [string, RequestInit | undefined];
+          if (!url.includes('/internal/chat/send')) return null;
+          const body = init?.body ? JSON.parse(init.body as string) : {};
+          return { url, body };
+        })
+        .filter((c): c is { url: string; body: Record<string, unknown> } => c !== null);
+    }
+
+    it('does not fire when confirmInChat is false (default)', async () => {
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      await server.onMessage(
+        JSON.stringify({ type: 'add-request', request: createTestRequest({ id: 1, source: 'donation', character: 'Huntress', type: 'killer' }) }),
+        ownerConn as any
+      );
+      // Let void promise resolve
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(chatSendCalls(fetchSpy)).toHaveLength(0);
+    });
+
+    it('fires on add-request when confirmInChat is true and request is identified', async () => {
+      server.sources.confirmInChat = true;
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      await server.onMessage(
+        JSON.stringify({
+          type: 'add-request',
+          request: createTestRequest({ id: 1, source: 'donation', donor: 'fan', character: 'Huntress', type: 'killer' }),
+        }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      const calls = chatSendCalls(fetchSpy);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].body.broadcaster_login).toBe('testchannel');
+      expect(calls[0].body.message).toContain('@fan');
+      expect(calls[0].body.message).toContain('Huntress');
+      // First request → position 1
+      expect(calls[0].body.message).toContain('posição 1');
+    });
+
+    it('reports correct queue position in FIFO mode for the 3rd request', async () => {
+      server.sources.confirmInChat = true;
+      server.sources.sortMode = 'fifo';
+      server.requests = [
+        createTestRequest({ id: 10, done: false }),
+        createTestRequest({ id: 20, done: false }),
+      ];
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      await server.onMessage(
+        JSON.stringify({
+          type: 'add-request',
+          request: createTestRequest({ id: 30, source: 'donation', donor: 'fan', character: 'Huntress', type: 'killer' }),
+        }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      const calls = chatSendCalls(fetchSpy);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].body.message).toContain('posição 3');
+    });
+
+    it('reports correct position in priority mode when source is higher priority', async () => {
+      server.sources.confirmInChat = true;
+      server.sources.sortMode = 'priority';
+      server.sources.priority = ['donation', 'chat', 'resub', 'manual'];
+      // Existing pending lower-priority requests
+      server.requests = [
+        createTestRequest({ id: 10, source: 'chat', done: false }),
+        createTestRequest({ id: 20, source: 'resub', done: false }),
+      ];
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      await server.onMessage(
+        JSON.stringify({
+          type: 'add-request',
+          request: createTestRequest({ id: 30, source: 'donation', donor: 'fan', character: 'Huntress', type: 'killer' }),
+        }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      const calls = chatSendCalls(fetchSpy);
+      // Donation > chat > resub, so the donation jumps to position 1
+      expect(calls[0].body.message).toContain('posição 1');
+    });
+
+    it('fires for manual source without an @donor mention', async () => {
+      server.sources.confirmInChat = true;
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      await server.onMessage(
+        JSON.stringify({
+          type: 'add-request',
+          request: createTestRequest({ id: 1, source: 'manual', donor: 'Teste', character: 'Huntress', type: 'killer' }),
+        }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      const calls = chatSendCalls(fetchSpy);
+      expect(calls).toHaveLength(1);
+      const message = calls[0].body.message as string;
+      expect(message).not.toContain('@');
+      expect(message).toContain('Huntress');
+    });
+
+    it('skips add-request when needsIdentification is true', async () => {
+      server.sources.confirmInChat = true;
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      await server.onMessage(
+        JSON.stringify({
+          type: 'add-request',
+          request: createTestRequest({ id: 1, source: 'donation', character: '', type: 'unknown', needsIdentification: true }),
+        }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(chatSendCalls(fetchSpy)).toHaveLength(0);
+    });
+
+    it('fires when update-request flips needsIdentification to false', async () => {
+      server.sources.confirmInChat = true;
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      server.requests = [createTestRequest({
+        id: 42, source: 'donation', donor: 'fan', character: '', type: 'unknown', needsIdentification: true,
+      })];
+
+      await server.onMessage(
+        JSON.stringify({
+          type: 'update-request',
+          id: 42,
+          updates: { character: 'Huntress', type: 'killer', needsIdentification: false },
+        }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      const calls = chatSendCalls(fetchSpy);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].body.message).toContain('Huntress');
+    });
+
+    it('does not re-fire on update-request when needsIdentification was already false', async () => {
+      server.sources.confirmInChat = true;
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      server.requests = [createTestRequest({
+        id: 42, source: 'donation', donor: 'fan', character: 'Huntress', type: 'killer', needsIdentification: false,
+      })];
+
+      await server.onMessage(
+        JSON.stringify({ type: 'update-request', id: 42, updates: { character: 'The Huntress' } }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      expect(chatSendCalls(fetchSpy)).toHaveLength(0);
+    });
+
+    it('sends chat_send_not_mod server-error to owner on 502 not_mod, rate-limited to 5 min', async () => {
+      server.sources.confirmInChat = true;
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        json: async () => ({ ok: false, reason: 'not_mod' }),
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      await server.onMessage(
+        JSON.stringify({ type: 'add-request', request: createTestRequest({ id: 1, source: 'donation', character: 'Huntress', type: 'killer' }) }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      let errors = ownerConn.getAllMessages().filter(m => m.type === 'server-error' && (m as any).code === 'chat_send_not_mod');
+      expect(errors).toHaveLength(1);
+
+      // Second triggers within the rate-limit window — no new toast
+      ownerConn.messages = [];
+      await server.onMessage(
+        JSON.stringify({ type: 'add-request', request: createTestRequest({ id: 2, source: 'donation', character: 'Trapper', type: 'killer' }) }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      errors = ownerConn.getAllMessages().filter(m => m.type === 'server-error' && (m as any).code === 'chat_send_not_mod');
+      expect(errors).toHaveLength(0);
+    });
+
+    it('also surfaces chat_send_not_mod for message_rejected (e.g. followers_only_mode)', async () => {
+      server.sources.confirmInChat = true;
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        json: async () => ({ ok: false, reason: 'message_rejected', detail: 'followers_only_mode' }),
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      await server.onMessage(
+        JSON.stringify({ type: 'add-request', request: createTestRequest({ id: 3, source: 'donation', character: 'Huntress', type: 'killer' }) }),
+        ownerConn as any
+      );
+      await new Promise(r => setTimeout(r, 0));
+
+      const errors = ownerConn.getAllMessages().filter(m => m.type === 'server-error' && (m as any).code === 'chat_send_not_mod');
+      expect(errors).toHaveLength(1);
+    });
+  });
+
   describe('broadcast', () => {
     it('broadcasts to all connections including sender', async () => {
       vi.mocked(verifyJwt).mockResolvedValue({

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { sign } from 'hono/jwt';
 import app from './index';
 
@@ -609,6 +609,183 @@ describe('Hono API', () => {
       expect(res.status).toBe(200);
       const body = await res.json() as { requests: Array<Record<string, unknown>> };
       expect(body.requests).toHaveLength(0);
+    });
+  });
+
+  describe('POST /internal/chat/send', () => {
+    const internalAuth = 'Bearer internal:test-internal-secret';
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('returns 401 without internal auth', async () => {
+      const res = await app.request('/internal/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ broadcaster_login: 'somechannel', message: 'hi' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when broadcaster_login is missing', async () => {
+      const res = await app.request('/internal/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ message: 'hi' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when message is missing', async () => {
+      const res = await app.request('/internal/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ broadcaster_login: 'somechannel' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when message exceeds 500 chars', async () => {
+      const res = await app.request('/internal/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ broadcaster_login: 'somechannel', message: 'x'.repeat(501) }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(400);
+      const body = await res.json() as { ok: boolean; reason: string };
+      expect(body.reason).toBe('message_too_long');
+    });
+
+    it('returns 502 with no_bot_token reason when bot is not authorized', async () => {
+      const res = await app.request('/internal/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ broadcaster_login: 'somechannel', message: 'hi' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(502);
+      const body = await res.json() as { ok: boolean; reason: string };
+      expect(body.ok).toBe(false);
+      expect(body.reason).toBe('no_bot_token');
+    });
+
+    it('returns 200 ok on happy path', async () => {
+      const bot = {
+        access_token: 'bot-token',
+        refresh_token: 'r',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user_id: 'bot-id',
+        login: 'filadbd',
+      };
+      await TEST_ENV.CACHE.put('bot_token', JSON.stringify(bot));
+
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes('id.twitch.tv/oauth2/token')) {
+          return { ok: true, json: async () => ({ access_token: 'app-token', expires_in: 3600 }) };
+        }
+        if (url.includes('/helix/users')) {
+          return { ok: true, json: async () => ({ data: [{ id: 'broadcaster-id' }] }) };
+        }
+        if (url.includes('/helix/chat/messages')) {
+          return { ok: true, status: 200, json: async () => ({ data: [{ message_id: 'msg-1', is_sent: true }] }) };
+        }
+        return { ok: false, status: 500 };
+      }));
+
+      const res = await app.request('/internal/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ broadcaster_login: 'somechannel', message: '@user pedido na fila!' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { ok: boolean; message_id: string };
+      expect(body.ok).toBe(true);
+      expect(body.message_id).toBe('msg-1');
+    });
+  });
+
+  describe('GET /api/chat/mod-status', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('returns 401 without JWT auth', async () => {
+      const res = await app.request('/api/chat/mod-status', {}, TEST_ENV);
+      expect(res.status).toBe(401);
+    });
+
+    it('returns no_bot_token when bot is not authorized', async () => {
+      const token = await createTestToken({ login: 'mandymess' });
+
+      const res = await app.request('/api/chat/mod-status', {
+        headers: { Authorization: `Bearer ${token}` },
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { ok: boolean; reason?: string };
+      expect(body.ok).toBe(false);
+      expect(body.reason).toBe('no_bot_token');
+    });
+
+    it('returns is_mod=true when bot is modded in caller channel', async () => {
+      const bot = {
+        access_token: 'bot-token',
+        refresh_token: 'r',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user_id: 'bot-id',
+        login: 'filadbd',
+      };
+      await TEST_ENV.CACHE.put('bot_token', JSON.stringify(bot));
+
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [{ broadcaster_login: 'mandymess' }] }),
+      }));
+
+      const token = await createTestToken({ login: 'mandymess' });
+
+      const res = await app.request('/api/chat/mod-status', {
+        headers: { Authorization: `Bearer ${token}` },
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { ok: boolean; is_mod: boolean; bot_login: string };
+      expect(body.ok).toBe(true);
+      expect(body.is_mod).toBe(true);
+      expect(body.bot_login).toBe('filadbd');
+    });
+
+    it('returns is_mod=false when bot is not in caller\'s mod list', async () => {
+      const bot = {
+        access_token: 'bot-token',
+        refresh_token: 'r',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user_id: 'bot-id',
+        login: 'filadbd',
+      };
+      await TEST_ENV.CACHE.put('bot_token', JSON.stringify(bot));
+
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [{ broadcaster_login: 'someoneelse' }] }),
+      }));
+
+      const token = await createTestToken({ login: 'mandymess' });
+
+      const res = await app.request('/api/chat/mod-status', {
+        headers: { Authorization: `Bearer ${token}` },
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { ok: boolean; is_mod: boolean };
+      expect(body.ok).toBe(true);
+      expect(body.is_mod).toBe(false);
     });
   });
 });

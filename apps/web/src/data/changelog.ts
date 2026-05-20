@@ -25,4 +25,9 @@ export const changelog: ChangelogEntry[] = [
     titleKey: 'whatsNew.title',
     descriptionKey: 'whatsNew.multiDonateBots',
   },
+  {
+    id: 'whats-new-chat-confirmations',
+    titleKey: 'whatsNew.chatConfirmationsTitle',
+    descriptionKey: 'whatsNew.chatConfirmations',
+  },
 ];

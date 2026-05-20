@@ -175,6 +175,7 @@ interface SourcesStore {
   sortMode: SortMode;
   minDonation: number;
   hideNonRequests: boolean;
+  confirmInChat: boolean;
   recoveryVodId?: string;
   recoveryVodOffset?: number;
   setEnabled: (enabled: SourcesEnabled) => void;
@@ -185,6 +186,7 @@ interface SourcesStore {
   setSortMode: (mode: SortMode) => void;
   setMinDonation: (min: number) => void;
   setHideNonRequests: (hide: boolean) => void;
+  setConfirmInChat: (confirm: boolean) => void;
   setRecoveryCheckpoint: (vodId: string, offset: number) => void;
   handlePartyMessage: (msg: PartyMessage) => void;
 }
@@ -204,6 +206,7 @@ export const SOURCES_DEFAULTS = {
   sortMode: 'fifo' as SortMode,
   minDonation: 5,
   hideNonRequests: true,
+  confirmInChat: false,
 };
 
 
@@ -226,6 +229,7 @@ export function createSourcesStore(
         sortMode: SOURCES_DEFAULTS.sortMode,
         minDonation: SOURCES_DEFAULTS.minDonation,
         hideNonRequests: SOURCES_DEFAULTS.hideNonRequests,
+        confirmInChat: SOURCES_DEFAULTS.confirmInChat,
         setEnabled: (enabled) => {
           set({ enabled });
           maybeBroadcast(get);
@@ -258,6 +262,10 @@ export function createSourcesStore(
           set({ hideNonRequests });
           maybeBroadcast(get);
         },
+        setConfirmInChat: (confirmInChat) => {
+          set({ confirmInChat });
+          maybeBroadcast(get);
+        },
         setRecoveryCheckpoint: (recoveryVodId, recoveryVodOffset) => {
           set({ recoveryVodId, recoveryVodOffset });
           maybeBroadcast(get);
@@ -273,6 +281,7 @@ export function createSourcesStore(
               sortMode: sources.sortMode,
               minDonation: sources.minDonation,
               hideNonRequests: sources.hideNonRequests ?? true,
+              confirmInChat: sources.confirmInChat ?? false,
               recoveryVodId: sources.recoveryVodId,
               recoveryVodOffset: sources.recoveryVodOffset,
             });

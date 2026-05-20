@@ -79,24 +79,13 @@ export function DebugPanel() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    const requestId = Date.now();
     const message = input;
 
-    // Add to queue immediately if enabled
+    // Push the request through the real donate IRC pipeline so it gets source='donation',
+    // a random user as donor, and goes through the normal LLM identification + chat
+    // confirmation flow — same path the simulated donate buttons use.
     if (addToQueue) {
-      const request: Request = {
-        id: requestId,
-        timestamp: new Date(),
-        donor: 'Teste',
-        amount: 'R$ 0,00',
-        amountVal: 0,
-        message,
-        character: 'Identificando...',
-        type: 'unknown',
-        source: 'manual',
-        needsIdentification: true
-      };
-      addRequest(request);
+      window.dbdDebug.donate(randomDonor(), minDonation + 10, message);
       setInput('');
     }
 
@@ -109,6 +98,8 @@ export function DebugPanel() {
       return `<span style="color:var(--text-muted)">${prefix}</span> <span style="color:${color}">${res.type}</span> → <strong>${display}</strong>${llmSuffix}`;
     };
 
+    // Diagnostic-only call: shows local vs LLM extraction inline. The queued request (if any)
+    // gets identified independently by App.tsx via the needsIdentification flag.
     const res = await testExtraction(
       message,
       (msg) => showToast(msg, t('debug.errorLlm'), 'red'),
@@ -119,16 +110,8 @@ export function DebugPanel() {
           ? ` <span style="color:var(--text-muted)">→ [IA]</span> <span style="color:${llmColor}">${llmRes.type}</span> → <strong>${llmRes.character}</strong>`
           : ' <span style="color:var(--green)">✓ IA confirmou</span>';
         setResult({ text: formatResult(res, res.isLocal, llmSuffix), show: true });
-        if (addToQueue && isDiff) {
-          update(requestId, { character: llmRes.character, type: llmRes.type, needsIdentification: false });
-        }
       }
     );
-
-    // Update the request with identification result
-    if (addToQueue) {
-      update(requestId, { character: res.character || '', type: res.type, needsIdentification: false });
-    }
 
     // Only show "validando" for ambiguous local matches that will get AI validation
     const showValidating = res.isLocal && res.ambiguous && isAuthenticated;

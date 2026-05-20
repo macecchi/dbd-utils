@@ -60,6 +60,21 @@ const en: TranslationKeys = {
   'sources.hideNonRequestsDesc': 'Messages that meet the criteria but don\'t request a character won\'t appear in the list. You can view these messages and add them to the queue in the Review requests screen.',
   'sources.reviewRequests': 'Review requests',
   'sources.recoverVod': 'Recover requests from past VODs',
+  'chatConfirm.toggle': 'Confirm requests in chat',
+  'chatConfirm.toggleDesc': 'The @FilaDBD bot replies in chat whenever a request lands in the queue.',
+  'chatConfirm.dialog.enabling.title': 'Add @FilaDBD as a moderator',
+  'chatConfirm.dialog.enabling.body': 'To enable chat confirmations, the bot needs to be a moderator in your channel. Run the command below in your chat, then click "Verify again":',
+  'chatConfirm.dialog.lostMod.title': '@FilaDBD is not a moderator in your channel',
+  'chatConfirm.dialog.lostMod.body': 'The bot was removed as a mod, so chat confirmations have been disabled. Re-add it with the command below, or turn the option off:',
+  'chatConfirm.dialog.command': '/mod filadbd',
+  'chatConfirm.dialog.commandHint': 'Paste this command into your channel\'s chat.',
+  'chatConfirm.dialog.verifying': 'Verifying...',
+  'chatConfirm.dialog.stillNotModded': 'I still don\'t see the bot as a mod. Confirm the command was sent and try again.',
+  'chatConfirm.dialog.errorChecking': 'Could not verify right now. Try again in a few seconds.',
+  'chatConfirm.dialog.noBotToken': 'The bot has not been set up by the queue administrator yet. This feature will be unavailable until setup is finished.',
+  'chatConfirm.dialog.verifyAgain': 'Verify again',
+  'chatConfirm.dialog.cancel': 'Cancel',
+  'chatConfirm.dialog.turnOff': 'Turn off confirmations',
 
   // Queue panel
   'queue.title': 'Queue',
@@ -199,6 +214,8 @@ const en: TranslationKeys = {
   'whatsNew.title': "What's new",
   'whatsNew.langToggle': 'You can now switch between English and Portuguese in the footer.',
   'whatsNew.multiDonateBots': 'StreamElements (GGPix, and others) is now supported for donations, in addition to LivePix.',
+  'whatsNew.chatConfirmationsTitle': '✨ New: confirmations in chat',
+  'whatsNew.chatConfirmations': 'The @FilaDBD bot can now confirm in chat whenever a request lands in the queue. Enable it in the sources panel.',
 
   // Push notifications
   'push.connectionLost': 'Fila DBD - Connection lost',

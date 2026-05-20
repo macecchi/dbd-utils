@@ -103,6 +103,22 @@ The service is designed to be deployed on [Cloudflare Workers](https://workers.c
 - `INTERNAL_API_SECRET` - same value as Cloudflare
 - `API_URL` - Production Worker URL (e.g. `https://dbd-tracker.<account>.workers.dev`)
 
+**Chat confirmation bot (`@filadbd`):**
+
+Optional. Required for the "Confirm requests in chat" toggle to deliver messages.
+
+1. Create / log into a dedicated Twitch account (the bot identity, e.g. `@filadbd`).
+2. Add `http://localhost:8923/callback` to the Twitch app's OAuth Redirect URLs.
+3. From `apps/api/`, run the one-time authorization flow:
+   ```bash
+   TWITCH_CLIENT_ID=... TWITCH_CLIENT_SECRET=... bun scripts/authorize-bot.ts
+   ```
+   It opens the consent screen, captures the code locally, exchanges it, and prints the
+   `wrangler kv key put` command for the resulting `bot_token`. Run that command against
+   `--remote` (and/or `--local` for dev). The Worker refreshes the token automatically.
+4. Each streamer using the feature must add the bot as a moderator in their channel
+   (`/mod filadbd`) — the UI shows this hint when the toggle is enabled.
+
 ## Debug
 
 Add `#debug` to the URL to activate the debug panel. Example: `http://localhost:5173/meriw_/#debug`.

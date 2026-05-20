@@ -152,6 +152,55 @@
   flex-shrink: 0;
 }
 
+/* Bot mod-status dialog (gates the "confirm in chat" toggle until @filadbd is modded) */
+
+.bot-mod-dialog {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.2s ease;
+}
+
+.bot-mod-command {
+  margin: 1.25rem 1.25rem 0;
+  padding: var(--space-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bot-mod-command code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--text-md);
+  color: var(--text);
+  user-select: all;
+}
+
+.bot-mod-command-hint {
+  text-align: center;
+  border-bottom: none;
+  padding-top: var(--space-xs);
+}
+
+.bot-mod-feedback {
+  margin: 0;
+  padding: var(--space-sm) 1.25rem var(--space-md);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.bot-mod-feedback.warn {
+  color: var(--yellow);
+}
+
 /* Mobile */
 @media (max-width: 480px) {
   .modal {

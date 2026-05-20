@@ -58,6 +58,21 @@ const ptBR = {
   'sources.hideNonRequestsDesc': 'Mensagens atendendo os critérios e sem pedir um personagem não aparecerão na lista. Você pode ver essas mensagens e adicionar à fila na tela de Revisar pedidos.',
   'sources.reviewRequests': 'Revisar pedidos',
   'sources.recoverVod': 'Recuperar pedidos de VODs anteriores',
+  'chatConfirm.toggle': 'Confirmar pedidos no chat',
+  'chatConfirm.toggleDesc': 'O bot @FilaDBD vai responder no chat sempre que um pedido entrar na fila.',
+  'chatConfirm.dialog.enabling.title': 'Adicione @FilaDBD como moderador',
+  'chatConfirm.dialog.enabling.body': 'Para ativar as confirmações no chat, o bot precisa ser moderador do seu canal. Rode o comando abaixo no chat e clique em "Verificar novamente":',
+  'chatConfirm.dialog.lostMod.title': '@FilaDBD não é moderador no seu canal',
+  'chatConfirm.dialog.lostMod.body': 'O bot não consta como mod e por isso as confirmações de pedido via chat foram desabilitadas. Re-adicione com o comando abaixo, ou desative esta opção:',
+  'chatConfirm.dialog.command': '/mod filadbd',
+  'chatConfirm.dialog.commandHint': 'Cole este comando no chat do seu canal.',
+  'chatConfirm.dialog.verifying': 'Verificando...',
+  'chatConfirm.dialog.stillNotModded': 'Ainda não detectei o bot como mod. Confirme que o comando foi enviado e tente de novo.',
+  'chatConfirm.dialog.errorChecking': 'Não consegui verificar agora. Tente novamente em alguns segundos.',
+  'chatConfirm.dialog.noBotToken': 'O bot ainda não foi configurado pelo administrador da fila. Esta funcionalidade ficará indisponível até a configuração ser concluída.',
+  'chatConfirm.dialog.verifyAgain': 'Verificar novamente',
+  'chatConfirm.dialog.cancel': 'Cancelar',
+  'chatConfirm.dialog.turnOff': 'Desativar confirmações',
 
   // Queue panel
   'queue.title': 'Fila',
@@ -197,6 +212,8 @@ const ptBR = {
   'whatsNew.title': 'Novidade',
   'whatsNew.langToggle': 'Agora você pode alternar entre Português e Inglês no rodapé.',
   'whatsNew.multiDonateBots': 'StreamElements (GGPix, entre outros) agora é suportado para donates, além do LivePix.',
+  'whatsNew.chatConfirmationsTitle': '✨ Novidade: confirmações no chat',
+  'whatsNew.chatConfirmations': 'O bot @FilaDBD agora pode confirmar no chat quando um pedido entra na fila. Ative  no painel de fontes.',
 
   // Push notifications
   'push.connectionLost': 'Fila DBD - Conexão perdida',
