@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useChannel, useSettings, SOURCES_DEFAULTS } from '../store';
+import { useChannel, SOURCES_DEFAULTS } from '../store';
 import type { SourceType as AllSourceTypes } from '../store/channel';
 import { DONATE_BOT_NAMES } from '../services/twitch';
 import { fetchBotModStatus } from '../services/api';

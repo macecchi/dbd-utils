@@ -80,24 +80,8 @@ a.brand {
 /* Grid */
 .grid {
   display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 1.5rem;
-}
-
-.grid.chat-hidden {
   grid-template-columns: 1fr;
-}
-
-.grid.chat-hidden .panel:last-child {
-  display: none;
-}
-
-.chat-hidden-only {
-  display: none;
-}
-
-.grid.chat-hidden .chat-hidden-only {
-  display: inline-flex;
+  gap: 1.5rem;
 }
 
 @media (max-width: 800px) {

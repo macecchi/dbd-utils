@@ -1,6 +1,6 @@
 import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage, isDonateBot } from '../utils/helpers';
-import { useSettings, useChat } from '../store';
+import { useSettings } from '../store';
 import type { Request } from '../types';
 import type { ChannelStores } from '../store/channel';
 
@@ -155,7 +155,6 @@ export function handleUserNotice(raw: string) {
   const { useSources, useRequests } = getStores();
   const { enabled } = useSources.getState();
   const { add: addRequest } = useRequests.getState();
-  const { add: addChat } = useChat.getState();
 
   const tags = parseIrcTags(raw);
   if (tags['msg-id'] !== 'resub' && tags['msg-id'] !== 'sub') return;
@@ -165,8 +164,6 @@ export function handleUserNotice(raw: string) {
   const msgMatch = raw.match(/USERNOTICE #\w+ :(.+)$/);
   const message = msgMatch?.[1]?.trim() || '';
   if (!message) return;
-
-  addChat({ user: displayName, message: `[${tags['msg-id']}] ${message}`, isDonate: false, color: null });
 
   const local = tryLocalMatch(message);
 
@@ -231,20 +228,15 @@ export function handleMessage(raw: string) {
   const { useSources, useRequests } = getStores();
   const { enabled, chatCommand, minDonation } = useSources.getState();
   const { add: addRequest } = useRequests.getState();
-  const { add: addChat } = useChat.getState();
 
   const tags = parseIrcTags(raw);
   const userMatch = raw.match(/display-name=([^;]*)/i);
   const msgMatch = raw.match(/PRIVMSG #\w+ :(.+)$/);
-  const colorMatch = raw.match(/color=(#[0-9A-Fa-f]{6})/i);
   if (!userMatch || !msgMatch) return;
 
   const displayName = userMatch[1] || 'unknown';
   const username = displayName.toLowerCase();
   const message = msgMatch[1].trim();
-  const color = colorMatch?.[1] || null;
-
-  addChat({ user: displayName, message, isDonate: isDonateBot(username), color });
 
   if (message.toLowerCase().startsWith(chatCommand.toLowerCase())) {
     const requestText = message.slice(chatCommand.length).trim();

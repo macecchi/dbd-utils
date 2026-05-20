@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChatLog } from './components/ChatLog';
 import { ChannelHeader } from './components/ChannelHeader';
 import { DebugPanel } from './components/DebugPanel';
 import { CharacterRequestList } from './components/CharacterRequestList';
@@ -18,7 +17,7 @@ import { tryLocalMatch } from './data/characters';
 import { recoverMissedRequests, scanVODForRequests, type VODInfo } from './services/vod';
 import { DONATE_BOT_NAMES } from './services/twitch';
 import { toast } from 'sonner';
-import { useSettings, useAuth, ChannelProvider, useChannel, useLastChannel } from './store';
+import { useAuth, ChannelProvider, useChannel, useLastChannel } from './store';
 import { navigate, handleLinkClick } from './utils/helpers';
 import { sortRequests, mergeRequests } from './utils/requests';
 import { useTranslation, t } from './i18n';
@@ -124,7 +123,6 @@ function ChannelApp() {
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
   const setAll = useRequests((s) => s.setAll);
-  const { chatHidden, setChatHidden } = useSettings();
   const sortMode = useSources((s) => s.sortMode);
   const setSortMode = useSources((s) => s.setSortMode);
   const [manualOpen, setManualOpen] = useState(false);
@@ -333,7 +331,7 @@ function ChannelApp() {
 
         <ChannelHeader />
 
-        <main className={`grid${chatHidden ? ' chat-hidden' : ''}`}>
+        <main className="grid">
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">
@@ -370,13 +368,6 @@ function ChannelApp() {
                     <path d="M3 9h18M9 3v18" />
                   </svg>
                 </button>
-                {chatHidden && (
-                  <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setChatHidden(false)} title={t('queue.showChat')}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                    </svg>
-                  </button>
-                )}
                 <span className="panel-count">{pendingCount}</span>
               </div>
             </div>
@@ -385,24 +376,6 @@ function ChannelApp() {
             </div>
           </div>
 
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                </svg>
-                {t('queue.liveChat')}
-              </div>
-              <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setChatHidden(true)} title={t('queue.hideChat')}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <div className="panel-body chat-body">
-              <ChatLog />
-            </div>
-          </div>
         </main>
 
         {!readOnly && <SourcesPanel onRecover={() => setVodSelectOpen(true)} onReview={() => setReviewOpen(true)} />}

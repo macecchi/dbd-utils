@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSettings, useAuth, useChannel } from '../store';
+import { useAuth, useChannel } from '../store';
 import { connect, disconnect } from '../services/twitch';
 import { claimOwnership, releaseOwnership } from '../services/party';
 import { useConnectionStatus } from '../hooks/useConnectionStatus';

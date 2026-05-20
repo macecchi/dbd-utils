@@ -15,8 +15,6 @@
 @import './missed-requests.css';
 @import './review-dialog.css';
 @import './requests-table.css';
-@import './chat.css';
-
 /* Overlays */
 @import './modals.css';
 @import './context-menu.css';

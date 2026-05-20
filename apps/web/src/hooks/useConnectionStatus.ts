@@ -1,4 +1,4 @@
-import { useSettings, useChannel } from '../store';
+import { useChannel } from '../store';
 import { t } from '../i18n';
 
 /**

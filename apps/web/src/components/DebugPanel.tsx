@@ -5,14 +5,13 @@ import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
 import { CHARACTERS } from '../data/characters';
 import { toast } from 'sonner';
-import { useChannel, useChat, useAuth } from '../store';
+import { useChannel, useAuth } from '../store';
 import { DONATE_BOT_NAMES, simulateDisconnect } from '../services/twitch';
 import { useTranslation } from '../i18n';
 
 export function DebugPanel() {
   const { useRequests, useSources, canControlConnection } = useChannel();
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
-  const { clear: clearChat, add: addChat } = useChat();
   const { isAuthenticated } = useAuth();
   const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
   const readOnly = !canControlConnection;
@@ -130,7 +129,6 @@ export function DebugPanel() {
 
   const handleClearAll = () => {
     setRequests([]);
-    clearChat();
   };
 
   const handleLoadMock = () => {
@@ -155,7 +153,6 @@ export function DebugPanel() {
 
     const callbacks: VODCallbacks = {
       onStatus: setVodStatus,
-      onChat: addChat,
       onRequest: addRequest
     };
 

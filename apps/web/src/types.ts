@@ -19,10 +19,4 @@ export {
   deserializeRequests,
 } from '@dbd-utils/shared';
 
-export interface ChatMessage {
-  user: string;
-  message: string;
-  isDonate: boolean;
-  color: string | null;
-}
 

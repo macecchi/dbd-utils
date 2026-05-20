@@ -1,7 +1,6 @@
 import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage } from '../utils/helpers';
 import type { Request } from '../types';
-import type { ChatMessage } from '../types';
 
 const TWITCH_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
 let vodReplayAbort: boolean | null = null;
@@ -14,7 +13,6 @@ export interface VODConfig {
 
 export interface VODCallbacks {
   onStatus: (s: string) => void;
-  onChat: (msg: ChatMessage) => void;
   onRequest: (request: Request) => void;
 }
 
@@ -72,7 +70,6 @@ export async function loadAndReplayVOD(
 
       const isDonate = config.botNames.has(username);
       if (isDonate) donates++;
-      callbacks.onChat({ user: displayName, message, isDonate, color: null });
 
       if (isDonate) {
         const parsed = parseDonationMessage(message);
