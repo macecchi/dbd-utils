@@ -13,18 +13,19 @@ export type ExtractionResult = {
   matchedTerm?: string;
 };
 
-export async function extractCharacter(
+export async function extractCharacters(
   message: string,
   apiKey: string,
+  maxCount: number,
   attempt = 0,
   modelIdx = currentModelIndex,
   startIdx = currentModelIndex
-): Promise<ExtractionResult> {
+): Promise<ExtractionResult[]> {
   const model = MODELS[modelIdx];
 
-  console.log(`[extract] Starting extraction using model: ${model} (attempt ${attempt + 1}/${MAX_RETRIES + 1})`);
+  console.log(`[extract] Starting extraction using model: ${model} (attempt ${attempt + 1}/${MAX_RETRIES + 1}, maxCount=${maxCount})`);
 
-  const prompt = `Identify the Dead by Daylight character from the user message. This is the list of valid characters, although the user might not specify them exactly as on this list.
+  const prompt = `Identify Dead by Daylight characters requested in the user message. The user may request multiple characters. This is the list of valid characters, although the user might not specify them exactly as on this list.
 
 <survivors>
 ${DEFAULT_CHARACTERS.survivors.join('\n')}
@@ -38,19 +39,18 @@ ${DEFAULT_CHARACTERS.killers.join('\n')}
 ${message}
 </user_message>
 
-Identify the Dead by Daylight character from the above user message. Return ONLY JSON with character name and type.
-- The character name MUST be their official name, which is the first name in the slash-separated list provided above
-  - e.g. Even if the message mentions "Myers", return "Shape", not "Michael Myers".
-- Only extract a character if the user is clearly requesting one to play. Look for patterns like "joga de X", "vai de X", "uma de X", "play X", or a character name stated as a standalone request.
-- Messages that are personal stories, questions, greetings, or general conversation WITHOUT a gameplay request should return type "none" — do NOT guess a character from vague context, metaphors, or unrelated words.
-- If the text mentions multiple characters, determine by the intent of the message which ONE the user actually wants to play with or is requesting.
-  - e.g. "I love pig, but play one with hag" should return "Hag".
-  - e.g. "chega de Hag! Joga de Pinhead" should return "Cenobite" (Pinhead), not "Hag".
-- If user requests a generic survivor (e.g. "joga de surv", "uma de survivor"), return character "Survivor" with type "survivor".
-- Recognize creative spellings, slang, and affectionate variations of character names (e.g. "Drakuluxuuu" = Dracula, "demogogo" = Demogorgon, "pigzinha" = Pig).
-- If exact character unknown, return empty character.
-- If no character mentioned or requested, return type "none".
-- In "matchedTerm", return the EXACT substring from the user message that refers to the character, preserving the original casing and spelling (e.g. if the message says "Drácula", return "Drácula"; if "death slinger", return "death slinger").`;
+<max_count>${maxCount}</max_count>
+
+Return ONLY JSON with a "characters" array. Each entry has character name, type, and the exact matched substring.
+- Return characters in the order they appear in the message.
+- The character name MUST be the official name (the first name in the slash-separated list above). e.g. "Myers" → "Shape".
+- Honor quantifiers: "2 de trapper" → two entries for "Trapper"; "1 nurse" → one entry for "Nurse".
+- Only extract characters the user is clearly requesting to play. Patterns like "joga de X", "vai de X", "uma de X", "play X", or a standalone character name as a request. Personal stories, questions, greetings, or general conversation should return an empty array — do NOT guess from vague context, metaphors, or unrelated words.
+- Cap the total returned at max_count. If the user requests more, return the first max_count in message order. If the user requests fewer, return only what they asked for — do NOT pad to max_count.
+- If the user requests a generic survivor ("joga de surv", "uma de survivor"), return one entry with character "Survivor" and type "survivor".
+- Recognize creative spellings, slang, and affectionate variations (e.g. "Drakuluxuuu" = Dracula, "demogogo" = Demogorgon, "pigzinha" = Pig).
+- If a character is referenced but the exact identity is unknown, use empty string for character with the best-guess type.
+- In "matchedTerm", return the EXACT substring referring to that specific instance, preserving the original casing and spelling. If the same character is requested twice with the same wording, both entries may share the same matchedTerm.`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -68,11 +68,20 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
           responseSchema: {
             type: 'object',
             properties: {
-              character: { type: 'string' },
-              type: { type: 'string', enum: ['survivor', 'killer', 'none'] },
-              matchedTerm: { type: 'string' },
+              characters: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    character: { type: 'string' },
+                    type: { type: 'string', enum: ['survivor', 'killer', 'none'] },
+                    matchedTerm: { type: 'string' },
+                  },
+                  required: ['character', 'type'],
+                },
+              },
             },
-            required: ['character', 'type'],
+            required: ['characters'],
           },
         },
       }),
@@ -90,12 +99,12 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
       if (nextIdx !== startIdx) {
         console.log(`[extract] Switching from ${model} to ${MODELS[nextIdx]}`);
         currentModelIndex = nextIdx;
-        return extractCharacter(message, apiKey, 0, nextIdx, startIdx);
+        return extractCharacters(message, apiKey, maxCount, 0, nextIdx, startIdx);
       }
       if (attempt < MAX_RETRIES) {
         console.log(`[extract] Retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
         await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
-        return extractCharacter(message, apiKey, attempt + 1, modelIdx, startIdx);
+        return extractCharacters(message, apiKey, maxCount, attempt + 1, modelIdx, startIdx);
       }
       console.error(`[extract] All retries exhausted after ${MAX_RETRIES + 1} attempts`);
     }
@@ -118,19 +127,20 @@ Identify the Dead by Daylight character from the above user message. Return ONLY
     if (nextIdx !== startIdx) {
       console.log(`[extract] Switching from ${model} to ${MODELS[nextIdx]}`);
       currentModelIndex = nextIdx;
-      return extractCharacter(message, apiKey, 0, nextIdx, startIdx);
+      return extractCharacters(message, apiKey, maxCount, 0, nextIdx, startIdx);
     }
     if (attempt < MAX_RETRIES) {
       console.log(`[extract] Retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
       await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
-      return extractCharacter(message, apiKey, attempt + 1, modelIdx, startIdx);
+      return extractCharacters(message, apiKey, maxCount, attempt + 1, modelIdx, startIdx);
     }
 
     console.error(`[extract] All retries exhausted, returning empty`);
-    return { character: '', type: 'none' };
+    return [];
   }
 
-  const result = JSON.parse(text) as ExtractionResult;
-  console.log(`[extract] Success: character="${result.character}" type="${result.type}"`);
-  return result;
+  const parsed = JSON.parse(text) as { characters?: ExtractionResult[] };
+  const characters = Array.isArray(parsed.characters) ? parsed.characters.slice(0, maxCount) : [];
+  console.log(`[extract] Success: ${characters.length} character(s): ${characters.map(c => c.character).join(', ')}`);
+  return characters;
 }
