@@ -212,7 +212,9 @@ const en: TranslationKeys = {
 
   // What's new
   'whatsNew.title': "✨ What's new",
+  'whatsNew.langToggleTitle': 'English language support',
   'whatsNew.langToggle': 'You can now switch between English and Portuguese in the footer.',
+  'whatsNew.multiDonateBotsTitle': 'StreamElements donations support',
   'whatsNew.multiDonateBots': 'StreamElements (GGPix, and others) is now supported for donations, in addition to LivePix.',
   'whatsNew.multiRequestDonationsTitle': 'Multiple requests per donation',
   'whatsNew.multiRequestDonations': 'Donations above the minimum can now contain multiple requests in one message — e.g. R$30 with R$10 minimum becomes up to 3 characters, including quantifiers like "2 de trapper".',

@@ -210,7 +210,9 @@ const ptBR = {
 
   // What's new
   'whatsNew.title': '✨ Novidades',
+  'whatsNew.langToggleTitle': 'Suporte a outros idiomas',
   'whatsNew.langToggle': 'Agora você pode alternar entre Português e Inglês no rodapé.',
+  'whatsNew.multiDonateBotsTitle': 'Suporte a donates via StreamElements',
   'whatsNew.multiDonateBots': 'StreamElements (GGPix, entre outros) agora é suportado para donates, além do LivePix.',
   'whatsNew.multiRequestDonationsTitle': 'Vários pedidos por donate',
   'whatsNew.multiRequestDonations': 'Donates agora podem conter vários pedidos numa mesma mensagem — ex.: R$30 com mínimo R$10 vira até 3 pedidos.',

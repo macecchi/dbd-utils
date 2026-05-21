@@ -17,12 +17,12 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     id: 'whats-new-lang-toggle',
-    titleKey: 'whatsNew.title',
+    titleKey: 'whatsNew.langToggleTitle',
     descriptionKey: 'whatsNew.langToggle',
   },
   {
     id: 'whats-new-multi-donate-bots',
-    titleKey: 'whatsNew.title',
+    titleKey: 'whatsNew.multiDonateBotsTitle',
     descriptionKey: 'whatsNew.multiDonateBots',
   },
   {

@@ -28,7 +28,7 @@ function DigestBody({ entries }: { entries: ChangelogEntry[] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {entries.map(e => (
         <div key={e.id}>
-          <div style={{ fontWeight: 600 }}>{t(e.titleKey)}</div>
+          <div style={{ fontWeight: 600 }}>• {t(e.titleKey)}</div>
           <div>{t(e.descriptionKey)}</div>
         </div>
       ))}
