@@ -54,7 +54,7 @@ const ptBR = {
   'sources.reviewRequests': 'Revisar pedidos',
   'sources.recoverVod': 'Recuperar pedidos de VODs anteriores',
   'extras.build.name': 'Pedidos com build',
-  'extras.build.desc': 'Doadores acima desse valor podem incluir uma build (perks/addons) no pedido.',
+  'extras.build.desc': 'Donates podem incluir uma build no pedido.',
   'settings.title': 'Configurações',
   'settings.section.sources': 'Fontes',
   'settings.section.order': 'Ordenação',

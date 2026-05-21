@@ -495,9 +495,9 @@
 
 .extra-row-name {
   flex: 1;
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-secondary);
 }
 
 .extra-row-desc {

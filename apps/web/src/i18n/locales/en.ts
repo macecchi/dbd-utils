@@ -56,7 +56,7 @@ const en: TranslationKeys = {
   'sources.reviewRequests': 'Review requests',
   'sources.recoverVod': 'Recover requests from past VODs',
   'extras.build.name': 'Build requests',
-  'extras.build.desc': 'Donors above this amount can include a build (perks/addons) with their request.',
+  'extras.build.desc': 'Donations can include a build with their request.',
   'settings.title': 'Settings',
   'settings.section.sources': 'Sources',
   'settings.section.order': 'Order',

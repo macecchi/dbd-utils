@@ -195,6 +195,8 @@
 
 .donor-name {
   color: var(--accent);
+  font-weight: 600;
+  font-style: normal;
   margin-right: 0.4em;
 }
 
@@ -213,7 +215,8 @@
 
 .matched-term {
   background: none;
-  color: var(--text-match);
+  color: inherit;
+  text-decoration: underline dashed ;
 }
 
 .amount {
