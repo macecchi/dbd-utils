@@ -116,15 +116,18 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Mobile - prevent keyboard resize and horizontal overflow */
+/* Mobile - prevent keyboard resize and horizontal overflow.
+   Use 100dvh (dynamic viewport height) so the scroll container shrinks when
+   Safari's URL bar is visible — otherwise body resolves to the large viewport
+   and the footer ends up permanently hidden behind the URL bar. */
 @media (max-width: 480px) {
   html {
-    height: 100%;
+    height: 100dvh;
     overflow: hidden;
   }
 
   body {
-    height: 100%;
+    height: 100dvh;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
   }
