@@ -91,4 +91,30 @@ describe('buildDonationRequests', () => {
     expect(out[0].originMsgId).toBe(out[1].originMsgId);
     expect(out[0].originMsgId).toContain('Donor');
   });
+
+  it('carries extras from identified entries into the produced requests', () => {
+    const reqs = buildDonationRequests({
+      donor: 'donor',
+      amount: 'R$10',
+      amountVal: 10,
+      message: 'kraseu de lethal, dissolution',
+      twitchMsgId: 'msg-1',
+      timestampMs: Date.now(),
+      identified: [
+        { character: 'Krasue', type: 'killer', matchedTerm: 'kraseu', extras: [{ type: 'build', text: 'lethal, dissolution', matchedTerms: ['lethal, dissolution'] }] },
+      ],
+    });
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0].extras).toEqual([
+      { type: 'build', text: 'lethal, dissolution', matchedTerms: ['lethal, dissolution'] },
+    ]);
+  });
+
+  it('leaves extras undefined when the identified entry has none', () => {
+    const reqs = buildDonationRequests({
+      donor: 'donor', amount: 'R$5', amountVal: 5, message: 'trapper', twitchMsgId: 'msg-2', timestampMs: Date.now(),
+      identified: [{ character: 'Trapper', type: 'killer', matchedTerm: 'trapper' }],
+    });
+    expect(reqs[0].extras).toBeUndefined();
+  });
 });

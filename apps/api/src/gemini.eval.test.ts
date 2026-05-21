@@ -282,3 +282,148 @@ describe.concurrent('Gemini extractCharacters — live LLM evals', () => {
     expect(multisetSorted(names)).toEqual(multisetSorted(expected));
   }, 30_000);
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Build extraction evals
+// These cases verify that when extras=['build'] is passed the LLM correctly
+// extracts build descriptions and attaches them to the right characters.
+// Assertions are structural (non-empty, substring containment) to tolerate
+// LLM variation in exact phrasing.
+// ──────────────────────────────────────────────────────────────────────────────
+describe.concurrent('Gemini extractCharacters — build extraction evals', () => {
+  it.skipIf(!RUN_EVALS)('fully specified killer build (Krasue)', async () => {
+    const message = 'puxa uma kraseu pa tropa, lindão. lethal, dissolution, bambas e bbq. cabeça de galinha e olho de porco de addon pro churras. amo vc tmj';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 3, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Krasue');
+
+    const build = result[0].build;
+    expect(build?.text).toBeTruthy();
+    expect((build?.matchedTerms ?? []).length).toBeGreaterThanOrEqual(1);
+
+    for (const term of build?.matchedTerms ?? []) {
+      expect(message.toLowerCase()).toContain(term.toLowerCase());
+    }
+  }, 30_000);
+
+  it.skipIf(!RUN_EVALS)('survivor build (Jill Valentine + perk list)', async () => {
+    const message = 'Mainha estou pedindo a buildas de surv. Perk se totem da jill valentine Perk sensorial da eleven Perk de cura da Nancy Perk da hady kour';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 4, ['build']);
+
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    const withBuild = result.filter(r => r.build?.text);
+    expect(withBuild.length).toBeGreaterThanOrEqual(1);
+  }, 30_000);
+
+  it.skipIf(!RUN_EVALS)('themed build (Doctor de build irritante)', async () => {
+    const message = 'Doctor de build irritante';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 1, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Doctor');
+    expect(result[0].build?.text.toLowerCase()).toContain('irritante');
+  }, 30_000);
+
+  it.skipIf(!RUN_EVALS)('quantified multi-char same build (3 Trickster with build)', async () => {
+    const message = '3 trickster de build de aura';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 5, ['build']);
+
+    expect(result).toHaveLength(3);
+    for (const r of result) {
+      expect(r.character).toBe('Trickster');
+      expect(r.build?.text).toBeTruthy();
+    }
+  }, 30_000);
+
+  it.skipIf(!RUN_EVALS)('different builds per character (Pig aura, Hag gritos)', async () => {
+    const message = 'Pig de aura e Hag de gritos';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 2, ['build']);
+
+    expect(result).toHaveLength(2);
+
+    const pig = result.find(r => r.character === 'Pig');
+    const hag = result.find(r => r.character === 'Hag');
+    expect(pig).toBeDefined();
+    expect(hag).toBeDefined();
+    expect(pig?.build?.text.toLowerCase()).toContain('aura');
+    expect(hag?.build?.text.toLowerCase()).toContain('grito');
+  }, 30_000);
+
+  it.skipIf(!RUN_EVALS)('no-perk build (Hag sem perks)', async () => {
+    const message = 'hag sem perks';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 1, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Hag');
+    expect(result[0].build?.text.toLowerCase()).toContain('sem perks');
+  }, 30_000);
+
+  // Donor mentions "perks" contextually (asking a question) but is not actually
+  // requesting a build. Real production case: "as perks originais dos killers
+  // tem alguma sinergia… joga de nurse". The character is the request; nothing
+  // about Nurse's loadout is being asked for.
+  it.skipIf(!RUN_EVALS)('false positive: "perks" mentioned contextually but no build requested', async () => {
+    const message = 'Mandy, as perks originais dos killers tem alguma sinergia com os poderes únicos deles? Fico pensando nisso as vezes, joga de nurse!';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 2, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Nurse');
+    // No actual build was requested — the word "perks" appears in a meta-question,
+    // not as a loadout instruction.
+    expect(result[0].build).toBeUndefined();
+  }, 30_000);
+
+  // Addon-only build with a perk borrowed from another killer. Real production:
+  // "wraith com o addon marrom de sair do poder quando chutar um gerador junto
+  // da perk do vecnussy de chutar gerador via bluetooth". Build text should
+  // mention the addon and the perk even without naming them canonically.
+  it.skipIf(!RUN_EVALS)('addons + slang perk reference (Wraith)', async () => {
+    const message = 'joga de wraith com o addon marrom de sair do poder quando chutar um gerador junto da perk do vecnussy de chutar gerador via bluetooth';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 2, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Wraith');
+    expect(result[0].build?.text).toBeTruthy();
+    // The build mentions both an addon and a perk-by-effect; the text should
+    // reflect at least one of them.
+    const text = result[0].build!.text.toLowerCase();
+    expect(text.includes('addon') || text.includes('chutar') || text.includes('gerador')).toBe(true);
+  }, 30_000);
+
+  // Shared build across two explicitly named characters (not via quantifier).
+  // Real production-style: "Pig e Hag de build de aura". Both characters get
+  // the same build text.
+  it.skipIf(!RUN_EVALS)('shared build across two named characters (Pig e Hag de aura)', async () => {
+    const message = 'Pig e Hag de build de aura';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 3, ['build']);
+
+    expect(result).toHaveLength(2);
+    const pig = result.find(r => r.character === 'Pig');
+    const hag = result.find(r => r.character === 'Hag');
+    expect(pig?.build?.text.toLowerCase()).toContain('aura');
+    expect(hag?.build?.text.toLowerCase()).toContain('aura');
+  }, 30_000);
+
+  // Build mentioned with the streamer's "favorite build" — themed reference
+  // without specifics. Real production: "Mandy barbariza com um Drácula com
+  // sua build favorita e a skin mais bafo".
+  it.skipIf(!RUN_EVALS)('themed reference to streamer\'s own build (favorita)', async () => {
+    const message = 'Mandy barbariza com um Drácula com sua build favorita e a skin mais bafo';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 1, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Dark Lord');
+    expect(result[0].build?.text.toLowerCase()).toContain('favorita');
+  }, 30_000);
+});

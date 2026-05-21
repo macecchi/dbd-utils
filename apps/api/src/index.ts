@@ -4,6 +4,7 @@ import { sign } from "hono/jwt";
 import { Twitch } from "arctic";
 import { verifyJwt, type JwtPayload } from "./jwt";
 import { extractCharacters } from "./gemini";
+import type { RequestExtraType } from "@dbd-utils/shared";
 import { getAppToken, fetchProfiles, fetchStreams, cacheProfiles, sendChatMessage, checkBotIsMod } from "./twitch";
 
 const BATCH_CHUNK_SIZE = 80;
@@ -201,7 +202,7 @@ const MAX_DONATION_REQUESTS = 10;
 api.post("/extract-character", async (c) => {
   const user = c.get("jwtPayload");
   const clientVersion = c.req.header("X-Client-Version") || "unknown";
-  const body = await c.req.json<{ message: string; maxCount?: number }>();
+  const body = await c.req.json<{ message: string; maxCount?: number; extras?: RequestExtraType[] }>();
 
   if (!body.message || typeof body.message !== "string") {
     return c.json({ error: "invalid_input" }, 400);
@@ -227,7 +228,11 @@ api.post("/extract-character", async (c) => {
   console.log(`[v${clientVersion}] Extract request from ${user.login} (maxCount=${maxCount}): ${body.message.slice(0, 100)}`);
 
   try {
-    const characters = await extractCharacters(body.message, c.env.GEMINI_API_KEY, maxCount);
+    const extras: RequestExtraType[] = Array.isArray(body.extras)
+      ? body.extras.filter((e): e is RequestExtraType => e === 'build')
+      : [];
+
+    const characters = await extractCharacters(body.message, c.env.GEMINI_API_KEY, maxCount, extras);
 
     // Increment counter after successful extraction (TTL: 24h)
     const putPromise = c.env.CACHE.put(rateLimitKey, String(currentCount + 1), { expirationTtl: 86400 });
@@ -296,6 +301,7 @@ api.get("/rooms/:roomId/requests", async (c) => {
     needsIdentification: !!(r.needs_identification),
     matchedTerm: r.matched_term ?? undefined,
     originMsgId: r.origin_msg_id ?? undefined,
+    extras: r.extras ? JSON.parse(r.extras as string) : undefined,
   }));
 
   return c.json({ requests });
@@ -383,8 +389,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
     const position = typeof r._position === 'number' ? r._position : i;
     statements.push(
       c.env.DB.prepare(
-        `INSERT INTO requests (id, room_id, position, timestamp, donor, amount, amount_val, message, character, type, done, done_at, source, sub_tier, needs_identification, matched_term, origin_msg_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO requests (id, room_id, position, timestamp, donor, amount, amount_val, message, character, type, done, done_at, source, sub_tier, needs_identification, matched_term, origin_msg_id, extras)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (room_id, id) DO UPDATE SET
            position = excluded.position,
            character = excluded.character,
@@ -393,7 +399,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
            done_at = excluded.done_at,
            needs_identification = excluded.needs_identification,
            matched_term = excluded.matched_term,
-           origin_msg_id = excluded.origin_msg_id`
+           origin_msg_id = excluded.origin_msg_id,
+           extras = excluded.extras`
       ).bind(
         r.id,
         roomId,
@@ -411,7 +418,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
         r.subTier ?? null,
         r.needsIdentification ? 1 : 0,
         r.matchedTerm ?? null,
-        r.originMsgId ?? null
+        r.originMsgId ?? null,
+        r.extras ? JSON.stringify(r.extras) : null
       )
     );
   }
@@ -432,11 +440,12 @@ internal.put("/rooms/:roomId/sources", async (c) => {
     minDonation: number;
     recoveryVodId?: string;
     recoveryVodOffset?: number;
+    extrasConfig?: Record<string, unknown>;
   }>();
 
   await c.env.DB.prepare(
-    `INSERT INTO rooms (id, channel_login, enabled_donation, enabled_chat, enabled_resub, enabled_manual, chat_command, chat_tiers, priority, sort_mode, min_donation, recovery_vod_id, recovery_vod_offset, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO rooms (id, channel_login, enabled_donation, enabled_chat, enabled_resub, enabled_manual, chat_command, chat_tiers, priority, sort_mode, min_donation, recovery_vod_id, recovery_vod_offset, extras_config, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
        enabled_donation = excluded.enabled_donation,
        enabled_chat = excluded.enabled_chat,
@@ -449,6 +458,7 @@ internal.put("/rooms/:roomId/sources", async (c) => {
        min_donation = excluded.min_donation,
        recovery_vod_id = excluded.recovery_vod_id,
        recovery_vod_offset = excluded.recovery_vod_offset,
+       extras_config = excluded.extras_config,
        updated_at = datetime('now')`
   ).bind(
     roomId,
@@ -463,7 +473,8 @@ internal.put("/rooms/:roomId/sources", async (c) => {
     body.sortMode ?? "fifo",
     body.minDonation ?? 5,
     body.recoveryVodId ?? null,
-    body.recoveryVodOffset ?? null
+    body.recoveryVodOffset ?? null,
+    body.extrasConfig ? JSON.stringify(body.extrasConfig) : null
   ).run();
 
   return c.json({ ok: true });
@@ -528,6 +539,7 @@ internal.get("/rooms/:roomId/requests", async (c) => {
     needsIdentification: !!(r.needs_identification),
     matchedTerm: r.matched_term ?? undefined,
     originMsgId: r.origin_msg_id ?? undefined,
+    extras: r.extras ? JSON.parse(r.extras as string) : undefined,
   }));
 
   return c.json({ requests });

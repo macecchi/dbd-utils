@@ -2,11 +2,32 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
+      "name": "all",
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "apps/web",
+      "cwd": ".",
       "port": 5173
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--filter", "@dbd-utils/web", "dev"],
+      "cwd": ".",
+      "port": 5173
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--filter", "@dbd-utils/api", "dev"],
+      "cwd": ".",
+      "port": 8787
+    },
+    {
+      "name": "party",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--filter", "@dbd-utils/api", "dev:party"],
+      "cwd": ".",
+      "port": 1999
     }
   ]
 }

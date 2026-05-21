@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
-import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyCharacter } from '../services';
+import { testExtraction, loadAndReplayVOD, cancelVODReplay, identifyMultiple } from '../services';
+import { eligibleExtras } from '../services/extras';
 import type { VODCallbacks } from '../services';
 import type { Request } from '../types';
 import { loadMockData } from '../data/mock-requests';
@@ -14,7 +15,7 @@ export function DebugPanel() {
   const { useRequests, useSources, canControlConnection } = useChannel();
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { isAuthenticated } = useAuth();
-  const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
+  const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation, extrasConfig } = useSources();
   const readOnly = !canControlConnection;
   const showToast = (msg: string, title: string, _color?: string) => toast.error(title, { description: msg });
   const { t } = useTranslation();
@@ -73,7 +74,7 @@ export function DebugPanel() {
   const [vodStatus, setVodStatus] = useState('');
   const [isReplaying, setIsReplaying] = useState(false);
 
-  const vodConfig = { botNames: DONATE_BOT_NAMES, minDonation, sourcesEnabled };
+  const vodConfig = { botNames: DONATE_BOT_NAMES, minDonation, sourcesEnabled, extrasConfig };
 
   const handleTest = async (e: FormEvent) => {
     e.preventDefault();
@@ -123,8 +124,10 @@ export function DebugPanel() {
       update(d.id, { character: 'Identificando...', type: 'unknown' });
     }
     for (const d of requests) {
-      const result = await identifyCharacter(d, (msg) => showToast(msg, t('debug.errorLlm'), 'red'));
-      update(d.id, result);
+      const extras = eligibleExtras(d.amountVal, useSources.getState().extrasConfig);
+      const arr = await identifyMultiple(d.message, 1, extras, (msg) => showToast(msg, t('debug.errorLlm'), 'red'));
+      const c = arr[0] ?? { character: '', type: 'unknown' as const };
+      update(d.id, { character: c.character, type: c.type, matchedTerm: c.matchedTerm, extras: c.extras });
     }
   };
 

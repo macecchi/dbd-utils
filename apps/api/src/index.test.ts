@@ -488,10 +488,119 @@ describe('Hono API', () => {
       expect(body.character).toBe('');
       expect(body.type).toBe('none');
     });
+
+    it('forwards extras param to extractCharacters', async () => {
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockClear();
+      vi.mocked(extractCharacters).mockResolvedValueOnce([
+        { character: 'Krasue', type: 'killer', matchedTerm: 'kraseu', build: { text: 'lethal, dissolution', matchedTerms: ['lethal, dissolution'] } },
+      ]);
+
+      const token = await createTestToken();
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'kraseu de lethal, dissolution', maxCount: 1, extras: ['build'] }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      expect(vi.mocked(extractCharacters)).toHaveBeenCalledWith(
+        'kraseu de lethal, dissolution',
+        expect.any(String),
+        1,
+        ['build']
+      );
+      const body = await res.json() as { characters: Array<{ character: string; build?: { text: string; matchedTerms?: string[] } }> };
+      expect(body.characters[0].build).toEqual({ text: 'lethal, dissolution', matchedTerms: ['lethal, dissolution'] });
+    });
+  });
+
+  describe('PUT /internal/rooms/:roomId/sources', () => {
+    const internalAuth = 'Bearer internal:test-internal-secret';
+
+    it('persists extrasConfig to D1 extras_config column', async () => {
+      const bindCalls: unknown[][] = [];
+      const mockDB2 = {
+        prepare: vi.fn(() => ({
+          bind: vi.fn((...args: unknown[]) => {
+            bindCalls.push(args);
+            return { run: vi.fn().mockResolvedValue({ success: true }) };
+          }),
+        })),
+      };
+      const env = { ...TEST_ENV, DB: mockDB2 as unknown as typeof TEST_ENV['DB'] };
+
+      const res = await app.request('/internal/rooms/mandymess/sources', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: internalAuth,
+        },
+        body: JSON.stringify({
+          enabled: { donation: true, chat: true, resub: false, manual: true },
+          chatCommand: '!fila',
+          chatTiers: [2, 3],
+          priority: ['donation', 'chat', 'resub', 'manual'],
+          sortMode: 'fifo',
+          minDonation: 5,
+          extrasConfig: { build: { enabled: true, price: 12 } },
+        }),
+      }, env);
+
+      expect(res.status).toBe(200);
+      const args = bindCalls[0] ?? [];
+      const stringified = args.find((a) => typeof a === 'string' && a.includes('"build"'));
+      expect(stringified).toBe(JSON.stringify({ build: { enabled: true, price: 12 } }));
+    });
   });
 
   describe('PUT /internal/rooms/:roomId/requests', () => {
     const internalAuth = 'Bearer internal:test-internal-secret';
+
+    it('persists per-row extras to requests.extras column', async () => {
+      const bindCalls: unknown[][] = [];
+      const mockDB2 = {
+        prepare: vi.fn(() => ({
+          bind: vi.fn((...args: unknown[]) => {
+            bindCalls.push(args);
+            return { run: vi.fn().mockResolvedValue({ success: true }) };
+          }),
+        })),
+        batch: vi.fn().mockResolvedValue([]),
+      };
+      const env = { ...TEST_ENV, DB: mockDB2 as unknown as typeof TEST_ENV['DB'] };
+
+      const extras = [{ type: 'build', text: 'lethal, dissolution', matchedTerms: ['lethal, dissolution'] }];
+
+      const res = await app.request('/internal/rooms/mandymess/requests', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: internalAuth,
+        },
+        body: JSON.stringify({
+          mode: 'partial',
+          requests: [{
+            id: 1,
+            timestamp: new Date().toISOString(),
+            donor: 'donor',
+            amount: 'R$10',
+            amountVal: 10,
+            message: 'kraseu de lethal, dissolution',
+            character: 'Krasue',
+            type: 'killer',
+            source: 'donation',
+            extras,
+          }],
+        }),
+      }, env);
+
+      expect(res.status).toBe(200);
+      const requestBindArgs = bindCalls.find((args) =>
+        args.some((a) => typeof a === 'string' && a.includes('"type":"build"'))
+      );
+      expect(requestBindArgs).toBeDefined();
+    });
 
     it('returns 401 without internal auth', async () => {
       const res = await app.request('/internal/rooms/testroom/requests', {

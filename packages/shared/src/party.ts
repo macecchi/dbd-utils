@@ -1,4 +1,4 @@
-import type { Request, SourcesEnabled } from './types';
+import type { Request, SourcesEnabled, RequestExtra, RoomExtras } from './types';
 
 // Bump on non-backwards-compatible changes to PartyMessage formats or connection logic
 export const PROTOCOL_VERSION = 1;
@@ -13,6 +13,7 @@ export interface SourcesSettings {
   minDonation: number;
   hideNonRequests?: boolean;
   confirmInChat?: boolean;
+  extrasConfig?: RoomExtras;
   recoveryVodId?: string;
   recoveryVodOffset?: number;
 }
@@ -40,6 +41,7 @@ export interface SerializedRequest {
   needsIdentification?: boolean;
   validating?: boolean;
   matchedTerm?: string;
+  extras?: RequestExtra[];
 }
 
 export type PartyMessage =

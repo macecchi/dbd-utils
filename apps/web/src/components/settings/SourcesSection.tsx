@@ -5,6 +5,10 @@ import { SettingsSection } from './SettingsSection';
 import { Toggle } from './Toggle';
 import { EditableField } from './EditableField';
 import { SOURCE_ICONS, SOURCE_LABEL_KEYS, type SourceType } from './source-icons';
+import { ExtraRow } from './ExtraRow';
+import { DEFAULT_EXTRAS_CONFIG, type RequestExtraType } from '@dbd-utils/shared';
+
+const ENABLED_EXTRAS: RequestExtraType[] = ['build'];
 
 const TIER_LABEL_KEYS: Record<1 | 2 | 3, 'sources.tier1' | 'sources.tier2' | 'sources.tier3'> = {
   1: 'sources.tier1',
@@ -18,8 +22,8 @@ export function SourcesSection() {
   const { t } = useTranslation();
   const { useSources, canControlConnection } = useChannel();
   const {
-    enabled, chatCommand, chatTiers, minDonation,
-    setEnabled, setChatCommand, setChatTiers, setMinDonation,
+    enabled, chatCommand, chatTiers, minDonation, extrasConfig,
+    setEnabled, setChatCommand, setChatTiers, setMinDonation, setExtrasConfig,
   } = useSources();
   const readOnly = !canControlConnection;
 
@@ -78,6 +82,21 @@ export function SourcesSection() {
                       />
                     </div>
                   </EditableField>
+                </div>
+                <div className="source-row-extras">
+                  {ENABLED_EXTRAS.map(extra => {
+                    const cfg = extrasConfig?.[extra] ?? DEFAULT_EXTRAS_CONFIG[extra]!;
+                    return (
+                      <ExtraRow
+                        key={extra}
+                        extra={extra}
+                        config={cfg}
+                        minDonation={minDonation}
+                        readOnly={readOnly}
+                        onChange={(next) => setExtrasConfig({ ...(extrasConfig ?? {}), [extra]: next })}
+                      />
+                    );
+                  })}
                 </div>
               </>
             )}

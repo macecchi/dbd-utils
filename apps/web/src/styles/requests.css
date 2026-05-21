@@ -195,6 +195,8 @@
 
 .donor-name {
   color: var(--accent);
+  font-weight: 600;
+  font-style: normal;
   margin-right: 0.4em;
 }
 
@@ -214,8 +216,7 @@
 .matched-term {
   background: none;
   color: inherit;
-  font-weight: 600;
-  font-style: italic;
+  text-decoration: underline dashed ;
 }
 
 .amount {
@@ -295,13 +296,21 @@
   --defaultCharPortraitDimensions: 50px;
   width: var(--defaultCharPortraitDimensions);
   height: var(--defaultCharPortraitDimensions);
+  flex-shrink: 0;
+  position: relative;
+  /* Wrapper is the positioning context for the BuildBadge and tooltip — it
+     must NOT clip overlay children. Image clipping lives on `.char-portrait-clip`. */
+}
+
+.char-portrait-clip {
+  width: 100%;
+  height: 100%;
   border-radius: var(--radius-sm);
   background-size: contain;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  flex-shrink: 0;
   position: relative;
 }
 
@@ -422,5 +431,57 @@
     flex-direction: column;
     align-items: flex-end;
     gap: var(--space-xs);
+  }
+}
+
+/* ---------- Build badge (4-slot perk indicator on avatar) ----------
+ *
+ * The badge is a single SVG (see components/BuildBadge.tsx) referencing
+ * `images/perk.webp` four times in the canonical DBD diamond. CSS owns
+ * positioning, sizing, and the drop shadow.
+ */
+.build-badge {
+  --build-badge-size: 40%;
+  position: absolute;
+  width: var(--build-badge-size);
+  aspect-ratio: 1;
+  /* Protrude by ~15% of the badge's own size so the corner sits visually
+     "on" the avatar edge. Derived from --build-badge-size so the offset
+     scales with the badge instead of being hardcoded pixels. */
+  bottom: calc(var(--build-badge-size) * -0.15);
+  right: calc(var(--build-badge-size) * -0.15);
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+  z-index: 2;
+}
+
+.build-badge-sm {
+  --build-badge-size: 50%;
+}
+
+.build-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: rgba(20, 18, 22, 0.96);
+  color: #f3f1ef;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  max-width: 280px;
+  width: max-content;
+  pointer-events: none;
+  white-space: normal;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+  .build-tooltip {
+    max-width: 220px;
+    font-size: 0.78rem;
   }
 }

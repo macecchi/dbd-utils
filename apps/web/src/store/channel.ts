@@ -1,6 +1,7 @@
 // apps/web/src/store/channel.ts
 import { create } from 'zustand';
-import { MAX_PENDING_REQUESTS } from '@dbd-utils/shared';
+import { MAX_PENDING_REQUESTS, DEFAULT_EXTRAS_CONFIG } from '@dbd-utils/shared';
+import type { RoomExtras } from '@dbd-utils/shared';
 import type { ConnectionState, Request, SourcesEnabled, PartyMessage, ChannelStatus } from '../types';
 import { deserializeRequest, deserializeRequests } from '../types';
 import { toast } from 'sonner';
@@ -176,6 +177,7 @@ interface SourcesStore {
   minDonation: number;
   hideNonRequests: boolean;
   confirmInChat: boolean;
+  extrasConfig: RoomExtras;
   recoveryVodId?: string;
   recoveryVodOffset?: number;
   setEnabled: (enabled: SourcesEnabled) => void;
@@ -187,6 +189,7 @@ interface SourcesStore {
   setMinDonation: (min: number) => void;
   setHideNonRequests: (hide: boolean) => void;
   setConfirmInChat: (confirm: boolean) => void;
+  setExtrasConfig: (extrasConfig: RoomExtras) => void;
   setRecoveryCheckpoint: (vodId: string, offset: number) => void;
   handlePartyMessage: (msg: PartyMessage) => void;
 }
@@ -207,6 +210,7 @@ export const SOURCES_DEFAULTS = {
   minDonation: 5,
   hideNonRequests: true,
   confirmInChat: false,
+  extrasConfig: DEFAULT_EXTRAS_CONFIG,
 };
 
 
@@ -230,6 +234,7 @@ export function createSourcesStore(
         minDonation: SOURCES_DEFAULTS.minDonation,
         hideNonRequests: SOURCES_DEFAULTS.hideNonRequests,
         confirmInChat: SOURCES_DEFAULTS.confirmInChat,
+        extrasConfig: SOURCES_DEFAULTS.extrasConfig,
         setEnabled: (enabled) => {
           set({ enabled });
           maybeBroadcast(get);
@@ -266,6 +271,10 @@ export function createSourcesStore(
           set({ confirmInChat });
           maybeBroadcast(get);
         },
+        setExtrasConfig: (extrasConfig) => {
+          set({ extrasConfig });
+          maybeBroadcast(get);
+        },
         setRecoveryCheckpoint: (recoveryVodId, recoveryVodOffset) => {
           set({ recoveryVodId, recoveryVodOffset });
           maybeBroadcast(get);
@@ -273,6 +282,9 @@ export function createSourcesStore(
         handlePartyMessage: (msg) => {
           if (msg.type === 'sync-full' || msg.type === 'update-sources') {
             const sources = msg.sources;
+            const incomingExtras = sources.extrasConfig;
+            const extrasConfig = incomingExtras ?? DEFAULT_EXTRAS_CONFIG;
+
             set({
               enabled: sources.enabled,
               chatCommand: sources.chatCommand,
@@ -284,7 +296,10 @@ export function createSourcesStore(
               confirmInChat: sources.confirmInChat ?? false,
               recoveryVodId: sources.recoveryVodId,
               recoveryVodOffset: sources.recoveryVodOffset,
+              extrasConfig,
             });
+
+            if (!incomingExtras) maybeBroadcast(get);
           }
         },
       }),

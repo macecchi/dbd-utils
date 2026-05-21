@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { createElement } from 'react';
 import { getLocale } from '../i18n';
 
 const rtfCache: Record<string, Intl.RelativeTimeFormat> = {};
@@ -43,6 +45,48 @@ export function handleLinkClick(e: React.MouseEvent<HTMLAnchorElement>) {
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
   e.preventDefault();
   navigate(e.currentTarget.getAttribute('href')!);
+}
+
+/**
+ * Wraps each occurrence of any term in `<mark className="matched-term">…</mark>`.
+ *
+ * - Terms are resolved by longest-first, case-insensitive, against the original
+ *   message. Each character of the message is "claimed" by at most one term —
+ *   shorter terms that overlap an already-claimed span are dropped.
+ * - The first match of each term is highlighted; subsequent occurrences are
+ *   left as plain text (matches existing single-term behavior).
+ * - Empty `terms` returns the message as a single text node.
+ */
+export function highlightTerms(message: string, terms: string[]): ReactNode[] {
+  if (terms.length === 0) return [message];
+
+  const candidates = terms
+    .filter(Boolean)
+    .map(t => {
+      const start = message.toLowerCase().indexOf(t.toLowerCase());
+      return start >= 0 ? { start, end: start + t.length, text: message.slice(start, start + t.length) } : null;
+    })
+    .filter((c): c is { start: number; end: number; text: string } => c !== null)
+    .sort((a, b) => (b.end - b.start) - (a.end - a.start) || a.start - b.start);
+
+  const kept: { start: number; end: number; text: string }[] = [];
+  for (const c of candidates) {
+    const overlaps = kept.some(k => c.start < k.end && c.end > k.start);
+    if (!overlaps) kept.push(c);
+  }
+  kept.sort((a, b) => a.start - b.start);
+
+  if (kept.length === 0) return [message];
+
+  const out: ReactNode[] = [];
+  let cursor = 0;
+  kept.forEach((k, i) => {
+    if (cursor < k.start) out.push(message.slice(cursor, k.start));
+    out.push(createElement('mark', { key: `m-${i}`, className: 'matched-term' }, k.text));
+    cursor = k.end;
+  });
+  if (cursor < message.length) out.push(message.slice(cursor));
+  return out;
 }
 
 export function parseDonationMessage(message: string): ParsedDonationMessage | null {

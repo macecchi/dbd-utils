@@ -17,12 +17,12 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     id: 'whats-new-lang-toggle',
-    titleKey: 'whatsNew.title',
+    titleKey: 'whatsNew.langToggleTitle',
     descriptionKey: 'whatsNew.langToggle',
   },
   {
     id: 'whats-new-multi-donate-bots',
-    titleKey: 'whatsNew.title',
+    titleKey: 'whatsNew.multiDonateBotsTitle',
     descriptionKey: 'whatsNew.multiDonateBots',
   },
   {
@@ -34,5 +34,10 @@ export const changelog: ChangelogEntry[] = [
     id: 'whats-new-multi-request-donations',
     titleKey: 'whatsNew.multiRequestDonationsTitle',
     descriptionKey: 'whatsNew.multiRequestDonations',
+  },
+  {
+    id: 'whats-new-build-requests',
+    titleKey: 'whatsNew.buildRequestsTitle',
+    descriptionKey: 'whatsNew.buildRequests',
   },
 ];

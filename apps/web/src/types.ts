@@ -10,6 +10,9 @@ export type {
   ChannelStatus,
   ChannelState,
   PartyMessage,
+  RequestExtra,
+  RequestExtraType,
+  RoomExtras,
 } from '@dbd-utils/shared';
 
 export {

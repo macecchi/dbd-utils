@@ -55,6 +55,8 @@ const en: TranslationKeys = {
   'sources.hideNonRequestsDesc': 'Skip messages that don\'t mention a character.',
   'sources.reviewRequests': 'Review requests',
   'sources.recoverVod': 'Recover requests from past VODs',
+  'extras.build.name': 'Build requests',
+  'extras.build.desc': 'Donations can include a build with their request.',
   'settings.title': 'Settings',
   'settings.section.sources': 'Sources',
   'settings.section.order': 'Order',
@@ -209,13 +211,17 @@ const en: TranslationKeys = {
   'toast.vodRecoveryFailed': 'Failed to recover missed requests.',
 
   // What's new
-  'whatsNew.title': "What's new",
+  'whatsNew.title': "✨ What's new",
+  'whatsNew.langToggleTitle': 'English language support',
   'whatsNew.langToggle': 'You can now switch between English and Portuguese in the footer.',
+  'whatsNew.multiDonateBotsTitle': 'StreamElements donations support',
   'whatsNew.multiDonateBots': 'StreamElements (GGPix, and others) is now supported for donations, in addition to LivePix.',
-  'whatsNew.multiRequestDonationsTitle': '✨ New: multiple requests per donation',
+  'whatsNew.multiRequestDonationsTitle': 'Multiple requests per donation',
   'whatsNew.multiRequestDonations': 'Donations above the minimum can now contain multiple requests in one message — e.g. R$30 with R$10 minimum becomes up to 3 characters, including quantifiers like "2 de trapper".',
-  'whatsNew.chatConfirmationsTitle': '✨ New: confirmations in chat',
-  'whatsNew.chatConfirmations': 'The @FilaDBD bot can now confirm in chat whenever a request lands in the queue. Enable it in the sources panel.',
+  'whatsNew.chatConfirmationsTitle': 'Confirmations in chat',
+  'whatsNew.chatConfirmations': 'The @FilaDBD bot can now confirm in chat whenever a request lands in the queue. Enable it in the Donations panel.',
+  'whatsNew.buildRequestsTitle': 'Build requests',
+  'whatsNew.buildRequests': 'Donations can now include a build — perks, addons or a theme. Enable it under Donations → Build requests.',
 
   // Push notifications
   'push.connectionLost': 'Fila DBD - Connection lost',

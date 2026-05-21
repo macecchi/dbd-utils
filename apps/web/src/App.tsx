@@ -13,6 +13,7 @@ import { Panel, PanelHeader } from './components/Panel';
 import { Toaster } from 'sonner';
 import { useWhatsNew } from './hooks/useWhatsNew';
 import { identifyCharacter } from './services';
+import { eligibleExtras } from './services/extras';
 import { tryLocalMatch } from './data/characters';
 import { recoverMissedRequests, scanVODForRequests, type VODInfo } from './services/vod';
 import { DONATE_BOT_NAMES } from './services/twitch';
@@ -51,22 +52,29 @@ function makeSourcesConfig(sourcesState: ReturnType<SourcesStoreApi['getState']>
     minDonation: sourcesState.minDonation,
     sourcesEnabled: sourcesState.enabled,
     chatCommand: sourcesState.chatCommand,
+    extrasConfig: sourcesState.extrasConfig,
     ...(checkpoint && { checkpoint }),
   };
 }
 
-function useAutoIdentify(requests: Request[], update: (id: number, updates: Partial<Request>) => void, readOnly: boolean) {
+function useAutoIdentify(
+  requests: Request[],
+  update: (id: number, updates: Partial<Request>) => void,
+  readOnly: boolean,
+  useSources: SourcesStoreApi,
+) {
   const inFlight = useRef(new Set<number>());
   useEffect(() => {
     if (readOnly) return;
     const pending = requests.filter(r => r.needsIdentification && !inFlight.current.has(r.id));
     for (const req of pending) {
       inFlight.current.add(req.id);
-      identifyCharacter(req, undefined, (llmResult) => update(req.id, llmResult))
+      const extras = eligibleExtras(req.amountVal, useSources.getState().extrasConfig);
+      identifyCharacter(req, extras, undefined, (llmResult) => update(req.id, llmResult))
         .then(result => update(req.id, { ...result, needsIdentification: false }))
         .finally(() => inFlight.current.delete(req.id));
     }
-  }, [requests, update, readOnly]);
+  }, [requests, update, readOnly, useSources]);
 }
 
 // One-shot migration: re-runs the local matcher on existing non-manual requests
@@ -307,7 +315,7 @@ function ChannelApp() {
 
   const hideNonRequests = useSources((s) => s.hideNonRequests);
 
-  useAutoIdentify(requests, update, readOnly);
+  useAutoIdentify(requests, update, readOnly, useSources);
   useFixVecnaRegression(requests, update, readOnly);
   useRequestToasts(requests, update, hideNonRequests, readOnly);
   useWhatsNew(canControlConnection);

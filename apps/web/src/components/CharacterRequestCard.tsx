@@ -1,20 +1,11 @@
-import { memo, useMemo, type ReactNode } from 'react';
+import { memo, useMemo } from 'react';
 import type { Request } from '../types';
 import { useContextMenu } from '../context/ContextMenuContext';
 import { getKillerPortrait, tryLocalMatch } from '../data/characters';
 import { CharacterAvatar } from './CharacterAvatar';
 import { useTranslation } from '../i18n';
 import { getLocale } from '../i18n';
-import { formatRelativeTime } from '../utils/helpers';
-
-function highlightTerm(message: string, term: string): ReactNode[] {
-  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escaped})`, 'i');
-  const parts = message.split(regex);
-  return parts.map((part, i) =>
-    regex.test(part) ? <mark key={i} className="matched-term">{part}</mark> : part
-  );
-}
+import { formatRelativeTime, highlightTerms } from '../utils/helpers';
 
 function getMatchedTerm(r: Request): string | undefined {
   if (r.matchedTerm) return r.matchedTerm;
@@ -54,6 +45,18 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
       r.character;
   const isCollapsed = r.done;
   const matchedTerm = useMemo(() => getMatchedTerm(r), [r.matchedTerm, r.message, r.character, r.type]);
+
+  const buildMatchedTerms = useMemo(() => {
+    const build = r.extras?.find(e => e.type === 'build');
+    return build?.matchedTerms ?? [];
+  }, [r.extras]);
+
+  const allTerms = useMemo(() => {
+    const terms: string[] = [];
+    if (matchedTerm) terms.push(matchedTerm);
+    terms.push(...buildMatchedTerms);
+    return terms;
+  }, [matchedTerm, buildMatchedTerms]);
 
   const handleClick = () => {
     if (readOnly) return;
@@ -134,7 +137,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
         <span className="request-position">{position ? String(position).padStart(2, '0') : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>}</span>
-        <CharacterAvatar portrait={portrait ?? undefined} type={r.type} />
+        <CharacterAvatar portrait={portrait ?? undefined} type={r.type} extras={r.extras} />
         <div className="request-card-info">
           <div className="character">
             <img
@@ -152,7 +155,7 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
               {r.donor}
               {group && <span className="donation-group-chip" title="Pedidos da mesma doação">{group.index}/{group.total}</span>}
             </span>
-            {matchedTerm ? highlightTerm(r.message, matchedTerm) : r.message}
+            {allTerms.length > 0 ? highlightTerms(r.message, allTerms) : r.message}
           </div>
         </div>
         <div className="request-card-meta">

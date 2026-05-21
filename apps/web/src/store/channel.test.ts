@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createRoomStores } from './channel';
+import { createRoomStores, createSourcesStore } from './channel';
 import type { Request } from '../types';
+import type { SourcesSettings } from '../types';
 
 // Mock the party service broadcasts
 vi.mock('../services/party', () => ({
@@ -265,6 +266,57 @@ describe('channel stores', () => {
       stores.useChannelInfo.getState().setIrcConnectionState('connected');
 
       expect(party.broadcastIrcStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('SourcesStore extrasConfig', () => {
+    it('writes default extrasConfig on first sources hydrate when missing', () => {
+      const broadcasts: Array<Record<string, unknown>> = [];
+      vi.mocked(party.broadcastSources).mockImplementation((s) => { broadcasts.push(s as unknown as Record<string, unknown>); });
+
+      const useSources = createSourcesStore('room', () => ({ partyConnected: true }));
+      useSources.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: [],
+        channel: { status: 'offline', owner: null },
+        sources: {
+          enabled: { donation: true, chat: true, resub: false, manual: true },
+          chatCommand: '!fila',
+          chatTiers: [2, 3],
+          priority: ['donation', 'chat', 'resub', 'manual'],
+          sortMode: 'fifo',
+          minDonation: 5,
+          // no extrasConfig
+        } as SourcesSettings,
+      });
+
+      const state = useSources.getState();
+      // Default is opt-in (enabled: false) so the streamer has to turn it on explicitly.
+      expect(state.extrasConfig).toEqual({ build: { enabled: false, price: 10 } });
+      expect(broadcasts.some(b => 'extrasConfig' in b)).toBe(true);
+    });
+
+    it('keeps existing extrasConfig and does NOT broadcast when present in sync-full', () => {
+      vi.mocked(party.broadcastSources).mockClear();
+      const useSources = createSourcesStore('room', () => ({ partyConnected: true }));
+      useSources.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: [],
+        channel: { status: 'offline', owner: null },
+        sources: {
+          enabled: { donation: true, chat: true, resub: false, manual: true },
+          chatCommand: '!fila',
+          chatTiers: [2, 3],
+          priority: ['donation', 'chat', 'resub', 'manual'],
+          sortMode: 'fifo',
+          minDonation: 5,
+          extrasConfig: { build: { enabled: false, price: 25 } },
+        },
+      });
+      expect(useSources.getState().extrasConfig).toEqual({ build: { enabled: false, price: 25 } });
+      // Critical: must not echo the sources back to PartyKit on hydrate — that would
+      // create a write-amplification loop across every connected client.
+      expect(party.broadcastSources).not.toHaveBeenCalled();
     });
   });
 });

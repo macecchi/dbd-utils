@@ -1,4 +1,5 @@
 import { DEFAULT_CHARACTERS } from '@dbd-utils/shared';
+import type { RequestExtraType } from '@dbd-utils/shared';
 
 const MODELS = ['gemini-3.1-flash-lite-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 const RETRIABLE_CODES = [429, 500, 502, 503, 504];
@@ -11,19 +12,47 @@ export type ExtractionResult = {
   character: string;
   type: 'survivor' | 'killer' | 'none';
   matchedTerm?: string;
+  build?: { text: string; matchedTerms?: string[] };
 };
 
 export async function extractCharacters(
   message: string,
   apiKey: string,
   maxCount: number,
+  extras: RequestExtraType[] = [],
   attempt = 0,
   modelIdx = currentModelIndex,
   startIdx = currentModelIndex
 ): Promise<ExtractionResult[]> {
   const model = MODELS[modelIdx];
 
-  console.log(`[extract] Starting extraction using model: ${model} (attempt ${attempt + 1}/${MAX_RETRIES + 1}, maxCount=${maxCount})`);
+  console.log(`[extract] Starting extraction using model: ${model} (attempt ${attempt + 1}/${MAX_RETRIES + 1}, maxCount=${maxCount}, extras=${extras.join(',') || 'none'})`);
+
+  const withBuild = extras.includes('build');
+
+  const buildBlock = withBuild ? `
+
+ALSO extract a "build" per character entry. A build is the loadout the streamer should equip: perk names (EN or PT, with creative spellings/slang), addon names, item or item-addon names (survivor loadouts), a theme like "build de aura" / "build irritante" / "build de endgame", or an explicit "sem perks" / "no perks" instruction. Apply equally to killers and survivors.
+
+Builds are usually terse and OFTEN omit the word "build". The phrase right after the character name almost always IS the build — extract it into the build field instead of folding it into matchedTerm:
+- "hag sem perks" → Hag, build text "sem perks"
+- "Pig de aura" → Pig, build text "de aura"
+- "drácula com sua build favorita" → Dark Lord, build text "build favorita"
+- "wraith com o addon X" → Wraith, build text "addon X"
+- "joga de doctor de build irritante" → Doctor, build text "build irritante"
+
+Distribution rules:
+- Two characters sharing one build phrase ("Pig e Hag de build de aura") → copy the SAME build onto both rows.
+- Two characters with separate builds ("Pig de aura e Hag de gritos") → each gets its own build.
+- Quantified characters ("3 trickster de build X") → ALL three share the same build.
+- Build present but unclear ownership → attach to the FIRST character entry.
+
+NEVER confuse a meta question about perks ("as perks tem sinergia com os poderes? joga de nurse") with a build request — questions are not loadout instructions. Omit the build field ONLY when the message contains zero loadout / addon / theme reference.
+
+Build shape:
+- text: short summary in the donor's language, verbatim wording/slang preserved.
+- matchedTerms: array of EXACT substrings of <user_message> describing the build (each contiguous span as its own entry).
+` : '';
 
   const prompt = `Identify Dead by Daylight characters requested in the user message. The user may request multiple characters. This is the list of valid characters, although the user might not specify them exactly as on this list.
 
@@ -51,7 +80,7 @@ Return ONLY JSON with a "characters" array. Each entry has character name, type,
 - If the user requests a generic survivor ("joga de surv", "uma de survivor"), return one entry with character "Survivor" and type "survivor".
 - Recognize creative spellings, slang, and affectionate variations (e.g. "Drakuluxuuu" = Dracula, "demogogo" = Demogorgon, "pigzinha" = Pig).
 - If a character is referenced but the exact identity is unknown, use empty string for character with the best-guess type.
-- In "matchedTerm", return the EXACT substring referring to that specific instance, preserving the original casing and spelling. If the same character is requested twice with the same wording, both entries may share the same matchedTerm.`;
+- In "matchedTerm", return the EXACT substring referring to that specific instance, preserving the original casing and spelling. If the same character is requested twice with the same wording, both entries may share the same matchedTerm.${buildBlock}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -77,6 +106,16 @@ Return ONLY JSON with a "characters" array. Each entry has character name, type,
                     character: { type: 'string' },
                     type: { type: 'string', enum: ['survivor', 'killer', 'none'] },
                     matchedTerm: { type: 'string' },
+                    ...(withBuild ? {
+                      build: {
+                        type: 'object',
+                        properties: {
+                          text: { type: 'string' },
+                          matchedTerms: { type: 'array', items: { type: 'string' } },
+                        },
+                        required: ['text'],
+                      },
+                    } : {}),
                   },
                   required: ['character', 'type'],
                 },
@@ -100,12 +139,12 @@ Return ONLY JSON with a "characters" array. Each entry has character name, type,
       if (nextIdx !== startIdx) {
         console.log(`[extract] Switching from ${model} to ${MODELS[nextIdx]}`);
         currentModelIndex = nextIdx;
-        return extractCharacters(message, apiKey, maxCount, 0, nextIdx, startIdx);
+        return extractCharacters(message, apiKey, maxCount, extras, 0, nextIdx, startIdx);
       }
       if (attempt < MAX_RETRIES) {
         console.log(`[extract] Retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
         await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
-        return extractCharacters(message, apiKey, maxCount, attempt + 1, modelIdx, startIdx);
+        return extractCharacters(message, apiKey, maxCount, extras, attempt + 1, modelIdx, startIdx);
       }
       console.error(`[extract] All retries exhausted after ${MAX_RETRIES + 1} attempts`);
     }
@@ -128,12 +167,12 @@ Return ONLY JSON with a "characters" array. Each entry has character name, type,
     if (nextIdx !== startIdx) {
       console.log(`[extract] Switching from ${model} to ${MODELS[nextIdx]}`);
       currentModelIndex = nextIdx;
-      return extractCharacters(message, apiKey, maxCount, 0, nextIdx, startIdx);
+      return extractCharacters(message, apiKey, maxCount, extras, 0, nextIdx, startIdx);
     }
     if (attempt < MAX_RETRIES) {
       console.log(`[extract] Retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
       await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
-      return extractCharacters(message, apiKey, maxCount, attempt + 1, modelIdx, startIdx);
+      return extractCharacters(message, apiKey, maxCount, extras, attempt + 1, modelIdx, startIdx);
     }
 
     console.error(`[extract] All retries exhausted, returning empty`);

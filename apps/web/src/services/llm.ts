@@ -1,16 +1,22 @@
 import { tryLocalMatch } from '../data/characters';
 import { useAuth } from '../store/auth';
-import type { Request } from '../types';
+import type { Request, RequestExtra, RequestExtraType } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
 declare const __APP_VERSION__: string;
 
-type ExtractedCharacter = { character: string; type: string; matchedTerm?: string };
+type ExtractedCharacter = {
+  character: string;
+  type: string;
+  matchedTerm?: string;
+  build?: { text: string; matchedTerms?: string[] };
+};
 
 async function callAPI(
   message: string,
   maxCount: number,
+  extras: RequestExtraType[],
   onError?: (msg: string) => void
 ): Promise<ExtractedCharacter[]> {
   const token = await useAuth.getState().getAccessToken();
@@ -24,7 +30,7 @@ async function callAPI(
         Authorization: `Bearer ${token}`,
         'X-Client-Version': __APP_VERSION__,
       },
-      body: JSON.stringify({ message, maxCount }),
+      body: JSON.stringify({ message, maxCount, extras }),
     });
 
     if (!res.ok) {
@@ -57,17 +63,27 @@ async function callAPI(
   }
 }
 
+function pickExtras(c: { build?: { text: string; matchedTerms?: string[] } }): RequestExtra[] | undefined {
+  if (!c.build?.text) return undefined;
+  return [{ type: 'build', text: c.build.text, matchedTerms: c.build.matchedTerms }];
+}
+
 export async function identifyCharacter(
   request: Request,
+  extras: RequestExtraType[] = [],
   onError?: (msg: string) => void,
-  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; validating: false }) => void
-): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; validating?: boolean }> {
+  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; extras?: RequestExtra[]; validating: false }) => void
+): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; extras?: RequestExtra[]; validating?: boolean }> {
   const local = tryLocalMatch(request.message);
   const isAuthenticated = useAuth.getState().isAuthenticated;
 
-  if (local) {
+  // Local match alone never carries extras. If the caller asked for extras AND the
+  // donation is eligible, we must hit the LLM even when the character matched locally.
+  const needsLLMForExtras = !!local && extras.length > 0 && isAuthenticated && !!onLLMUpdate;
+
+  if (local && !needsLLMForExtras) {
     if (local.ambiguous && isAuthenticated && onLLMUpdate) {
-      callAPI(request.message, 1, onError).then(arr => {
+      callAPI(request.message, 1, [], onError).then(arr => {
         const llmResult = arr[0] ?? { character: '', type: 'none' };
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
@@ -85,15 +101,34 @@ export async function identifyCharacter(
     return local;
   }
 
+  // Local match + extras requested: show the local character immediately, then let
+  // the LLM result replace it wholesale when the call resolves. The LLM is the
+  // source of truth for both character identification and build extraction once
+  // it answers; the local match is only a placeholder during the request.
+  if (local && needsLLMForExtras) {
+    callAPI(request.message, 1, extras, onError).then(arr => {
+      const llmResult = arr[0] ?? { character: '', type: 'none' };
+      onLLMUpdate?.({
+        character: llmResult.character || '',
+        type: (llmResult.type || 'unknown') as 'survivor' | 'killer' | 'unknown' | 'none',
+        matchedTerm: llmResult.matchedTerm,
+        extras: pickExtras(llmResult),
+        validating: false,
+      });
+    });
+    return { ...local, validating: true };
+  }
+
   if (!isAuthenticated) return { character: '', type: 'unknown' };
 
-  const arr = await callAPI(request.message, 1, onError);
+  const arr = await callAPI(request.message, 1, extras, onError);
   const result = arr[0] ?? { character: '', type: 'none' };
   const type = result.type || 'unknown';
   return {
     character: result.character || '',
     type: type as 'survivor' | 'killer' | 'unknown' | 'none',
-    matchedTerm: result.matchedTerm
+    matchedTerm: result.matchedTerm,
+    extras: pickExtras(result),
   };
 }
 
@@ -109,7 +144,7 @@ export async function testExtraction(
 
   if (localResult) {
     if (localResult.ambiguous && isAuthenticated && onLLMUpdate) {
-      callAPI(input, 1, onError).then(arr => {
+      callAPI(input, 1, [], onError).then(arr => {
         const llmResult = arr[0] ?? { character: '', type: 'none' };
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
@@ -126,7 +161,7 @@ export async function testExtraction(
     return { character: '', type: 'unknown', isLocal: false };
   }
 
-  const arr = await callAPI(input, 1, onError);
+  const arr = await callAPI(input, 1, [], onError);
   const llm = arr[0] ?? { character: '', type: 'none' };
   return {
     character: llm.character || '',
@@ -138,14 +173,27 @@ export async function testExtraction(
 export async function identifyMultiple(
   message: string,
   maxCount: number,
+  extras: RequestExtraType[] = [],
   onError?: (msg: string) => void
-): Promise<Array<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string }>> {
+): Promise<Array<{
+  character: string;
+  type: 'survivor' | 'killer' | 'unknown' | 'none';
+  matchedTerm?: string;
+  extras?: RequestExtra[];
+}>> {
   const isAuthenticated = useAuth.getState().isAuthenticated;
   if (!isAuthenticated) return [];
-  const arr = await callAPI(message, maxCount, onError);
-  return arr.map(c => ({
-    character: c.character ?? '',
-    type: (c.type ?? 'unknown') as 'survivor' | 'killer' | 'unknown' | 'none',
-    matchedTerm: c.matchedTerm,
-  }));
+  const arr = await callAPI(message, maxCount, extras, onError);
+  return arr.map(c => {
+    const extrasOut: RequestExtra[] = [];
+    if (c.build?.text) {
+      extrasOut.push({ type: 'build', text: c.build.text, matchedTerms: c.build.matchedTerms });
+    }
+    return {
+      character: c.character ?? '',
+      type: (c.type ?? 'unknown') as 'survivor' | 'killer' | 'unknown' | 'none',
+      matchedTerm: c.matchedTerm,
+      extras: extrasOut.length > 0 ? extrasOut : undefined,
+    };
+  });
 }

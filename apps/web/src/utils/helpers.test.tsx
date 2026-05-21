@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseDonationMessage, parseAmount, isDonateBot } from './helpers';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { parseDonationMessage, parseAmount, isDonateBot, highlightTerms } from './helpers';
 
 describe('parseDonationMessage', () => {
   describe('LivePix format', () => {
@@ -171,5 +172,39 @@ describe('parseAmount', () => {
 
   it('returns 0 for non-numeric', () => {
     expect(parseAmount('abc')).toBe(0);
+  });
+});
+
+describe('highlightTerms', () => {
+  it('wraps a single term in a mark element', () => {
+    const result = highlightTerms('hello world', ['world']);
+    expect(result).toHaveLength(2);
+    const html = renderToStaticMarkup(<>{result}</>);
+    expect(html).toBe('hello <mark class="matched-term">world</mark>');
+  });
+
+  it('wraps multiple non-overlapping terms', () => {
+    const result = highlightTerms('joga de kraseu com lethal e bbq', ['kraseu', 'lethal', 'bbq']);
+    const html = renderToStaticMarkup(<>{result}</>);
+    expect(html).toContain('<mark class="matched-term">kraseu</mark>');
+    expect(html).toContain('<mark class="matched-term">lethal</mark>');
+    expect(html).toContain('<mark class="matched-term">bbq</mark>');
+  });
+
+  it('drops a term that overlaps a previously-matched span', () => {
+    const result = highlightTerms('use lethal pursuer', ['lethal pursuer', 'lethal']);
+    const html = renderToStaticMarkup(<>{result}</>);
+    expect(html).toBe('use <mark class="matched-term">lethal pursuer</mark>');
+  });
+
+  it('returns the message unchanged when no terms match', () => {
+    const result = highlightTerms('plain message', ['nope']);
+    const html = renderToStaticMarkup(<>{result}</>);
+    expect(html).toBe('plain message');
+  });
+
+  it('returns the message as-is for empty terms array', () => {
+    const result = highlightTerms('plain message', []);
+    expect(result).toEqual(['plain message']);
   });
 });
