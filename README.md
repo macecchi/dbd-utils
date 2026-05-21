@@ -35,7 +35,7 @@ You need to keep the site open to receive requests.
 
 | Source | How it works |
 |--------|-------------|
-| **Donations** | Detects messages from donation bots (LivePix, StreamElements, etc.). Filters by minimum amount |
+| **Donations** | Detects messages from donation bots (LivePix, StreamElements, etc.). Filters by minimum amount. Donations that exceed the minimum may contain multiple requests in one message (up to 10) |
 | **Resubs** | Captures resub messages via Twitch IRC USERNOTICE |
 | **Chat** | Configurable command (default: `!fila`) for subscribers. Filters by minimum tier |
 | **Manual** | Manual character entry |
@@ -187,7 +187,7 @@ Use o nosso [Discord](https://discord.gg/6pY7Efhxd) ou o próprio GitHub para ma
 
 | Fonte | Como funciona |
 |-------|---------------|
-| **Donates** | Detecta mensagens de bots de doação (LivePix, StreamElements, etc.). Filtra por valor mínimo |
+| **Donates** | Detecta mensagens de bots de doação (LivePix, StreamElements, etc.). Filtra por valor mínimo. Donates acima do mínimo podem conter múltiplos pedidos numa mesma mensagem (até 10) |
 | **Resubs** | Captura mensagens de resub via USERNOTICE do Twitch IRC |
 | **Chat** | Comando configurável (padrão: `!fila`) para inscritos. Filtra por tier mínimo |
 | **Manual** | Entrada manual de personagens |
