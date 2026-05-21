@@ -114,6 +114,14 @@ a.brand {
   }
 }
 
+/* Mobile = viewer experience. The sidebar holds streamer-only controls
+   (Settings + Debug); drop it entirely so the page is just the queue. */
+@media (max-width: 600px) {
+  .sidebar {
+    display: none;
+  }
+}
+
 /* Panel */
 .panel {
   display: flex;
@@ -298,9 +306,6 @@ a.brand {
 
   .panel-header {
     padding: var(--space-md) var(--space-lg);
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-sm);
   }
 
   .panel-title {
@@ -321,22 +326,10 @@ a.brand {
     white-space: nowrap;
   }
 
-  /* Stretch the actions cluster across its own row (panel-header goes
-     column on mobile) and pin its buttons to the right, mirroring desktop.
-     Targets the explicit `.panel-actions` container produced by
-     <PanelHeader> — using `> div:last-child` would also match a lone
-     `.panel-title` and split its icon from its text. */
+  /* Mobile = viewer experience. Streamer controls in the queue header
+     (manual entry, review) live in the sidebar on desktop; on mobile they
+     just clutter the title row. */
   .panel-header .panel-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .panel-header .btn-small {
-    font-size: var(--text-xs);
-    padding: 0.35rem 0.5rem;
-  }
-
-  .panel-header .btn-small span {
     display: none;
   }
 

@@ -235,31 +235,31 @@
     font-size: 1rem;
   }
 
-  /* Stack stats above the action button instead of competing for one row —
-     the purple "Open queue" button's glow used to bleed straight into the
-     stats numerals. */
+  /* Mobile is the viewer experience. Drop the stats counters — they carry
+     no value for a viewer landing on the page — and shrink the owner-only
+     action button to a compact, right-aligned pill instead of a full-width
+     glowing bar. */
+  .channel-header-right .stats {
+    display: none;
+  }
+
   .channel-header-right {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-md);
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0;
   }
 
   .channel-header-actions {
-    justify-content: stretch;
-    width: 100%;
+    width: auto;
   }
 
   .channel-header-actions .btn {
-    flex: 1;
-    justify-content: center;
-    width: 100%;
+    flex: 0 0 auto;
+    width: auto;
     min-width: 0;
-  }
-
-  /* `.stat` defaults to text-align: right, which looked off once the stats
-     row spans full width beneath the avatar — left-align so the numerals
-     line up with the channel name above. */
-  .channel-header-right .stat {
-    text-align: left;
+    padding: 0.4rem 0.9rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
   }
 }
