@@ -153,7 +153,6 @@ a.brand {
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
   box-shadow:
-    0 -1rem 0 var(--bg),
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 1px 0 0 rgba(255, 255, 255, 0.025),
     inset -1px 0 0 rgba(255, 255, 255, 0.025);
@@ -163,7 +162,36 @@ a.brand {
   .grid > .panel-surface > .panel-header {
     top: env(safe-area-inset-top, 0px);
     border-radius: 0;
-    box-shadow: none;
+  }
+}
+
+/* Mask the 1rem gap above the sticky queue header with the page bg color
+   so the scrolling list doesn't bleed through. Only engaged once the page
+   actually scrolls — at rest the natural body bg shows through. */
+@property --queue-mask-alpha {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@keyframes queue-sticky-mask-engage {
+  0%, 0.5% { --queue-mask-alpha: 0; }
+  3%, 100% { --queue-mask-alpha: 1; }
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (min-width: 481px) {
+    .app {
+      animation: queue-sticky-mask-engage linear;
+      animation-timeline: scroll(root block);
+    }
+    .grid > .panel-surface > .panel-header {
+      box-shadow:
+        0 -1rem 0 rgb(0 0 0 / var(--queue-mask-alpha)),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        inset 1px 0 0 rgba(255, 255, 255, 0.025),
+        inset -1px 0 0 rgba(255, 255, 255, 0.025);
+    }
   }
 }
 
