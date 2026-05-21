@@ -129,6 +129,53 @@
   line-height: 1.5;
 }
 
+/* Donations highlight band */
+.landing-donations-band {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+
+.landing-donations-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.landing-donations-point h3 {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.landing-donations-point p {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.landing-mock-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: landingFadeUp 0.5s var(--ease-out) both;
+}
+
+.landing-mock-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg) var(--space-xl);
+}
+
+/* The card content classes are shared with the real queue card (requests.css);
+   the mockup only needs its own frame. Pin the body so it never wraps the
+   donor line onto the build text awkwardly in this constrained layout. */
+.landing-mock-card .request-card-body {
+  font-style: italic;
+}
+
 /* Steps */
 .landing-steps {
   display: flex;
@@ -410,6 +457,11 @@
 
   .landing-features {
     grid-template-columns: 1fr;
+  }
+
+  .landing-donations-band {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 
   .landing-footer {

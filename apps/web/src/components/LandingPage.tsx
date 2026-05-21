@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../store';
 import { useTranslation } from '../i18n';
 import { formatRelativeTime, handleLinkClick } from '../utils/helpers';
+import { getKillerPortrait } from '../data/characters';
+import { CharacterAvatar } from './CharacterAvatar';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
@@ -146,6 +148,76 @@ const STEP_KEYS = [
   { num: '3', title: 'landing.step3Title', desc: 'landing.step3Desc' },
 ] as const;
 
+const killerIcon = `${import.meta.env.BASE_URL}images/IconKiller.webp`;
+
+/**
+ * A static, non-interactive replica of two queue cards from a single donation.
+ * It demonstrates both highlighted features at once: the donation split into two
+ * entries (group chips 1/2 and 2/2 → multi-request) where the first carries the
+ * perk-diamond build badge (→ build requests). Reuses the real CharacterAvatar
+ * so the badge is the genuine product visual.
+ */
+function LandingDonationMockup() {
+  const { t } = useTranslation();
+  const buildLine = t('landing.mockupBuildLine');
+  return (
+    <div className="landing-mock-stack" aria-hidden="true">
+      <div className="landing-mock-card">
+        <div className="request-card-content">
+          <span className="request-position">01</span>
+          <CharacterAvatar
+            portrait={getKillerPortrait('Trapper')}
+            type="killer"
+            extras={[{ type: 'build', text: buildLine }]}
+          />
+          <div className="request-card-info">
+            <div className="character">
+              <img src={killerIcon} alt="" className="char-type-icon" />
+              <span className="char-name">Trapper</span>
+            </div>
+            <div className="request-card-body">
+              <span className="donor-name">
+                alex
+                <span className="donation-group-chip">1/2</span>
+              </span>
+              {buildLine}
+            </div>
+          </div>
+          <div className="request-card-meta">
+            <span className="amount source-donation">R$ 20</span>
+          </div>
+        </div>
+      </div>
+      <div className="landing-mock-card">
+        <div className="request-card-content">
+          <span className="request-position">02</span>
+          <CharacterAvatar portrait={getKillerPortrait('Nurse')} type="killer" />
+          <div className="request-card-info">
+            <div className="character">
+              <img src={killerIcon} alt="" className="char-type-icon" />
+              <span className="char-name">Nurse</span>
+            </div>
+            <div className="request-card-body">
+              <span className="donor-name">
+                alex
+                <span className="donation-group-chip">2/2</span>
+              </span>
+            </div>
+          </div>
+          <div className="request-card-meta">
+            <span className="amount source-donation">R$ 20</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const DONATION_FEATURE_KEYS = [
+  { title: 'landing.buildRequestsTitle', desc: 'landing.buildRequestsDesc' },
+  { title: 'landing.multiRequestTitle', desc: 'landing.multiRequestDesc' },
+] as const;
+
 export function LandingPage() {
   const { t, locale, setLocale } = useTranslation();
   return (
@@ -179,6 +251,21 @@ export function LandingPage() {
               <p>{t(f.desc)}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="landing-section">
+        <h2>{t('landing.donationsBandTitle')}</h2>
+        <div className="landing-donations-band">
+          <div className="landing-donations-copy">
+            {DONATION_FEATURE_KEYS.map((f, i) => (
+              <div key={i} className="landing-donations-point">
+                <h3>{t(f.title)}</h3>
+                <p>{t(f.desc)}</p>
+              </div>
+            ))}
+          </div>
+          <LandingDonationMockup />
         </div>
       </section>
 
