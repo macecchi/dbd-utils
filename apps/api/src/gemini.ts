@@ -32,21 +32,26 @@ export async function extractCharacters(
 
   const buildBlock = withBuild ? `
 
-For each character entry, also try to identify a "build" the donor wants for that character. A build is a description of the loadout the streamer should equip — it may include perk names (DBD has hundreds, in English or Portuguese with creative spellings and slang), addon names, item or item-addon names (survivor loadouts), a theme like "build de aura" / "build irritante" / "build de endgame", or an explicit "no perks" / "sem perks" instruction.
+ALSO extract a "build" per character entry. A build is the loadout the streamer should equip: perk names (EN or PT, with creative spellings/slang), addon names, item or item-addon names (survivor loadouts), a theme like "build de aura" / "build irritante" / "build de endgame", or an explicit "sem perks" / "no perks" instruction. Apply equally to killers and survivors.
 
-Builds apply equally to killer and survivor character entries.
+Builds are usually terse and OFTEN omit the word "build". The phrase right after the character name almost always IS the build — extract it into the build field instead of folding it into matchedTerm:
+- "hag sem perks" → Hag, build text "sem perks"
+- "Pig de aura" → Pig, build text "de aura"
+- "drácula com sua build favorita" → Dark Lord, build text "build favorita"
+- "wraith com o addon X" → Wraith, build text "addon X"
+- "joga de doctor de build irritante" → Doctor, build text "build irritante"
 
-If the message contains build text, attach it to the appropriate character(s):
-- "Pig e Hag de build de aura" → same build text on both rows.
-- "Pig de aura e Hag de gritos" → different build text per row.
-- "3 trickster de build X" → same build on all three quantified rows.
-- If a build is mentioned but it's unclear which character it belongs to, attach it to the first character entry.
+Distribution rules:
+- Two characters sharing one build phrase ("Pig e Hag de build de aura") → copy the SAME build onto both rows.
+- Two characters with separate builds ("Pig de aura e Hag de gritos") → each gets its own build.
+- Quantified characters ("3 trickster de build X") → ALL three share the same build.
+- Build present but unclear ownership → attach to the FIRST character entry.
 
-Return build as { text, matchedTerms[] }:
-- text: brief human-readable summary, in the donor's language (verbatim is fine; clean up obvious typos but keep the donor's wording/slang).
-- matchedTerms: array of exact substrings of <user_message> that describe the build. Perks and addons may be separated by other words — include each contiguous span as a separate entry.
+NEVER confuse a meta question about perks ("as perks tem sinergia com os poderes? joga de nurse") with a build request — questions are not loadout instructions. Omit the build field ONLY when the message contains zero loadout / addon / theme reference.
 
-Omit the build field when no build text is present.
+Build shape:
+- text: short summary in the donor's language, verbatim wording/slang preserved.
+- matchedTerms: array of EXACT substrings of <user_message> describing the build (each contiguous span as its own entry).
 ` : '';
 
   const prompt = `Identify Dead by Daylight characters requested in the user message. The user may request multiple characters. This is the list of valid characters, although the user might not specify them exactly as on this list.

@@ -364,4 +364,66 @@ describe.concurrent('Gemini extractCharacters — build extraction evals', () =>
     expect(result[0].character).toBe('Hag');
     expect(result[0].build?.text.toLowerCase()).toContain('sem perks');
   }, 30_000);
+
+  // Donor mentions "perks" contextually (asking a question) but is not actually
+  // requesting a build. Real production case: "as perks originais dos killers
+  // tem alguma sinergia… joga de nurse". The character is the request; nothing
+  // about Nurse's loadout is being asked for.
+  it.skipIf(!RUN_EVALS)('false positive: "perks" mentioned contextually but no build requested', async () => {
+    const message = 'Mandy, as perks originais dos killers tem alguma sinergia com os poderes únicos deles? Fico pensando nisso as vezes, joga de nurse!';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 2, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Nurse');
+    // No actual build was requested — the word "perks" appears in a meta-question,
+    // not as a loadout instruction.
+    expect(result[0].build).toBeUndefined();
+  }, 30_000);
+
+  // Addon-only build with a perk borrowed from another killer. Real production:
+  // "wraith com o addon marrom de sair do poder quando chutar um gerador junto
+  // da perk do vecnussy de chutar gerador via bluetooth". Build text should
+  // mention the addon and the perk even without naming them canonically.
+  it.skipIf(!RUN_EVALS)('addons + slang perk reference (Wraith)', async () => {
+    const message = 'joga de wraith com o addon marrom de sair do poder quando chutar um gerador junto da perk do vecnussy de chutar gerador via bluetooth';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 2, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Wraith');
+    expect(result[0].build?.text).toBeTruthy();
+    // The build mentions both an addon and a perk-by-effect; the text should
+    // reflect at least one of them.
+    const text = result[0].build!.text.toLowerCase();
+    expect(text.includes('addon') || text.includes('chutar') || text.includes('gerador')).toBe(true);
+  }, 30_000);
+
+  // Shared build across two explicitly named characters (not via quantifier).
+  // Real production-style: "Pig e Hag de build de aura". Both characters get
+  // the same build text.
+  it.skipIf(!RUN_EVALS)('shared build across two named characters (Pig e Hag de aura)', async () => {
+    const message = 'Pig e Hag de build de aura';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 3, ['build']);
+
+    expect(result).toHaveLength(2);
+    const pig = result.find(r => r.character === 'Pig');
+    const hag = result.find(r => r.character === 'Hag');
+    expect(pig?.build?.text.toLowerCase()).toContain('aura');
+    expect(hag?.build?.text.toLowerCase()).toContain('aura');
+  }, 30_000);
+
+  // Build mentioned with the streamer's "favorite build" — themed reference
+  // without specifics. Real production: "Mandy barbariza com um Drácula com
+  // sua build favorita e a skin mais bafo".
+  it.skipIf(!RUN_EVALS)('themed reference to streamer\'s own build (favorita)', async () => {
+    const message = 'Mandy barbariza com um Drácula com sua build favorita e a skin mais bafo';
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const result = await extractCharacters(message, apiKey, 1, ['build']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].character).toBe('Dark Lord');
+    expect(result[0].build?.text.toLowerCase()).toContain('favorita');
+  }, 30_000);
 });
