@@ -143,6 +143,15 @@ a.brand {
   min-height: 62px;
 }
 
+.grid > .panel-surface > .panel-header {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--bg-elevated);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
 .panel-title {
   font-size: var(--text-md);
   font-weight: 600;
