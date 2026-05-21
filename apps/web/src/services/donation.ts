@@ -1,4 +1,4 @@
-import type { Request } from '../types';
+import type { Request, RequestExtra } from '../types';
 
 export const MAX_DONATION_REQUESTS = 10;
 
@@ -20,6 +20,7 @@ interface BuildInput {
     character: string;
     type: 'survivor' | 'killer' | 'unknown' | 'none' | string;
     matchedTerm?: string;
+    extras?: RequestExtra[];
   }>;
 }
 
@@ -79,6 +80,7 @@ export function buildDonationRequests(input: BuildInput): Request[] {
       needsIdentification: false,
       matchedTerm: c.matchedTerm,
       originMsgId,
+      extras: c.extras,
     };
   });
 }
