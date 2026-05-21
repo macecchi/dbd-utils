@@ -4,10 +4,9 @@ import app from './index';
 
 // Mock gemini
 vi.mock('./gemini', () => ({
-  extractCharacter: vi.fn().mockResolvedValue({
-    character: 'Meg Thomas',
-    type: 'survivor',
-  }),
+  extractCharacters: vi.fn().mockResolvedValue([
+    { character: 'Meg Thomas', type: 'survivor' },
+  ]),
 }));
 
 // Type definitions for API responses
@@ -387,8 +386,8 @@ describe('Hono API', () => {
     });
 
     it('returns 502 when Gemini fails', async () => {
-      const { extractCharacter } = await import('./gemini');
-      vi.mocked(extractCharacter).mockRejectedValueOnce(new Error('API rate limit'));
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockRejectedValueOnce(new Error('API rate limit'));
 
       const token = await createTestToken();
 
@@ -404,6 +403,90 @@ describe('Hono API', () => {
       expect(res.status).toBe(502);
       const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('llm_error');
+    });
+
+    it('returns a characters array (single result) and flat mirror', async () => {
+      const token = await createTestToken();
+
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'quero meg' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as {
+        characters: Array<{ character: string; type: string }>;
+        character?: string;
+        type?: string;
+      };
+      expect(Array.isArray(body.characters)).toBe(true);
+      expect(body.characters).toHaveLength(1);
+      expect(body.characters[0]).toMatchObject({ character: 'Meg Thomas', type: 'survivor' });
+      expect(body.character).toBe('Meg Thomas');
+      expect(body.type).toBe('survivor');
+    });
+
+    it('returns multiple characters when LLM yields more than one', async () => {
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockResolvedValueOnce([
+        { character: 'Trapper', type: 'killer' },
+        { character: 'Trapper', type: 'killer' },
+        { character: 'Nurse', type: 'killer' },
+      ]);
+
+      const token = await createTestToken();
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: '2 de trapper e 1 de nurse', maxCount: 3 }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { characters: Array<{ character: string }>; character?: string };
+      expect(body.characters.map(c => c.character)).toEqual(['Trapper', 'Trapper', 'Nurse']);
+      expect(body.character).toBe('Trapper');
+    });
+
+    it('clamps maxCount to [1, 10]', async () => {
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockResolvedValueOnce([{ character: 'Meg Thomas', type: 'survivor' }]);
+
+      const token = await createTestToken();
+      await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'meg', maxCount: 50 }),
+      }, TEST_ENV);
+
+      expect(vi.mocked(extractCharacters).mock.calls[0][2]).toBe(10);
+
+      vi.mocked(extractCharacters).mockResolvedValueOnce([{ character: 'Meg Thomas', type: 'survivor' }]);
+      await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'meg', maxCount: 0 }),
+      }, TEST_ENV);
+
+      expect(vi.mocked(extractCharacters).mock.calls[1][2]).toBe(1);
+    });
+
+    it('returns empty array and empty flat mirror when LLM yields nothing', async () => {
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockResolvedValueOnce([]);
+
+      const token = await createTestToken();
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'oi tudo bem?' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { characters: unknown[]; character?: string; type?: string };
+      expect(body.characters).toEqual([]);
+      expect(body.character).toBe('');
+      expect(body.type).toBe('none');
     });
   });
 
@@ -471,6 +554,47 @@ describe('Hono API', () => {
       expect(body.mode).toBe('partial');
       const markDoneSql = mockDB._statements.find(s => s.sql.includes('SET done = 1'));
       expect(markDoneSql).toBeUndefined();
+    });
+
+    it('persists origin_msg_id in the upsert SQL and bindings', async () => {
+      const requests = [
+        {
+          id: 1001, timestamp: '2024-01-01T00:00:00Z', donor: 'A', amount: 'R$10',
+          amountVal: 10, message: 'Trapper e Nurse', character: 'Trapper', type: 'killer',
+          source: 'donation', needsIdentification: false, originMsgId: 'twitch-msg-abc',
+        },
+      ];
+
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ requests, mode: 'partial' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const upsert = mockDB._statements.find(s => s.sql.includes('INSERT INTO requests'));
+      expect(upsert).toBeDefined();
+      expect(upsert!.sql).toContain('origin_msg_id');
+      expect(upsert!.sql).toContain('origin_msg_id = excluded.origin_msg_id');
+      expect(upsert!.bindings).toContain('twitch-msg-abc');
+    });
+
+    it('binds null origin_msg_id when not provided', async () => {
+      const requests = [
+        { id: 2001, timestamp: '2024-01-01T00:00:00Z', donor: 'B', source: 'chat' },
+      ];
+
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ requests, mode: 'partial' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const upsert = mockDB._statements.find(s => s.sql.includes('INSERT INTO requests'));
+      expect(upsert).toBeDefined();
+      // The last bound argument is origin_msg_id; should be null when not provided.
+      expect(upsert!.bindings[upsert!.bindings.length - 1]).toBeNull();
     });
 
     it('uses batchInChunks for large batches', async () => {
@@ -609,6 +733,36 @@ describe('Hono API', () => {
       expect(res.status).toBe(200);
       const body = await res.json() as { requests: Array<Record<string, unknown>> };
       expect(body.requests).toHaveLength(0);
+    });
+
+    it('maps origin_msg_id from D1 row to originMsgId on response', async () => {
+      mockDB._mockStatement.all.mockResolvedValueOnce({
+        results: [
+          {
+            id: 'r1', timestamp: '2024-01-01T00:00:00Z', donor: 'A', amount: 'R$10',
+            amount_val: 10, message: 'Trapper e Nurse', character: 'Trapper', type: 'killer',
+            done: 0, source: 'donation', needs_identification: 0,
+            origin_msg_id: 'twitch-msg-abc',
+          },
+          {
+            id: 'r2', timestamp: '2024-01-01T00:00:00Z', donor: 'A', amount: 'R$10',
+            amount_val: 10, message: 'Trapper e Nurse', character: 'Nurse', type: 'killer',
+            done: 0, source: 'donation', needs_identification: 0,
+            origin_msg_id: 'twitch-msg-abc',
+          },
+        ],
+      });
+
+      const token = await createTestToken({ login: 'testuser' });
+      const res = await app.request('/api/rooms/testuser/requests', {
+        headers: { Authorization: `Bearer ${token}` },
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { requests: Array<{ id: string; originMsgId?: string }> };
+      expect(body.requests).toHaveLength(2);
+      expect(body.requests[0].originMsgId).toBe('twitch-msg-abc');
+      expect(body.requests[1].originMsgId).toBe('twitch-msg-abc');
     });
   });
 

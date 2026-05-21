@@ -35,7 +35,7 @@ You need to keep the site open to receive requests.
 
 | Source | How it works |
 |--------|-------------|
-| **Donations** | Detects messages from donation bots (LivePix, StreamElements, etc.). Filters by minimum amount |
+| **Donations** | Detects messages from donation bots (LivePix, StreamElements, etc.). Filters by minimum amount. Donations that exceed the minimum may contain multiple requests in one message (up to 10) |
 | **Resubs** | Captures resub messages via Twitch IRC USERNOTICE |
 | **Chat** | Configurable command (default: `!fila`) for subscribers. Filters by minimum tier |
 | **Manual** | Manual character entry |
@@ -144,6 +144,18 @@ To test StreamElements format:
 dbdDebug.raw('@display-name=StreamElements :streamelements!streamelements@streamelements.tmi.twitch.tv PRIVMSG #ch :Donor mandou 5.00 e disse: Huntress')
 ```
 
+### LLM extraction evals
+
+Live evals against the real Gemini API live in `apps/api/src/gemini.eval.test.ts`. They are skipped by the default test suite (and by CI) and run on demand:
+
+```bash
+cd apps/api
+set -a && source .env && set +a   # load GEMINI_API_KEY
+bun run test:eval
+```
+
+Scenarios are sampled from real anonymized donation messages and cover single-character nicknames, no-request messages, and multi-character requests (including quantifiers like "2 de trapper e 1 de nurse"). Comparison is multiset — order doesn't matter, duplicates do. Add new cases to the file when a new edge case surfaces in production.
+
 ## License
 
 MIT ([LICENSE](LICENSE))
@@ -187,7 +199,7 @@ Use o nosso [Discord](https://discord.gg/6pY7Efhxd) ou o próprio GitHub para ma
 
 | Fonte | Como funciona |
 |-------|---------------|
-| **Donates** | Detecta mensagens de bots de doação (LivePix, StreamElements, etc.). Filtra por valor mínimo |
+| **Donates** | Detecta mensagens de bots de doação (LivePix, StreamElements, etc.). Filtra por valor mínimo. Donates acima do mínimo podem conter múltiplos pedidos numa mesma mensagem (até 10) |
 | **Resubs** | Captura mensagens de resub via USERNOTICE do Twitch IRC |
 | **Chat** | Comando configurável (padrão: `!fila`) para inscritos. Filtra por tier mínimo |
 | **Manual** | Entrada manual de personagens |

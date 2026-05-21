@@ -25,6 +25,7 @@ export interface Request {
   needsIdentification?: boolean;
   validating?: boolean;
   matchedTerm?: string;
+  originMsgId?: string;
 }
 
 export type CharacterRequest = Request;

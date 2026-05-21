@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { identifyCharacter } from '../services';
 import { CharacterRequestCard } from './CharacterRequestCard';
 import { ContextMenu } from './ContextMenu';
@@ -14,6 +14,22 @@ export function CharacterRequestList() {
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
   const readOnly = !canControlConnection;
+
+  const groupMap = useMemo(() => {
+    const groups = new Map<string, number[]>();
+    for (const r of requests) {
+      if (!r.originMsgId) continue;
+      const arr = groups.get(r.originMsgId) ?? [];
+      arr.push(r.id);
+      groups.set(r.originMsgId, arr);
+    }
+    const out = new Map<number, { index: number; total: number }>();
+    for (const ids of groups.values()) {
+      if (ids.length <= 1) continue;
+      ids.forEach((id, i) => out.set(id, { index: i + 1, total: ids.length }));
+    }
+    return out;
+  }, [requests]);
 
   // Track done/skipped items exiting so they stay in the DOM for the animation
   const [exitingIds, setExitingIds] = useState<Set<number>>(new Set());
@@ -191,6 +207,7 @@ export function CharacterRequestList() {
                 exiting={exitingIds.has(r.id)}
                 skipping={skippingIds.has(r.id)}
                 entering={enteringIds.has(r.id)}
+                group={groupMap.get(r.id)}
               />
             );
           });

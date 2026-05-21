@@ -1,8 +1,10 @@
 import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage, isDonateBot } from '../utils/helpers';
-import { useSettings } from '../store';
+import { useSettings, useAuth } from '../store';
 import type { Request } from '../types';
 import type { ChannelStores } from '../store/channel';
+import { computeEntitlement, buildDonationRequests } from './donation';
+import { identifyMultiple } from './llm';
 
 export { DONATE_BOT_NAMES, isDonateBot } from '../utils/helpers';
 
@@ -255,26 +257,50 @@ export function handleMessage(raw: string) {
   const amountVal = parseAmount(parsed.amount);
   if (amountVal < minDonation) return;
 
-  const local = tryLocalMatch(parsed.message);
-
   // Use Twitch message ID for deterministic deduplication across tabs
   const twitchMsgId = tags['id'];
-  const fallbackContent = `donation:${parsed.donor}:${parsed.amount}:${parsed.message}`;
+  const entitlement = computeEntitlement(amountVal, minDonation);
+  const isAuthenticated = useAuth.getState().isAuthenticated;
+  const timestampMs = Date.now();
 
-  const request: Request = {
-    id: generateRequestId(twitchMsgId, fallbackContent),
-    timestamp: new Date(),
-    donor: parsed.donor,
-    amount: parsed.amount,
-    amountVal,
-    message: parsed.message,
-    character: local?.character || 'Identificando...',
-    type: local?.type || 'unknown',
-    source: 'donation',
-    needsIdentification: !local,
-    matchedTerm: local?.matchedTerm
-  };
-  addRequest(request);
+  if (entitlement === 1 || !isAuthenticated) {
+    // Single-request path (unchanged behavior, now with originMsgId).
+    // When un-authenticated for entitlement > 1, we cannot reliably split,
+    // so fall back to a single request — same UX as un-auth donations today.
+    const local = tryLocalMatch(parsed.message);
+    const fallbackContent = `donation:${parsed.donor}:${parsed.amount}:${parsed.message}`;
+    const request: Request = {
+      id: generateRequestId(twitchMsgId, fallbackContent),
+      timestamp: new Date(timestampMs),
+      donor: parsed.donor,
+      amount: parsed.amount,
+      amountVal,
+      message: parsed.message,
+      character: local?.character || 'Identificando...',
+      type: local?.type || 'unknown',
+      source: 'donation',
+      needsIdentification: !local,
+      matchedTerm: local?.matchedTerm,
+      originMsgId: twitchMsgId || `synthetic:${parsed.donor}:${parsed.amount}:${timestampMs}`,
+    };
+    addRequest(request);
+    return;
+  }
+
+  // Multi-request donation: always go through the LLM for accurate parsing
+  // (quantifiers like "2 de X", mixed natural language).
+  identifyMultiple(parsed.message, entitlement).then(characters => {
+    const built = buildDonationRequests({
+      donor: parsed.donor,
+      amount: parsed.amount,
+      amountVal,
+      message: parsed.message,
+      twitchMsgId,
+      timestampMs,
+      identified: characters,
+    });
+    for (const r of built) addRequest(r);
+  });
 }
 
 // Debug helpers exposed to window for DevTools testing

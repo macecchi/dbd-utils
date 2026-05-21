@@ -13,7 +13,8 @@
     "tail:party": "partykit tail",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:eval": "RUN_EVALS=1 vitest run gemini.eval"
   },
   "dependencies": {
     "@dbd-utils/shared": "workspace:*",

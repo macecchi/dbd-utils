@@ -30,4 +30,9 @@ export const changelog: ChangelogEntry[] = [
     titleKey: 'whatsNew.chatConfirmationsTitle',
     descriptionKey: 'whatsNew.chatConfirmations',
   },
+  {
+    id: 'whats-new-multi-request-donations',
+    titleKey: 'whatsNew.multiRequestDonationsTitle',
+    descriptionKey: 'whatsNew.multiRequestDonations',
+  },
 ];

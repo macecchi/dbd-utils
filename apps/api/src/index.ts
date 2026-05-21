@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { sign } from "hono/jwt";
 import { Twitch } from "arctic";
 import { verifyJwt, type JwtPayload } from "./jwt";
-import { extractCharacter } from "./gemini";
+import { extractCharacters } from "./gemini";
 import { getAppToken, fetchProfiles, fetchStreams, cacheProfiles, sendChatMessage, checkBotIsMod } from "./twitch";
 
 const BATCH_CHUNK_SIZE = 80;
@@ -196,11 +196,12 @@ api.use("*", async (c, next) => {
 // Twitch chat messages are capped at 500 characters
 const MAX_MESSAGE_LENGTH = 500;
 const DAILY_EXTRACT_LIMIT = 200;
+const MAX_DONATION_REQUESTS = 10;
 
 api.post("/extract-character", async (c) => {
   const user = c.get("jwtPayload");
   const clientVersion = c.req.header("X-Client-Version") || "unknown";
-  const body = await c.req.json<{ message: string }>();
+  const body = await c.req.json<{ message: string; maxCount?: number }>();
 
   if (!body.message || typeof body.message !== "string") {
     return c.json({ error: "invalid_input" }, 400);
@@ -210,7 +211,10 @@ api.post("/extract-character", async (c) => {
     return c.json({ error: "message_too_long", max: MAX_MESSAGE_LENGTH }, 400);
   }
 
-  // Per-user daily rate limit via KV
+  const requestedMax = typeof body.maxCount === "number" ? body.maxCount : 1;
+  const maxCount = Math.max(1, Math.min(MAX_DONATION_REQUESTS, Math.floor(requestedMax)));
+
+  // Per-user daily rate limit via KV (one extraction call = one unit, regardless of maxCount)
   const today = new Date().toISOString().slice(0, 10);
   const rateLimitKey = `ratelimit:extract:${user.sub}:${today}`;
   const currentCount = parseInt((await c.env.CACHE.get(rateLimitKey)) || "0", 10);
@@ -220,10 +224,10 @@ api.post("/extract-character", async (c) => {
     return c.json({ error: "daily_limit_exceeded", limit: DAILY_EXTRACT_LIMIT }, 429);
   }
 
-  console.log(`[v${clientVersion}] Extract request from ${user.login}: ${body.message.slice(0, 100)}`);
+  console.log(`[v${clientVersion}] Extract request from ${user.login} (maxCount=${maxCount}): ${body.message.slice(0, 100)}`);
 
   try {
-    const result = await extractCharacter(body.message, c.env.GEMINI_API_KEY);
+    const characters = await extractCharacters(body.message, c.env.GEMINI_API_KEY, maxCount);
 
     // Increment counter after successful extraction (TTL: 24h)
     const putPromise = c.env.CACHE.put(rateLimitKey, String(currentCount + 1), { expirationTtl: 86400 });
@@ -233,7 +237,14 @@ api.post("/extract-character", async (c) => {
       await putPromise;
     }
 
-    return c.json(result);
+    // Flat mirror for backward compatibility with older web clients.
+    const first = characters[0];
+    return c.json({
+      characters,
+      character: first?.character ?? "",
+      type: first?.type ?? "none",
+      matchedTerm: first?.matchedTerm,
+    });
   } catch (e: any) {
     console.error("Gemini error:", e.message);
     return c.json({ error: "llm_error", message: e.message }, 502);
@@ -284,6 +295,7 @@ api.get("/rooms/:roomId/requests", async (c) => {
     subTier: r.sub_tier ?? undefined,
     needsIdentification: !!(r.needs_identification),
     matchedTerm: r.matched_term ?? undefined,
+    originMsgId: r.origin_msg_id ?? undefined,
   }));
 
   return c.json({ requests });
@@ -371,8 +383,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
     const position = typeof r._position === 'number' ? r._position : i;
     statements.push(
       c.env.DB.prepare(
-        `INSERT INTO requests (id, room_id, position, timestamp, donor, amount, amount_val, message, character, type, done, done_at, source, sub_tier, needs_identification, matched_term)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO requests (id, room_id, position, timestamp, donor, amount, amount_val, message, character, type, done, done_at, source, sub_tier, needs_identification, matched_term, origin_msg_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (room_id, id) DO UPDATE SET
            position = excluded.position,
            character = excluded.character,
@@ -380,7 +392,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
            done = excluded.done,
            done_at = excluded.done_at,
            needs_identification = excluded.needs_identification,
-           matched_term = excluded.matched_term`
+           matched_term = excluded.matched_term,
+           origin_msg_id = excluded.origin_msg_id`
       ).bind(
         r.id,
         roomId,
@@ -397,7 +410,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
         r.source,
         r.subTier ?? null,
         r.needsIdentification ? 1 : 0,
-        r.matchedTerm ?? null
+        r.matchedTerm ?? null,
+        r.originMsgId ?? null
       )
     );
   }
@@ -513,6 +527,7 @@ internal.get("/rooms/:roomId/requests", async (c) => {
     subTier: r.sub_tier ?? undefined,
     needsIdentification: !!(r.needs_identification),
     matchedTerm: r.matched_term ?? undefined,
+    originMsgId: r.origin_msg_id ?? undefined,
   }));
 
   return c.json({ requests });

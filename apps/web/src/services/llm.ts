@@ -6,14 +6,15 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
 declare const __APP_VERSION__: string;
 
+type ExtractedCharacter = { character: string; type: string; matchedTerm?: string };
+
 async function callAPI(
   message: string,
+  maxCount: number,
   onError?: (msg: string) => void
-): Promise<{ character: string; type: string; matchedTerm?: string }> {
+): Promise<ExtractedCharacter[]> {
   const token = await useAuth.getState().getAccessToken();
-  if (!token) {
-    return { character: '', type: 'none' };
-  }
+  if (!token) return [];
 
   try {
     const res = await fetch(`${API_URL}/api/extract-character`, {
@@ -23,25 +24,36 @@ async function callAPI(
         Authorization: `Bearer ${token}`,
         'X-Client-Version': __APP_VERSION__,
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, maxCount }),
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      const errorCode = (err as any).error;
+      const errorCode = (err as { error?: string }).error;
       if (errorCode === 'daily_limit_exceeded') {
         onError?.('Limite diário de identificações atingido');
-        return { character: '', type: 'none' };
+        return [];
       }
-      const msg = (err as any).message || errorCode || `HTTP ${res.status}`;
+      const msg = (err as { message?: string }).message || errorCode || `HTTP ${res.status}`;
       onError?.(msg);
-      return { character: 'Erro na API', type: 'unknown' };
+      return [{ character: 'Erro na API', type: 'unknown' }];
     }
 
-    return await res.json();
-  } catch (e: any) {
-    onError?.(e.message || 'Erro de rede');
-    return { character: 'Erro', type: 'unknown' };
+    const body = await res.json() as {
+      characters?: ExtractedCharacter[];
+      character?: string;
+      type?: string;
+      matchedTerm?: string;
+    };
+    if (Array.isArray(body.characters)) return body.characters;
+    if (body.character || body.type) {
+      return [{ character: body.character ?? '', type: body.type ?? 'none', matchedTerm: body.matchedTerm }];
+    }
+    return [];
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Erro de rede';
+    onError?.(msg);
+    return [{ character: 'Erro', type: 'unknown' }];
   }
 }
 
@@ -55,7 +67,8 @@ export async function identifyCharacter(
 
   if (local) {
     if (local.ambiguous && isAuthenticated && onLLMUpdate) {
-      callAPI(request.message, onError).then(llmResult => {
+      callAPI(request.message, 1, onError).then(arr => {
+        const llmResult = arr[0] ?? { character: '', type: 'none' };
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
             character: llmResult.character,
@@ -74,7 +87,8 @@ export async function identifyCharacter(
 
   if (!isAuthenticated) return { character: '', type: 'unknown' };
 
-  const result = await callAPI(request.message, onError);
+  const arr = await callAPI(request.message, 1, onError);
+  const result = arr[0] ?? { character: '', type: 'none' };
   const type = result.type || 'unknown';
   return {
     character: result.character || '',
@@ -95,7 +109,8 @@ export async function testExtraction(
 
   if (localResult) {
     if (localResult.ambiguous && isAuthenticated && onLLMUpdate) {
-      callAPI(input, onError).then(llmResult => {
+      callAPI(input, 1, onError).then(arr => {
+        const llmResult = arr[0] ?? { character: '', type: 'none' };
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
             character: llmResult.character,
@@ -111,10 +126,26 @@ export async function testExtraction(
     return { character: '', type: 'unknown', isLocal: false };
   }
 
-  const llm = await callAPI(input, onError);
+  const arr = await callAPI(input, 1, onError);
+  const llm = arr[0] ?? { character: '', type: 'none' };
   return {
     character: llm.character || '',
     type: (llm.type as 'killer' | 'survivor' | 'unknown') || 'unknown',
     isLocal: false
   };
+}
+
+export async function identifyMultiple(
+  message: string,
+  maxCount: number,
+  onError?: (msg: string) => void
+): Promise<Array<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string }>> {
+  const isAuthenticated = useAuth.getState().isAuthenticated;
+  if (!isAuthenticated) return [];
+  const arr = await callAPI(message, maxCount, onError);
+  return arr.map(c => ({
+    character: c.character ?? '',
+    type: (c.type ?? 'unknown') as 'survivor' | 'killer' | 'unknown' | 'none',
+    matchedTerm: c.matchedTerm,
+  }));
 }

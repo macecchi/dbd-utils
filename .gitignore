@@ -1,6 +1,7 @@
 node_modules
 dist
 .env
+.dev.vars
 .DS_Store
 .claude/settings.local.json
 .claude/skills/test-extraction/*.json
