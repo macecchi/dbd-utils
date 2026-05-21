@@ -557,6 +557,51 @@ describe('Hono API', () => {
   describe('PUT /internal/rooms/:roomId/requests', () => {
     const internalAuth = 'Bearer internal:test-internal-secret';
 
+    it('persists per-row extras to requests.extras column', async () => {
+      const bindCalls: unknown[][] = [];
+      const mockDB2 = {
+        prepare: vi.fn(() => ({
+          bind: vi.fn((...args: unknown[]) => {
+            bindCalls.push(args);
+            return { run: vi.fn().mockResolvedValue({ success: true }) };
+          }),
+        })),
+        batch: vi.fn().mockResolvedValue([]),
+      };
+      const env = { ...TEST_ENV, DB: mockDB2 as unknown as typeof TEST_ENV['DB'] };
+
+      const extras = [{ type: 'build', text: 'lethal, dissolution', matchedTerms: ['lethal, dissolution'] }];
+
+      const res = await app.request('/internal/rooms/mandymess/requests', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: internalAuth,
+        },
+        body: JSON.stringify({
+          mode: 'partial',
+          requests: [{
+            id: 1,
+            timestamp: new Date().toISOString(),
+            donor: 'donor',
+            amount: 'R$10',
+            amountVal: 10,
+            message: 'kraseu de lethal, dissolution',
+            character: 'Krasue',
+            type: 'killer',
+            source: 'donation',
+            extras,
+          }],
+        }),
+      }, env);
+
+      expect(res.status).toBe(200);
+      const requestBindArgs = bindCalls.find((args) =>
+        args.some((a) => typeof a === 'string' && a.includes('"type":"build"'))
+      );
+      expect(requestBindArgs).toBeDefined();
+    });
+
     it('returns 401 without internal auth', async () => {
       const res = await app.request('/internal/rooms/testroom/requests', {
         method: 'PUT',
