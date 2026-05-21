@@ -1388,11 +1388,6 @@ git commit -m "feat(web): SourcesStore extrasConfig with default-on-first-hydrat
 Create [`apps/web/src/components/BuildBadge.tsx`](apps/web/src/components/BuildBadge.tsx):
 
 ```tsx
-import type { CSSProperties } from 'react';
-
-const base = import.meta.env.BASE_URL;
-const perkSlot = `${base}images/perk.webp`;
-
 interface Props {
   size?: 'sm' | 'md';
 }
@@ -1400,42 +1395,39 @@ interface Props {
 /**
  * Four empty perk slots arranged in the canonical DBD loadout diamond:
  *
- *      ●
- *    ●   ●
- *      ●
+ *      ◇
+ *    ◇   ◇
+ *      ◇
  *
- * Renders bottom-right of the avatar. Tooltip is provided by the parent
- * (CharacterAvatar) listening for pointer/touch events on the entire
- * avatar wrapper, so this component is purely visual.
+ * Renders bottom-right of the avatar. Slots are pure-CSS diamond shapes
+ * (no image asset required) — see `.build-badge-slot` styling in
+ * styles/requests.css.
+ *
+ * Tooltip is provided by the parent (CharacterAvatar) listening for
+ * pointer/touch events on the entire avatar wrapper, so this component
+ * is purely visual.
  */
 export function BuildBadge({ size = 'md' }: Props) {
   const sizeClass = size === 'sm' ? 'build-badge-sm' : '';
-  const slotStyle: CSSProperties = { backgroundImage: `url('${perkSlot}')` };
-
   return (
     <div className={`build-badge ${sizeClass}`} aria-hidden="true">
-      <span className="build-badge-slot build-badge-top" style={slotStyle} />
-      <span className="build-badge-slot build-badge-left" style={slotStyle} />
-      <span className="build-badge-slot build-badge-right" style={slotStyle} />
-      <span className="build-badge-slot build-badge-bottom" style={slotStyle} />
+      <span className="build-badge-slot build-badge-top" />
+      <span className="build-badge-slot build-badge-left" />
+      <span className="build-badge-slot build-badge-right" />
+      <span className="build-badge-slot build-badge-bottom" />
     </div>
   );
 }
 ```
 
-Note: this references `apps/web/public/images/perk.webp`, which the spec assumes already exists. If it doesn't, the badge will render empty diamond shapes (still acceptable as an indicator), and the asset can be added separately.
+The styling lives in Task 21 — empty diamond slots with the DBD palette. A future `perk.webp` asset can be swapped in by changing only the `.build-badge-slot` CSS without touching this component.
 
 - [ ] **Step 2: Typecheck**
 
 Run: `bun run typecheck`
 Expected: PASS.
 
-- [ ] **Step 3: Verify `perk.webp` exists**
-
-Run: `ls apps/web/public/images/perk.webp`
-Expected: file exists. If not, stop and ask the user where the asset should come from before continuing — do not fabricate one.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add apps/web/src/components/BuildBadge.tsx
@@ -1808,9 +1800,13 @@ Append to [`apps/web/src/styles/requests.css`](apps/web/src/styles/requests.css)
   position: absolute;
   width: 50%;
   height: 50%;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
+  /* Diamond-shaped empty perk slot — CSS-only, no image asset required.
+     Future swap: replace background with `url('images/perk.webp')` and
+     remove the transform/background-color/border block. */
+  background-color: rgba(20, 18, 22, 0.85);
+  border: 1.5px solid rgba(240, 220, 180, 0.55);
+  transform: rotate(45deg);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.4);
 }
 
 .build-badge-top    { top: 0;    left: 25%; }
