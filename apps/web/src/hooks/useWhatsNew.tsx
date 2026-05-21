@@ -4,7 +4,7 @@ import { changelog, type ChangelogEntry } from '../data/changelog';
 import { t } from '../i18n';
 
 const STORAGE_KEY = 'dbd-whats-new-dismissed';
-const DIGEST_TOAST_ID = 'whats-new-digest';
+const TOAST_ID = 'whats-new';
 
 function getDismissed(): Set<string> {
   try {
@@ -28,7 +28,7 @@ function DigestBody({ entries }: { entries: ChangelogEntry[] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {entries.map(e => (
         <div key={e.id}>
-          <div style={{ fontWeight: 600, color: 'var(--text)' }}>{t(e.titleKey)}</div>
+          <div style={{ fontWeight: 600 }}>{t(e.titleKey)}</div>
           <div>{t(e.descriptionKey)}</div>
         </div>
       ))}
@@ -44,25 +44,12 @@ export function useWhatsNew(enabled: boolean) {
     const unseen = changelog.filter((entry) => !dismissed.has(entry.id));
     if (unseen.length === 0) return;
 
-    // Small delay so it doesn't compete with initial connection toasts
-    const timer = setTimeout(() => {
-      if (unseen.length === 1) {
-        const entry = unseen[0];
-        toast(t(entry.titleKey), {
-          id: entry.id,
-          description: t(entry.descriptionKey),
-          duration: Infinity,
-          onDismiss: () => dismissAll([entry.id]),
-          onAutoClose: () => dismissAll([entry.id]),
-        });
-        return;
-      }
+    // Small delay so it doesn't compete with initial connection toasts.
 
-      // Multiple unseen entries → single digest toast. Dismissing it marks
-      // all of them seen at once, so the user doesn't have to close N toasts.
+    const timer = setTimeout(() => {
       const ids = unseen.map(e => e.id);
       toast(t('whatsNew.title'), {
-        id: DIGEST_TOAST_ID,
+        id: TOAST_ID,
         description: <DigestBody entries={unseen} />,
         duration: Infinity,
         onDismiss: () => dismissAll(ids),

@@ -1,6 +1,6 @@
 import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage } from '../utils/helpers';
-import type { Request } from '../types';
+import type { Request, RoomExtras } from '../types';
 
 const TWITCH_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
 let vodReplayAbort: boolean | null = null;
@@ -9,6 +9,15 @@ export interface VODConfig {
   botNames: ReadonlySet<string>;
   minDonation: number;
   sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
+  extrasConfig?: RoomExtras;
+}
+
+// A locally-matched donation that qualifies for build extras still needs the
+// LLM to extract the loadout — so we force it through useAutoIdentify by
+// flagging `needsIdentification: true`. identifyCharacter then runs the LLM
+// for the build and lets the live result override even the local character.
+function qualifiesForExtras(amountVal: number, cfg?: RoomExtras): boolean {
+  return !!cfg?.build?.enabled && amountVal >= cfg.build.price;
 }
 
 export interface VODCallbacks {
@@ -88,7 +97,7 @@ export async function loadAndReplayVOD(
               character: local?.character || 'Identificando...',
               type: local?.type || 'unknown',
               source: 'donation',
-              needsIdentification: !local
+              needsIdentification: !local || qualifiesForExtras(amountVal, config.extrasConfig),
             };
             callbacks.onRequest(request);
           }
@@ -120,6 +129,7 @@ export interface RecoveryConfig {
   sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
   chatCommand: string;
   checkpoint?: { vodId: string; offset: number };
+  extrasConfig?: RoomExtras;
 }
 
 export interface RecoveryResult {
@@ -193,6 +203,7 @@ export interface ScanConfig {
   minDonation: number;
   sourcesEnabled: { donation: boolean; resub: boolean; chat: boolean; manual: boolean };
   chatCommand: string;
+  extrasConfig?: RoomExtras;
 }
 
 export interface ScanCallbacks {
@@ -247,7 +258,7 @@ export async function scanVODForRequests(
               character: local?.character || '',
               type: local?.type || 'unknown',
               source: 'donation',
-              needsIdentification: !local
+              needsIdentification: !local || qualifiesForExtras(amountVal, config.extrasConfig),
             };
             requests.push(req);
             callbacks?.onRequest?.(req);
@@ -357,7 +368,7 @@ export async function recoverMissedRequests(
                 character: local?.character || 'Identificando...',
                 type: local?.type || 'unknown',
                 source: 'donation',
-                needsIdentification: !local
+                needsIdentification: !local || qualifiesForExtras(amountVal, config.extrasConfig),
               };
               requests.push(req);
               callbacks?.onRequest?.(req);

@@ -101,19 +101,18 @@ export async function identifyCharacter(
     return local;
   }
 
-  // Local match + extras requested: keep the local character visible immediately and
-  // refine asynchronously. The LLM result wins on character disambiguation AND brings
-  // any build extras along.
+  // Local match + extras requested: show the local character immediately, then let
+  // the LLM result replace it wholesale when the call resolves. The LLM is the
+  // source of truth for both character identification and build extraction once
+  // it answers; the local match is only a placeholder during the request.
   if (local && needsLLMForExtras) {
     callAPI(request.message, 1, extras, onError).then(arr => {
       const llmResult = arr[0] ?? { character: '', type: 'none' };
-      const llmExtras = pickExtras(llmResult);
-      const useLLMChar = llmResult.type !== 'none' && !!llmResult.character;
       onLLMUpdate?.({
-        character: useLLMChar ? llmResult.character : local.character,
-        type: (useLLMChar ? llmResult.type : local.type) as 'survivor' | 'killer' | 'unknown' | 'none',
-        matchedTerm: useLLMChar ? llmResult.matchedTerm : local.matchedTerm,
-        extras: llmExtras,
+        character: llmResult.character || '',
+        type: (llmResult.type || 'unknown') as 'survivor' | 'killer' | 'unknown' | 'none',
+        matchedTerm: llmResult.matchedTerm,
+        extras: pickExtras(llmResult),
         validating: false,
       });
     });

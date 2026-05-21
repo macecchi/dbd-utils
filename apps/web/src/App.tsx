@@ -52,6 +52,7 @@ function makeSourcesConfig(sourcesState: ReturnType<SourcesStoreApi['getState']>
     minDonation: sourcesState.minDonation,
     sourcesEnabled: sourcesState.enabled,
     chatCommand: sourcesState.chatCommand,
+    extrasConfig: sourcesState.extrasConfig,
     ...(checkpoint && { checkpoint }),
   };
 }

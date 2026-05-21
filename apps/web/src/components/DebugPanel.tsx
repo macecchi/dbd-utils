@@ -15,7 +15,7 @@ export function DebugPanel() {
   const { useRequests, useSources, canControlConnection } = useChannel();
   const { requests, update, setAll: setRequests, add: addRequest } = useRequests();
   const { isAuthenticated } = useAuth();
-  const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation } = useSources();
+  const { enabled: sourcesEnabled, chatTiers, chatCommand, minDonation, extrasConfig } = useSources();
   const readOnly = !canControlConnection;
   const showToast = (msg: string, title: string, _color?: string) => toast.error(title, { description: msg });
   const { t } = useTranslation();
@@ -74,7 +74,7 @@ export function DebugPanel() {
   const [vodStatus, setVodStatus] = useState('');
   const [isReplaying, setIsReplaying] = useState(false);
 
-  const vodConfig = { botNames: DONATE_BOT_NAMES, minDonation, sourcesEnabled };
+  const vodConfig = { botNames: DONATE_BOT_NAMES, minDonation, sourcesEnabled, extrasConfig };
 
   const handleTest = async (e: FormEvent) => {
     e.preventDefault();

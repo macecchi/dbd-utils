@@ -70,5 +70,5 @@ export interface RoomExtras {
 export const BUILD_DEFAULT_PRICE = 10;
 
 export const DEFAULT_EXTRAS_CONFIG: RoomExtras = {
-  build: { enabled: true, price: BUILD_DEFAULT_PRICE },
+  build: { enabled: false, price: BUILD_DEFAULT_PRICE },
 };
