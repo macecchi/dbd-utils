@@ -435,56 +435,23 @@
 
 /* ---------- Build badge (4-slot perk indicator on avatar) ----------
  *
- * Pure-CSS approximation of a DBD perk slot: rotated dark diamond with a
- * brass beveled frame and a subtle inner glow. When a `perk.webp` asset is
- * available, swap `.build-badge-slot` background for `url('images/perk.webp')`
- * and drop the gradient/border/box-shadow block.
+ * The badge is a single SVG (see components/BuildBadge.tsx) referencing
+ * `images/perk.webp` four times in the canonical DBD diamond. CSS owns
+ * positioning, sizing, and the drop shadow.
  */
 .build-badge {
   position: absolute;
   bottom: -6px;
   right: -6px;
-  width: 46%;
+  width: 50%;
   aspect-ratio: 1;
   pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
   z-index: 2;
 }
 
-.build-badge-slot {
-  position: absolute;
-  width: 48%;
-  height: 48%;
-  transform: rotate(45deg);
-  background:
-    radial-gradient(ellipse at 50% 35%, rgba(255, 215, 150, 0.10) 0%, transparent 60%),
-    linear-gradient(135deg, #1d1916 0%, #0a0807 100%);
-  border: 1px solid #c89c5c;
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 220, 160, 0.22),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.55);
-}
-
-/* When perk.webp is provided (apps/web/public/images/perk.webp), BuildBadge
-   sets data-perk-asset="true" and the slot renders the image instead of the
-   CSS diamond. Until then the fallback above is used. */
-.build-badge[data-perk-asset="true"] .build-badge-slot {
-  background: url('/images/perk.webp') center / contain no-repeat;
-  border: none;
-  box-shadow: none;
-  transform: none;
-  width: 50%;
-  height: 50%;
-}
-
-.build-badge-top    { top: 0;    left: 26%; }
-.build-badge-left   { top: 26%;  left: 0; }
-.build-badge-right  { top: 26%;  right: 0; }
-.build-badge-bottom { bottom: 0; left: 26%; }
-
 .build-badge-sm {
-  width: 56%;
+  width: 60%;
   bottom: -3px;
   right: -3px;
 }
