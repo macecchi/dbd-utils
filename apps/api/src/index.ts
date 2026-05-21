@@ -301,6 +301,7 @@ api.get("/rooms/:roomId/requests", async (c) => {
     needsIdentification: !!(r.needs_identification),
     matchedTerm: r.matched_term ?? undefined,
     originMsgId: r.origin_msg_id ?? undefined,
+    extras: r.extras ? JSON.parse(r.extras as string) : undefined,
   }));
 
   return c.json({ requests });
@@ -538,6 +539,7 @@ internal.get("/rooms/:roomId/requests", async (c) => {
     needsIdentification: !!(r.needs_identification),
     matchedTerm: r.matched_term ?? undefined,
     originMsgId: r.origin_msg_id ?? undefined,
+    extras: r.extras ? JSON.parse(r.extras as string) : undefined,
   }));
 
   return c.json({ requests });
