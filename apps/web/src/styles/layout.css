@@ -321,11 +321,14 @@ a.brand {
     white-space: nowrap;
   }
 
-  .panel-header > div:last-child {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  /* Stretch the actions cluster across its own row (panel-header goes
+     column on mobile) and pin its buttons to the right, mirroring desktop.
+     Targets the explicit `.panel-actions` container produced by
+     <PanelHeader> — using `> div:last-child` would also match a lone
+     `.panel-title` and split its icon from its text. */
+  .panel-header .panel-actions {
     width: 100%;
+    justify-content: flex-end;
   }
 
   .panel-header .btn-small {
