@@ -282,8 +282,11 @@ export function createSourcesStore(
         handlePartyMessage: (msg) => {
           if (msg.type === 'sync-full' || msg.type === 'update-sources') {
             const sources = msg.sources;
-            const incomingExtras = sources.extrasConfig;
-            const extrasConfig = incomingExtras ?? DEFAULT_EXTRAS_CONFIG;
+            // No persisted extrasConfig → use the in-memory default. We do NOT
+            // broadcast it back: viewers don't have permission to write sources,
+            // and the owner persists their real choice the moment they touch
+            // the toggle (which goes through setExtrasConfig → broadcast).
+            const extrasConfig = sources.extrasConfig ?? DEFAULT_EXTRAS_CONFIG;
 
             set({
               enabled: sources.enabled,
@@ -298,8 +301,6 @@ export function createSourcesStore(
               recoveryVodOffset: sources.recoveryVodOffset,
               extrasConfig,
             });
-
-            if (!incomingExtras) maybeBroadcast(get);
           }
         },
       }),

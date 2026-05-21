@@ -270,9 +270,8 @@ describe('channel stores', () => {
   });
 
   describe('SourcesStore extrasConfig', () => {
-    it('writes default extrasConfig on first sources hydrate when missing', () => {
-      const broadcasts: Array<Record<string, unknown>> = [];
-      vi.mocked(party.broadcastSources).mockImplementation((s) => { broadcasts.push(s as unknown as Record<string, unknown>); });
+    it('applies default extrasConfig in-memory without broadcasting on hydrate', () => {
+      vi.mocked(party.broadcastSources).mockClear();
 
       const useSources = createSourcesStore('room', () => ({ partyConnected: true }));
       useSources.getState().handlePartyMessage({
@@ -291,9 +290,11 @@ describe('channel stores', () => {
       });
 
       const state = useSources.getState();
-      // Default is opt-in (enabled: false) so the streamer has to turn it on explicitly.
+      // Default is opt-in (enabled: false) — applied in-memory only.
       expect(state.extrasConfig).toEqual({ build: { enabled: false, price: 10 } });
-      expect(broadcasts.some(b => 'extrasConfig' in b)).toBe(true);
+      // Critical: must NOT broadcast on hydrate. Non-owner viewers run this code
+      // too, and broadcasting would trigger PartyKit's not-room-owner rejection.
+      expect(party.broadcastSources).not.toHaveBeenCalled();
     });
 
     it('keeps existing extrasConfig and does NOT broadcast when present in sync-full', () => {
