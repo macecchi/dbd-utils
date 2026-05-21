@@ -194,7 +194,6 @@
 }
 
 .donor-name {
-  font-weight: 600;
   color: var(--accent);
   margin-right: 0.4em;
 }
@@ -386,9 +385,6 @@
     margin-top: 0.3em;
   }
 
-  .donor-name {
-    font-size: 0.75em;
-  }
 
   .amount {
     font-size: var(--text-xs);

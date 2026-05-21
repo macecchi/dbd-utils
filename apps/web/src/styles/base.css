@@ -107,6 +107,23 @@ body {
   line-height: 1.5;
 }
 
+@media (max-width: 480px) {
+  html {
+    background: #000;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  body {
+    background-color: #000;
+    background-image: none;
+    height: 100dvh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
@@ -116,26 +133,38 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Mobile - prevent keyboard resize and horizontal overflow.
-   Use 100dvh (dynamic viewport height) so the scroll container shrinks when
-   Safari's URL bar is visible — otherwise body resolves to the large viewport
-   and the footer ends up permanently hidden behind the URL bar. */
-@media (max-width: 480px) {
-  html {
-    height: 100dvh;
-    overflow: hidden;
-  }
-
-  body {
-    height: 100dvh;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-}
-
 @media (max-width: 800px) {
   html, body {
     overflow-x: hidden;
+  }
+}
+
+/* Bottom scroll-mask — fades content into Safari's URL bar.
+   https://twilson.net/scroll-mask */
+@property --scroll-mask-b-from {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+
+@keyframes scroll-mask-y-scroll {
+  0%, 90% { --scroll-mask-b-from: var(--scroll-mask-fade-from-b, 100%); }
+  100% { --scroll-mask-b-from: 100%; }
+}
+
+@supports (animation-timeline: scroll()) {
+  .scroll-mask {
+    mask-image: linear-gradient(
+      to bottom, black, black var(--scroll-mask-b-from), transparent
+    );
+    animation: scroll-mask-y-scroll linear;
+    animation-timeline: scroll(self block);
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    --scroll-mask-fade-from-b: calc(100% - 64px);
   }
 }
 

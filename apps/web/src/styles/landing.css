@@ -3,7 +3,11 @@
 .landing {
   max-width: 800px;
   margin: 0 auto;
-  padding: 0 2rem calc(3rem + env(safe-area-inset-bottom, 0px));
+  padding:
+    env(safe-area-inset-top, 0px)
+    calc(2rem + env(safe-area-inset-right, 0px))
+    calc(3rem + env(safe-area-inset-bottom, 0px))
+    calc(2rem + env(safe-area-inset-left, 0px));
 }
 
 /* Hero */
@@ -380,7 +384,11 @@
 
 @media (max-width: 600px) {
   .landing {
-    padding: 0 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
+    padding:
+      env(safe-area-inset-top, 0px)
+      calc(1rem + env(safe-area-inset-right, 0px))
+      calc(2rem + env(safe-area-inset-bottom, 0px))
+      calc(1rem + env(safe-area-inset-left, 0px));
   }
 
   .landing-hero {

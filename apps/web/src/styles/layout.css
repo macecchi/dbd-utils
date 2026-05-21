@@ -3,7 +3,11 @@
 .app {
   max-width: 1500px;
   margin: 0 auto;
-  padding: 2rem 2rem calc(2rem + env(safe-area-inset-bottom, 0px));
+  padding:
+    calc(2rem + env(safe-area-inset-top, 0px))
+    calc(2rem + env(safe-area-inset-right, 0px))
+    calc(2rem + env(safe-area-inset-bottom, 0px))
+    calc(2rem + env(safe-area-inset-left, 0px));
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -95,6 +99,10 @@ a.brand {
   align-self: start;
 }
 
+.grid:not(:has(.sidebar)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 @media (max-width: 800px) {
   .grid {
     grid-template-columns: 1fr;
@@ -114,8 +122,6 @@ a.brand {
   }
 }
 
-/* Mobile = viewer experience. The sidebar holds streamer-only controls
-   (Settings + Debug); drop it entirely so the page is just the queue. */
 @media (max-width: 600px) {
   .sidebar {
     display: none;
@@ -265,7 +271,11 @@ a.brand {
 /* Mobile */
 @media (max-width: 480px) {
   .app {
-    padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    padding:
+      calc(0.75rem + env(safe-area-inset-top, 0px))
+      env(safe-area-inset-right, 0px)
+      calc(0.75rem + env(safe-area-inset-bottom, 0px) + (100lvh - 100svh))
+      env(safe-area-inset-left, 0px);
     gap: 0.75rem;
     min-width: 280px;
     max-width: 100vw;
@@ -291,9 +301,7 @@ a.brand {
   }
 
   .brand span {
-    display: block;
-    margin-left: 0;
-    margin-top: 0.15rem;
+    display: none;
   }
 
   .stats {
@@ -326,9 +334,6 @@ a.brand {
     white-space: nowrap;
   }
 
-  /* Mobile = viewer experience. Streamer controls in the queue header
-     (manual entry, review) live in the sidebar on desktop; on mobile they
-     just clutter the title row. */
   .panel-header .panel-actions {
     display: none;
   }

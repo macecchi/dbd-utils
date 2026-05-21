@@ -223,16 +223,16 @@
   }
 
   .channel-header-avatar-ring {
-    width: 44px;
-    height: 44px;
+    width: 72px;
+    height: 72px;
   }
 
   .channel-header-avatar-fallback {
-    font-size: 1rem;
+    font-size: 1.5rem;
   }
 
   .channel-header-name {
-    font-size: 1rem;
+    font-size: 1.15rem;
   }
 
   /* Mobile is the viewer experience. Drop the stats counters — they carry
