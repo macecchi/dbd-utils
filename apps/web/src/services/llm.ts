@@ -63,15 +63,25 @@ async function callAPI(
   }
 }
 
+function pickExtras(c: { build?: { text: string; matchedTerms?: string[] } }): RequestExtra[] | undefined {
+  if (!c.build?.text) return undefined;
+  return [{ type: 'build', text: c.build.text, matchedTerms: c.build.matchedTerms }];
+}
+
 export async function identifyCharacter(
   request: Request,
+  extras: RequestExtraType[] = [],
   onError?: (msg: string) => void,
-  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; validating: false }) => void
-): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; validating?: boolean }> {
+  onLLMUpdate?: (result: { character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; extras?: RequestExtra[]; validating: false }) => void
+): Promise<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string; extras?: RequestExtra[]; validating?: boolean }> {
   const local = tryLocalMatch(request.message);
   const isAuthenticated = useAuth.getState().isAuthenticated;
 
-  if (local) {
+  // Local match alone never carries extras. If the caller asked for extras AND the
+  // donation is eligible, we must hit the LLM even when the character matched locally.
+  const needsLLMForExtras = !!local && extras.length > 0 && isAuthenticated && !!onLLMUpdate;
+
+  if (local && !needsLLMForExtras) {
     if (local.ambiguous && isAuthenticated && onLLMUpdate) {
       callAPI(request.message, 1, [], onError).then(arr => {
         const llmResult = arr[0] ?? { character: '', type: 'none' };
@@ -91,15 +101,35 @@ export async function identifyCharacter(
     return local;
   }
 
+  // Local match + extras requested: keep the local character visible immediately and
+  // refine asynchronously. The LLM result wins on character disambiguation AND brings
+  // any build extras along.
+  if (local && needsLLMForExtras) {
+    callAPI(request.message, 1, extras, onError).then(arr => {
+      const llmResult = arr[0] ?? { character: '', type: 'none' };
+      const llmExtras = pickExtras(llmResult);
+      const useLLMChar = llmResult.type !== 'none' && !!llmResult.character;
+      onLLMUpdate?.({
+        character: useLLMChar ? llmResult.character : local.character,
+        type: (useLLMChar ? llmResult.type : local.type) as 'survivor' | 'killer' | 'unknown' | 'none',
+        matchedTerm: useLLMChar ? llmResult.matchedTerm : local.matchedTerm,
+        extras: llmExtras,
+        validating: false,
+      });
+    });
+    return { ...local, validating: true };
+  }
+
   if (!isAuthenticated) return { character: '', type: 'unknown' };
 
-  const arr = await callAPI(request.message, 1, [], onError);
+  const arr = await callAPI(request.message, 1, extras, onError);
   const result = arr[0] ?? { character: '', type: 'none' };
   const type = result.type || 'unknown';
   return {
     character: result.character || '',
     type: type as 'survivor' | 'killer' | 'unknown' | 'none',
-    matchedTerm: result.matchedTerm
+    matchedTerm: result.matchedTerm,
+    extras: pickExtras(result),
   };
 }
 

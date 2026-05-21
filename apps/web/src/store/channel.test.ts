@@ -295,7 +295,8 @@ describe('channel stores', () => {
       expect(broadcasts.some(b => 'extrasConfig' in b)).toBe(true);
     });
 
-    it('keeps existing extrasConfig when present in sync-full', () => {
+    it('keeps existing extrasConfig and does NOT broadcast when present in sync-full', () => {
+      vi.mocked(party.broadcastSources).mockClear();
       const useSources = createSourcesStore('room', () => ({ partyConnected: true }));
       useSources.getState().handlePartyMessage({
         type: 'sync-full',
@@ -312,6 +313,9 @@ describe('channel stores', () => {
         },
       });
       expect(useSources.getState().extrasConfig).toEqual({ build: { enabled: false, price: 25 } });
+      // Critical: must not echo the sources back to PartyKit on hydrate — that would
+      // create a write-amplification loop across every connected client.
+      expect(party.broadcastSources).not.toHaveBeenCalled();
     });
   });
 });

@@ -425,40 +425,60 @@
   }
 }
 
-/* ---------- Build badge (4-slot perk indicator on avatar) ---------- */
+/* ---------- Build badge (4-slot perk indicator on avatar) ----------
+ *
+ * Pure-CSS approximation of a DBD perk slot: rotated dark diamond with a
+ * brass beveled frame and a subtle inner glow. When a `perk.webp` asset is
+ * available, swap `.build-badge-slot` background for `url('images/perk.webp')`
+ * and drop the gradient/border/box-shadow block.
+ */
 .build-badge {
   position: absolute;
-  bottom: -4px;
-  right: -4px;
-  width: 40%;
+  bottom: -6px;
+  right: -6px;
+  width: 46%;
   aspect-ratio: 1;
   pointer-events: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
   z-index: 2;
 }
 
 .build-badge-slot {
   position: absolute;
-  width: 50%;
-  height: 50%;
-  /* Diamond-shaped empty perk slot — CSS-only, no image asset required.
-     Future swap: replace background with `url('images/perk.webp')` and
-     remove the transform/background-color/border block. */
-  background-color: rgba(20, 18, 22, 0.85);
-  border: 1.5px solid rgba(240, 220, 180, 0.55);
+  width: 48%;
+  height: 48%;
   transform: rotate(45deg);
-  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.4);
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(255, 215, 150, 0.10) 0%, transparent 60%),
+    linear-gradient(135deg, #1d1916 0%, #0a0807 100%);
+  border: 1px solid #c89c5c;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 220, 160, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55);
 }
 
-.build-badge-top    { top: 0;    left: 25%; }
-.build-badge-left   { top: 25%;  left: 0; }
-.build-badge-right  { top: 25%;  right: 0; }
-.build-badge-bottom { bottom: 0; left: 25%; }
+/* When perk.webp is provided (apps/web/public/images/perk.webp), BuildBadge
+   sets data-perk-asset="true" and the slot renders the image instead of the
+   CSS diamond. Until then the fallback above is used. */
+.build-badge[data-perk-asset="true"] .build-badge-slot {
+  background: url('/images/perk.webp') center / contain no-repeat;
+  border: none;
+  box-shadow: none;
+  transform: none;
+  width: 50%;
+  height: 50%;
+}
+
+.build-badge-top    { top: 0;    left: 26%; }
+.build-badge-left   { top: 26%;  left: 0; }
+.build-badge-right  { top: 26%;  right: 0; }
+.build-badge-bottom { bottom: 0; left: 26%; }
 
 .build-badge-sm {
-  width: 50%;
-  bottom: -2px;
-  right: -2px;
+  width: 56%;
+  bottom: -3px;
+  right: -3px;
 }
 
 .build-tooltip {

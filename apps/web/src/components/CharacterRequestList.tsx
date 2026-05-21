@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { identifyCharacter } from '../services';
+import { eligibleExtras } from '../services/extras';
 import { CharacterRequestCard } from './CharacterRequestCard';
 import { ContextMenu } from './ContextMenu';
 import { ContextMenuProvider } from '../context/ContextMenuContext';
@@ -103,10 +104,11 @@ export function CharacterRequestList() {
     const request = requests.find(r => r.id === id);
     if (request) {
       update(id, { character: t('card.identifying'), type: 'unknown' });
-      const result = await identifyCharacter(request);
+      const extras = eligibleExtras(request.amountVal, useSources.getState().extrasConfig);
+      const result = await identifyCharacter(request, extras);
       update(id, result);
     }
-  }, [requests, update]);
+  }, [requests, update, t, useSources]);
 
   const skipRequest = useCallback((id: number) => {
     update(id, { type: 'none', character: '', needsIdentification: false });
