@@ -5,6 +5,7 @@ import type { Request } from '../types';
 import type { ChannelStores } from '../store/channel';
 import { computeEntitlement, buildDonationRequests } from './donation';
 import { identifyMultiple } from './llm';
+import { eligibleExtras } from './extras';
 
 export { DONATE_BOT_NAMES, isDonateBot } from '../utils/helpers';
 
@@ -289,7 +290,8 @@ export function handleMessage(raw: string) {
 
   // Multi-request donation: always go through the LLM for accurate parsing
   // (quantifiers like "2 de X", mixed natural language).
-  identifyMultiple(parsed.message, entitlement).then(characters => {
+  const extras = eligibleExtras(amountVal, useSources.getState().extrasConfig);
+  identifyMultiple(parsed.message, entitlement, extras).then(characters => {
     const built = buildDonationRequests({
       donor: parsed.donor,
       amount: parsed.amount,
