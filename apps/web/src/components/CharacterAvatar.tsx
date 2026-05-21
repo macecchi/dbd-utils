@@ -36,26 +36,38 @@ export function CharacterAvatar({ portrait, type, size = 'md', extras }: Props) 
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [showTooltip]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  // Touch devices: a tap on the avatar opens the tooltip instead of marking
+  // the card done. Desktop (hover-capable) keeps the existing mark-done click
+  // and surfaces the tooltip on hover. Detecting via `(hover: hover)` rather
+  // than ad-hoc UA checks avoids false positives on stylus/hybrid devices.
+  const handleClick = (e: React.MouseEvent) => {
     if (!build) return;
+    const hoverCapable = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)').matches;
+    if (hoverCapable) return; // let the click bubble to the card → mark done
     e.stopPropagation();
     setShowTooltip(prev => !prev);
   };
   const handleMouseEnter = () => { if (build) setShowTooltip(true); };
   const handleMouseLeave = () => { setShowTooltip(false); };
 
-  const innerProps = {
+  const interactionProps = {
     ref: wrapperRef,
-    onTouchStart: handleTouchStart,
+    onClick: handleClick,
     onMouseEnter: handleMouseEnter,
     onMouseLeave: handleMouseLeave,
   };
 
+  // The wrapper is the positioning context for the badge + tooltip and must NOT
+  // clip them (badge sits at bottom: -6px, tooltip below the avatar). The inner
+  // clip div preserves the existing image-masking behavior for the portrait/role
+  // background without affecting overlay children.
   if (type === 'killer' && portrait) {
     return (
-      <div className={`char-portrait-wrapper ${sizeClass}`} style={{ backgroundImage: portraitBg }} {...innerProps}>
-        <div className="char-portrait-bg killer" style={{ WebkitMaskImage: roleBg, maskImage: roleBg }}></div>
-        <img src={portrait} alt="" className="char-portrait" />
+      <div className={`char-portrait-wrapper ${sizeClass}`} {...interactionProps}>
+        <div className="char-portrait-clip" style={{ backgroundImage: portraitBg }}>
+          <div className="char-portrait-bg killer" style={{ WebkitMaskImage: roleBg, maskImage: roleBg }}></div>
+          <img src={portrait} alt="" className="char-portrait" />
+        </div>
         {build && <BuildBadge size={size} />}
         {build && showTooltip && <div className="build-tooltip" role="tooltip">{build.text}</div>}
       </div>
@@ -67,8 +79,10 @@ export function CharacterAvatar({ portrait, type, size = 'md', extras }: Props) 
                           'IconShuffle.webp';
   const placeholder = `${base}images/${placeholderIcon}`;
   return (
-    <div className={`char-portrait-wrapper char-portrait-placeholder ${sizeClass}`} style={{ backgroundImage: portraitBg }} {...innerProps}>
-      <img src={placeholder} alt="" className="char-portrait" />
+    <div className={`char-portrait-wrapper char-portrait-placeholder ${sizeClass}`} {...interactionProps}>
+      <div className="char-portrait-clip" style={{ backgroundImage: portraitBg }}>
+        <img src={placeholder} alt="" className="char-portrait" />
+      </div>
       {build && <BuildBadge size={size} />}
       {build && showTooltip && <div className="build-tooltip" role="tooltip">{build.text}</div>}
     </div>
