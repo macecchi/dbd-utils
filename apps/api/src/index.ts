@@ -4,6 +4,7 @@ import { sign } from "hono/jwt";
 import { Twitch } from "arctic";
 import { verifyJwt, type JwtPayload } from "./jwt";
 import { extractCharacters } from "./gemini";
+import type { RequestExtraType } from "@dbd-utils/shared";
 import { getAppToken, fetchProfiles, fetchStreams, cacheProfiles, sendChatMessage, checkBotIsMod } from "./twitch";
 
 const BATCH_CHUNK_SIZE = 80;
@@ -201,7 +202,7 @@ const MAX_DONATION_REQUESTS = 10;
 api.post("/extract-character", async (c) => {
   const user = c.get("jwtPayload");
   const clientVersion = c.req.header("X-Client-Version") || "unknown";
-  const body = await c.req.json<{ message: string; maxCount?: number }>();
+  const body = await c.req.json<{ message: string; maxCount?: number; extras?: RequestExtraType[] }>();
 
   if (!body.message || typeof body.message !== "string") {
     return c.json({ error: "invalid_input" }, 400);
@@ -227,7 +228,11 @@ api.post("/extract-character", async (c) => {
   console.log(`[v${clientVersion}] Extract request from ${user.login} (maxCount=${maxCount}): ${body.message.slice(0, 100)}`);
 
   try {
-    const characters = await extractCharacters(body.message, c.env.GEMINI_API_KEY, maxCount);
+    const extras: RequestExtraType[] = Array.isArray(body.extras)
+      ? body.extras.filter((e): e is RequestExtraType => e === 'build')
+      : [];
+
+    const characters = await extractCharacters(body.message, c.env.GEMINI_API_KEY, maxCount, extras);
 
     // Increment counter after successful extraction (TTL: 24h)
     const putPromise = c.env.CACHE.put(rateLimitKey, String(currentCount + 1), { expirationTtl: 86400 });

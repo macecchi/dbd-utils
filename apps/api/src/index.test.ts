@@ -488,6 +488,31 @@ describe('Hono API', () => {
       expect(body.character).toBe('');
       expect(body.type).toBe('none');
     });
+
+    it('forwards extras param to extractCharacters', async () => {
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockClear();
+      vi.mocked(extractCharacters).mockResolvedValueOnce([
+        { character: 'Krasue', type: 'killer', matchedTerm: 'kraseu', build: { text: 'lethal, dissolution', matchedTerms: ['lethal, dissolution'] } },
+      ]);
+
+      const token = await createTestToken();
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'kraseu de lethal, dissolution', maxCount: 1, extras: ['build'] }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      expect(vi.mocked(extractCharacters)).toHaveBeenCalledWith(
+        'kraseu de lethal, dissolution',
+        expect.any(String),
+        1,
+        ['build']
+      );
+      const body = await res.json() as { characters: Array<{ character: string; build?: { text: string; matchedTerms?: string[] } }> };
+      expect(body.characters[0].build).toEqual({ text: 'lethal, dissolution', matchedTerms: ['lethal, dissolution'] });
+    });
   });
 
   describe('PUT /internal/rooms/:roomId/requests', () => {
