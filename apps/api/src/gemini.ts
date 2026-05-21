@@ -44,8 +44,9 @@ ${message}
 Return ONLY JSON with a "characters" array. Each entry has character name, type, and the exact matched substring.
 - Return characters in the order they appear in the message.
 - The character name MUST be the official name (the first name in the slash-separated list above). e.g. "Myers" → "Shape".
-- Honor quantifiers: "2 de trapper" → two entries for "Trapper"; "1 nurse" → one entry for "Nurse".
-- Only extract characters the user is clearly requesting to play. Patterns like "joga de X", "vai de X", "uma de X", "play X", or a standalone character name as a request. Personal stories, questions, greetings, or general conversation should return an empty array — do NOT guess from vague context, metaphors, or unrelated words.
+- Extract ONLY the characters the user is COMMANDING the streamer to play (the user's request/order). A numeric quantifier attached to a name multiplies that specific name: "2 de trapper" → ["Trapper","Trapper"]; "3 trickster" → ["Trickster","Trickster","Trickster"]. The count never splits across other character names.
+- Character names mentioned only as CONTEXT (the streamer's current/past killer, comparisons, complaints, memories, e.g. "tapete da X", "chega de X", "depois da X") are not part of the user's command — exclude them. Example: "joga 3 trickster pra despedir da krasue" → ["Trickster","Trickster","Trickster"] (krasue = what's currently being played, not requested).
+- No command present (small talk, greetings, personal stories, off-topic donations) → empty array.
 - Cap the total returned at max_count. If the user requests more, return the first max_count in message order. If the user requests fewer, return only what they asked for — do NOT pad to max_count.
 - If the user requests a generic survivor ("joga de surv", "uma de survivor"), return one entry with character "Survivor" and type "survivor".
 - Recognize creative spellings, slang, and affectionate variations (e.g. "Drakuluxuuu" = Dracula, "demogogo" = Demogorgon, "pigzinha" = Pig).

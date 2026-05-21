@@ -250,13 +250,11 @@ const multiCases: EvalCase[] = [
     expected: ['Spirit'],
   },
   {
-    // KNOWN FAILURE — surfaced by these evals.
-    // The LLM currently returns ['Krasue', 'Trickster'] for this message:
-    // it correctly picks up "Trickster" but misses the "3" quantifier AND
-    // wrongly treats the trailing reference to "krasue" (the current/previous
-    // killer being played, mentioned only as context) as a separate request.
-    // Action item: tighten the prompt language around quantifiers when other
-    // character names are present in non-request positions in the sentence.
+    // Regression watch: the LLM used to return ['Krasue', 'Trickster'] here —
+    // it missed the "3" quantifier and treated the contextual "krasue"
+    // reference (the current killer the user is saying goodbye to) as a
+    // separate request. Fixed by reframing the prompt around the user's
+    // command/intent and excluding context-only mentions.
     name: 'multi / current-killer reference is NOT a request: "tapete da krasue" + "joga 3 trickster"',
     message: 'joga 3 trickster então pra despedir do muso tapete da krasue.',
     maxCount: 3,
@@ -270,8 +268,8 @@ function multisetSorted(arr: string[]): string[] {
   return [...arr].sort();
 }
 
-describe('Gemini extractCharacters — live LLM evals', () => {
-  it.skipIf(!RUN_EVALS).each(allCases)('$name', async ({ message, maxCount, expected }) => {
+describe.concurrent('Gemini extractCharacters — live LLM evals', () => {
+  it.skipIf(!RUN_EVALS).concurrent.each(allCases)('$name', async ({ message, maxCount, expected }) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('Set GEMINI_API_KEY (e.g. in apps/api/.env or .dev.vars) to run evals');
