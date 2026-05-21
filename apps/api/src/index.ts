@@ -525,6 +525,7 @@ app.route("/internal", internal);
 interface RoomRow {
   id: string;
   channel_login: string;
+  display_name: string | null;
   avatar_url: string | null;
   banner_url: string | null;
   status: string;
@@ -538,7 +539,7 @@ app.get("/rooms/active", async (c) => {
   if (cached) return c.json(cached);
 
   const { results } = await c.env.DB.prepare(
-    `SELECT r.id, r.channel_login, r.avatar_url, r.banner_url, r.status,
+    `SELECT r.id, r.channel_login, r.display_name, r.avatar_url, r.banner_url, r.status,
             COUNT(req.id) AS request_count,
             SUM(CASE WHEN req.done = 0 AND COALESCE(req.type, '') != 'none' THEN 1 ELSE 0 END) AS pending_count,
             r.updated_at
@@ -627,6 +628,7 @@ app.get("/rooms/active", async (c) => {
       ...r,
       status,
       pending_count: pendingCount,
+      display_name: r.display_name ?? fresh?.display_name ?? null,
       avatar_url: r.avatar_url ?? fresh?.avatar_url ?? null,
       banner_url: r.banner_url ?? fresh?.banner_url ?? null,
       is_live: isLive,
@@ -663,16 +665,17 @@ app.get("/rooms/active", async (c) => {
 app.get("/rooms/:roomId", async (c) => {
   const roomId = c.req.param("roomId").toLowerCase();
   const row = await c.env.DB.prepare(
-    "SELECT id, channel_login, avatar_url, status, updated_at FROM rooms WHERE id = ?"
+    "SELECT id, channel_login, display_name, avatar_url, status, updated_at FROM rooms WHERE id = ?"
   ).bind(roomId).first<RoomRow>();
 
-  const room = row ?? { id: roomId, channel_login: roomId, avatar_url: null as string | null, banner_url: null, status: "offline", updated_at: null };
+  const room = row ?? { id: roomId, channel_login: roomId, display_name: null as string | null, avatar_url: null as string | null, banner_url: null, status: "offline", updated_at: null };
 
-  if (!room.avatar_url) {
+  if (!room.avatar_url || !room.display_name) {
     const token = await getAppToken(c.env);
     if (token) {
       const profiles = await fetchProfiles([roomId], token, c.env.TWITCH_CLIENT_ID);
       if (profiles[0]) {
+        room.display_name = profiles[0].display_name;
         room.avatar_url = profiles[0].avatar_url;
         cacheProfiles(c.env.DB, profiles, c.executionCtx);
       }

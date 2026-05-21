@@ -12,6 +12,7 @@ import { Panel } from './Panel';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
 interface RoomInfo {
+  display_name: string | null;
   avatar_url: string | null;
   updated_at: string;
 }
@@ -36,6 +37,7 @@ export function ChannelHeader() {
   }, [channel]);
 
   const avatarUrl = roomInfo?.avatar_url || owner?.avatar;
+  const displayName = owner?.displayName || roomInfo?.display_name || channel;
   const lastActive = roomInfo?.updated_at ? new Date(roomInfo.updated_at + 'Z') : null;
 
   const [copied, setCopied] = useState(false);
@@ -86,7 +88,7 @@ export function ChannelHeader() {
               rel="noopener noreferrer"
               className="channel-header-name-link"
             >
-              <h2 className="channel-header-name">{channel}</h2>
+              <h2 className="channel-header-name">{displayName}</h2>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
               </svg>

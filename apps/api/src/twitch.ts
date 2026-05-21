@@ -11,6 +11,7 @@ interface TwitchEnv {
 
 export interface TwitchProfile {
   login: string;
+  display_name: string;
   avatar_url: string;
   banner_url: string;
 }
@@ -68,9 +69,10 @@ export async function fetchProfiles(logins: string[], token: string, clientId: s
   const res = await fetch(`https://api.twitch.tv/helix/users?${param}`, { headers: helixHeaders(token, clientId) });
   if (!res.ok) return [];
 
-  const data = await res.json() as { data: Array<{ login: string; profile_image_url: string; offline_image_url: string }> };
+  const data = await res.json() as { data: Array<{ login: string; display_name: string; profile_image_url: string; offline_image_url: string }> };
   return data.data.map((u) => ({
     login: u.login.toLowerCase(),
+    display_name: u.display_name,
     avatar_url: u.profile_image_url,
     banner_url: u.offline_image_url,
   }));
@@ -94,8 +96,8 @@ export function cacheProfiles(db: D1Database, profiles: TwitchProfile[], ctx: Ex
   if (profiles.length === 0) return;
   const statements = profiles.map((p) =>
     db.prepare(
-      "INSERT INTO rooms (id, channel_login, avatar_url, banner_url) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET avatar_url = excluded.avatar_url, banner_url = excluded.banner_url"
-    ).bind(p.login, p.login, p.avatar_url, p.banner_url)
+      "INSERT INTO rooms (id, channel_login, display_name, avatar_url, banner_url) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET display_name = excluded.display_name, avatar_url = excluded.avatar_url, banner_url = excluded.banner_url"
+    ).bind(p.login, p.login, p.display_name, p.avatar_url, p.banner_url)
   );
   ctx.waitUntil(db.batch(statements));
 }
