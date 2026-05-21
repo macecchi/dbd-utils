@@ -140,6 +140,7 @@ const ptBR = {
   // Manual entry
   'manual.title': 'Adicionar Pedido Manual',
   'manual.placeholder': 'Digite o nome do personagem...',
+  'manual.notePlaceholder': 'Nota (opcional)',
 
   // Chat log
   'chat.empty': 'Mensagens do chat aparecerão aqui...',

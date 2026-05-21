@@ -39,6 +39,7 @@ export function ManualEntry({ isOpen, onClose }: Props) {
   const owner = useChannelInfo((s) => s.owner);
   const { t } = useTranslation();
   const [input, setInput] = useState('');
+  const [note, setNote] = useState('');
   const [autocompleteItems, setAutocompleteItems] = useState<CharacterOption[]>([]);
   const [autocompleteIndex, setAutocompleteIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +54,7 @@ export function ManualEntry({ isOpen, onClose }: Props) {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
       setInput('');
+      setNote('');
       setAutocompleteItems([]);
       setAutocompleteIndex(-1);
     }
@@ -78,22 +80,24 @@ export function ManualEntry({ isOpen, onClose }: Props) {
   };
 
   const selectCharacter = useCallback((char: CharacterOption) => {
+    const trimmedNote = note.trim();
     const request: Request = {
       id: Date.now() + Math.random(),
       timestamp: new Date(),
       donor: owner?.displayName || 'Manual',
       amount: '',
       amountVal: 0,
-      message: char.name,
+      message: trimmedNote || char.name,
       character: char.name,
       type: char.type,
       source: 'manual'
     };
     addRequest(request);
     setInput('');
+    setNote('');
     setAutocompleteItems([]);
     onClose();
-  }, [addRequest, onClose, owner]);
+  }, [addRequest, onClose, owner, note]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -123,29 +127,42 @@ export function ManualEntry({ isOpen, onClose }: Props) {
           <button className="manual-entry-close" onClick={onClose}>×</button>
         </div>
         <div className="manual-entry-body">
+          <div className="manual-input-wrapper">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              placeholder={t('manual.placeholder')}
+              autoComplete="off"
+              onChange={e => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            {autocompleteItems.length > 0 && (
+              <div className="autocomplete-dropdown show">
+                {autocompleteItems.map((item, i) => (
+                  <div
+                    key={item.name}
+                    className={`autocomplete-item ${item.type} ${i === autocompleteIndex ? 'active' : ''}`}
+                    onClick={() => selectCharacter(item)}
+                  >
+                    <CharacterAvatar portrait={item.portrait} type={item.type} size="sm" />
+                    <span>{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <input
-            ref={inputRef}
+            className="manual-entry-note"
             type="text"
-            value={input}
-            placeholder={t('manual.placeholder')}
+            value={note}
+            placeholder={t('manual.notePlaceholder')}
             autoComplete="off"
-            onChange={e => handleInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onChange={e => setNote(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') onClose();
+            }}
           />
-          {autocompleteItems.length > 0 && (
-            <div className="autocomplete-dropdown show">
-              {autocompleteItems.map((item, i) => (
-                <div
-                  key={item.name}
-                  className={`autocomplete-item ${item.type} ${i === autocompleteIndex ? 'active' : ''}`}
-                  onClick={() => selectCharacter(item)}
-                >
-                  <CharacterAvatar portrait={item.portrait} type={item.type} size="sm" />
-                  <span>{item.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

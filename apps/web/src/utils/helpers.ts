@@ -78,6 +78,18 @@ export function highlightTerms(message: string, terms: string[]): ReactNode[] {
 
   if (kept.length === 0) return [message];
 
+  // If the kept matches cover the entire (trimmed) message contiguously, the
+  // highlight adds no information — return the message plain. This kills the
+  // pointless "wrap the whole string" mark on manual requests (and on any
+  // donation where the donor literally just wrote the character name).
+  const trimStart = message.length - message.trimStart().length;
+  const trimEnd = message.trimEnd().length;
+  const coversAll =
+    kept[0].start <= trimStart &&
+    kept[kept.length - 1].end >= trimEnd &&
+    kept.every((k, i) => i === 0 || k.start === kept[i - 1].end);
+  if (coversAll) return [message];
+
   const out: ReactNode[] = [];
   let cursor = 0;
   kept.forEach((k, i) => {

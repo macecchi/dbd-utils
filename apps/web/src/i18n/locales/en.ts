@@ -142,6 +142,7 @@ const en: TranslationKeys = {
   // Manual entry
   'manual.title': 'Add Manual Request',
   'manual.placeholder': 'Type the character name...',
+  'manual.notePlaceholder': 'Note (optional)',
 
   // Chat log
   'chat.empty': 'Chat messages will appear here...',

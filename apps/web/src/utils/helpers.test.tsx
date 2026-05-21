@@ -207,4 +207,14 @@ describe('highlightTerms', () => {
     const result = highlightTerms('plain message', []);
     expect(result).toEqual(['plain message']);
   });
+
+  it('skips the wrap when the term covers the whole message', () => {
+    const result = highlightTerms('Trapper', ['Trapper']);
+    expect(result).toEqual(['Trapper']);
+  });
+
+  it('skips the wrap when the term covers the whole trimmed message', () => {
+    const result = highlightTerms('  Trapper  ', ['Trapper']);
+    expect(result).toEqual(['  Trapper  ']);
+  });
 });

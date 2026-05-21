@@ -49,6 +49,9 @@
 .manual-entry-body {
   padding: var(--space-xl);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .manual-entry-body input {
@@ -66,11 +69,17 @@
   border-color: var(--accent);
 }
 
-.manual-entry-body .autocomplete-dropdown {
-  position: absolute;
-  left: var(--space-xl);
-  right: var(--space-xl);
-  top: calc(100% - var(--space-sm));
+.manual-entry-body .manual-input-wrapper {
+  position: relative;
+}
+
+.manual-entry-note {
+  font-size: var(--text-base) !important;
+  color: var(--text-muted);
+}
+
+.manual-entry-note:focus {
+  color: var(--text);
 }
 
 /* Mobile */
