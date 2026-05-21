@@ -4,10 +4,9 @@ import app from './index';
 
 // Mock gemini
 vi.mock('./gemini', () => ({
-  extractCharacter: vi.fn().mockResolvedValue({
-    character: 'Meg Thomas',
-    type: 'survivor',
-  }),
+  extractCharacters: vi.fn().mockResolvedValue([
+    { character: 'Meg Thomas', type: 'survivor' },
+  ]),
 }));
 
 // Type definitions for API responses
@@ -387,8 +386,8 @@ describe('Hono API', () => {
     });
 
     it('returns 502 when Gemini fails', async () => {
-      const { extractCharacter } = await import('./gemini');
-      vi.mocked(extractCharacter).mockRejectedValueOnce(new Error('API rate limit'));
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockRejectedValueOnce(new Error('API rate limit'));
 
       const token = await createTestToken();
 
@@ -404,6 +403,90 @@ describe('Hono API', () => {
       expect(res.status).toBe(502);
       const body = await res.json() as ErrorResponse;
       expect(body.error).toBe('llm_error');
+    });
+
+    it('returns a characters array (single result) and flat mirror', async () => {
+      const token = await createTestToken();
+
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'quero meg' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as {
+        characters: Array<{ character: string; type: string }>;
+        character?: string;
+        type?: string;
+      };
+      expect(Array.isArray(body.characters)).toBe(true);
+      expect(body.characters).toHaveLength(1);
+      expect(body.characters[0]).toMatchObject({ character: 'Meg Thomas', type: 'survivor' });
+      expect(body.character).toBe('Meg Thomas');
+      expect(body.type).toBe('survivor');
+    });
+
+    it('returns multiple characters when LLM yields more than one', async () => {
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockResolvedValueOnce([
+        { character: 'Trapper', type: 'killer' },
+        { character: 'Trapper', type: 'killer' },
+        { character: 'Nurse', type: 'killer' },
+      ]);
+
+      const token = await createTestToken();
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: '2 de trapper e 1 de nurse', maxCount: 3 }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { characters: Array<{ character: string }>; character?: string };
+      expect(body.characters.map(c => c.character)).toEqual(['Trapper', 'Trapper', 'Nurse']);
+      expect(body.character).toBe('Trapper');
+    });
+
+    it('clamps maxCount to [1, 10]', async () => {
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockResolvedValueOnce([{ character: 'Meg Thomas', type: 'survivor' }]);
+
+      const token = await createTestToken();
+      await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'meg', maxCount: 50 }),
+      }, TEST_ENV);
+
+      expect(vi.mocked(extractCharacters).mock.calls[0][2]).toBe(10);
+
+      vi.mocked(extractCharacters).mockResolvedValueOnce([{ character: 'Meg Thomas', type: 'survivor' }]);
+      await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'meg', maxCount: 0 }),
+      }, TEST_ENV);
+
+      expect(vi.mocked(extractCharacters).mock.calls[1][2]).toBe(1);
+    });
+
+    it('returns empty array and empty flat mirror when LLM yields nothing', async () => {
+      const { extractCharacters } = await import('./gemini');
+      vi.mocked(extractCharacters).mockResolvedValueOnce([]);
+
+      const token = await createTestToken();
+      const res = await app.request('/api/extract-character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: 'oi tudo bem?' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { characters: unknown[]; character?: string; type?: string };
+      expect(body.characters).toEqual([]);
+      expect(body.character).toBe('');
+      expect(body.type).toBe('none');
     });
   });
 
