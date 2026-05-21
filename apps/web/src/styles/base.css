@@ -173,9 +173,14 @@ a:hover {
 .panel-surface {
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
-  overflow: clip;
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+.panel-surface > .panel-body {
+  overflow: clip;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 
 .elevated-surface {
