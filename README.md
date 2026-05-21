@@ -144,6 +144,18 @@ To test StreamElements format:
 dbdDebug.raw('@display-name=StreamElements :streamelements!streamelements@streamelements.tmi.twitch.tv PRIVMSG #ch :Donor mandou 5.00 e disse: Huntress')
 ```
 
+### LLM extraction evals
+
+Live evals against the real Gemini API live in `apps/api/src/gemini.eval.test.ts`. They are skipped by the default test suite (and by CI) and run on demand:
+
+```bash
+cd apps/api
+set -a && source .env && set +a   # load GEMINI_API_KEY
+bun run test:eval
+```
+
+Scenarios are sampled from real anonymized donation messages and cover single-character nicknames, no-request messages, and multi-character requests (including quantifiers like "2 de trapper e 1 de nurse"). Comparison is multiset — order doesn't matter, duplicates do. Add new cases to the file when a new edge case surfaces in production.
+
 ## License
 
 MIT ([LICENSE](LICENSE))
