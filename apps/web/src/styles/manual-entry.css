@@ -73,6 +73,12 @@
   position: relative;
 }
 
+/* Anchor the autocomplete to the character input so it sits flush right
+   underneath, not floating in the body or covering the note input. */
+.manual-entry-body .manual-input-wrapper .autocomplete-dropdown {
+  margin-top: 4px;
+}
+
 .manual-entry-note {
   font-size: var(--text-base) !important;
   color: var(--text-muted);

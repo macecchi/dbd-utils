@@ -127,6 +127,17 @@ export function ManualEntry({ isOpen, onClose }: Props) {
           <button className="manual-entry-close" onClick={onClose}>×</button>
         </div>
         <div className="manual-entry-body">
+          <input
+            className="manual-entry-note"
+            type="text"
+            value={note}
+            placeholder={t('manual.notePlaceholder')}
+            autoComplete="off"
+            onChange={e => setNote(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') onClose();
+            }}
+          />
           <div className="manual-input-wrapper">
             <input
               ref={inputRef}
@@ -152,17 +163,6 @@ export function ManualEntry({ isOpen, onClose }: Props) {
               </div>
             )}
           </div>
-          <input
-            className="manual-entry-note"
-            type="text"
-            value={note}
-            placeholder={t('manual.notePlaceholder')}
-            autoComplete="off"
-            onChange={e => setNote(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Escape') onClose();
-            }}
-          />
         </div>
       </div>
     </div>
