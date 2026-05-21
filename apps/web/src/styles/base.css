@@ -213,6 +213,50 @@ a:hover {
   color: var(--text) !important;
 }
 
+/* What's New digest toast — wider than a default toast so each update
+   gets room to breathe, with each entry rendered as its own subtle card. */
+[data-sonner-toast].whats-new-toast {
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  padding: 18px 18px 18px 20px !important;
+}
+
+[data-sonner-toast].whats-new-toast [data-title] {
+  font-size: var(--text-md);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.whats-new-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.whats-new-item {
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+}
+
+.whats-new-item-title {
+  font-weight: 600;
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+
+.whats-new-item-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

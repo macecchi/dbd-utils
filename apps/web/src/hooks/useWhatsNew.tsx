@@ -25,14 +25,14 @@ function dismissAll(ids: string[]) {
 
 function DigestBody({ entries }: { entries: ChangelogEntry[] }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <ul className="whats-new-list">
       {entries.map(e => (
-        <div key={e.id}>
-          <div style={{ fontWeight: 600 }}>• {t(e.titleKey)}</div>
-          <div>{t(e.descriptionKey)}</div>
-        </div>
+        <li key={e.id} className="whats-new-item">
+          <div className="whats-new-item-title">{t(e.titleKey)}</div>
+          <div className="whats-new-item-desc">{t(e.descriptionKey)}</div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
@@ -52,6 +52,8 @@ export function useWhatsNew(enabled: boolean) {
         id: TOAST_ID,
         description: <DigestBody entries={unseen} />,
         duration: Infinity,
+        position: 'top-right',
+        classNames: { toast: 'whats-new-toast' },
         onDismiss: () => dismissAll(ids),
         onAutoClose: () => dismissAll(ids),
       });

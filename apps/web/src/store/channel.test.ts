@@ -291,7 +291,8 @@ describe('channel stores', () => {
       });
 
       const state = useSources.getState();
-      expect(state.extrasConfig).toEqual({ build: { enabled: true, price: 10 } });
+      // Default is opt-in (enabled: false) so the streamer has to turn it on explicitly.
+      expect(state.extrasConfig).toEqual({ build: { enabled: false, price: 10 } });
       expect(broadcasts.some(b => 'extrasConfig' in b)).toBe(true);
     });
 
