@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChannelHeader } from './components/ChannelHeader';
-import { DebugPanel } from './components/DebugPanel';
+import { DebugDevTools } from './components/DebugDevTools';
 import { CharacterRequestList } from './components/CharacterRequestList';
 import { LandingPage } from './components/LandingPage';
 import { ManualEntry } from './components/ManualEntry';
@@ -357,10 +357,9 @@ function ChannelApp() {
             </div>
           </Panel>
 
-          {(!readOnly || import.meta.env.DEV || isDebugMode()) && (
+          {!readOnly && (
             <aside className="sidebar">
-              {!readOnly && <SettingsPanel onRecover={() => setVodSelectOpen(true)} onReview={() => setReviewOpen(true)} />}
-              {(import.meta.env.DEV || isDebugMode()) && <DebugPanel />}
+              <SettingsPanel onRecover={() => setVodSelectOpen(true)} onReview={() => setReviewOpen(true)} />
             </aside>
           )}
         </main>
@@ -421,6 +420,7 @@ function ChannelApp() {
         loadingText={t('import.analyzingVods')}
         doneText={t('import.found')}
       />
+      {(import.meta.env.DEV || isDebugMode()) && <DebugDevTools />}
       <Toaster
         theme="dark"
         position="bottom-center"
