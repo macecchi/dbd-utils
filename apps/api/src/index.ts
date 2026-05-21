@@ -437,11 +437,12 @@ internal.put("/rooms/:roomId/sources", async (c) => {
     minDonation: number;
     recoveryVodId?: string;
     recoveryVodOffset?: number;
+    extrasConfig?: Record<string, unknown>;
   }>();
 
   await c.env.DB.prepare(
-    `INSERT INTO rooms (id, channel_login, enabled_donation, enabled_chat, enabled_resub, enabled_manual, chat_command, chat_tiers, priority, sort_mode, min_donation, recovery_vod_id, recovery_vod_offset, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO rooms (id, channel_login, enabled_donation, enabled_chat, enabled_resub, enabled_manual, chat_command, chat_tiers, priority, sort_mode, min_donation, recovery_vod_id, recovery_vod_offset, extras_config, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
        enabled_donation = excluded.enabled_donation,
        enabled_chat = excluded.enabled_chat,
@@ -454,6 +455,7 @@ internal.put("/rooms/:roomId/sources", async (c) => {
        min_donation = excluded.min_donation,
        recovery_vod_id = excluded.recovery_vod_id,
        recovery_vod_offset = excluded.recovery_vod_offset,
+       extras_config = excluded.extras_config,
        updated_at = datetime('now')`
   ).bind(
     roomId,
@@ -468,7 +470,8 @@ internal.put("/rooms/:roomId/sources", async (c) => {
     body.sortMode ?? "fifo",
     body.minDonation ?? 5,
     body.recoveryVodId ?? null,
-    body.recoveryVodOffset ?? null
+    body.recoveryVodOffset ?? null,
+    body.extrasConfig ? JSON.stringify(body.extrasConfig) : null
   ).run();
 
   return c.json({ ok: true });

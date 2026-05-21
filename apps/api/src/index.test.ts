@@ -515,6 +515,45 @@ describe('Hono API', () => {
     });
   });
 
+  describe('PUT /internal/rooms/:roomId/sources', () => {
+    const internalAuth = 'Bearer internal:test-internal-secret';
+
+    it('persists extrasConfig to D1 extras_config column', async () => {
+      const bindCalls: unknown[][] = [];
+      const mockDB2 = {
+        prepare: vi.fn(() => ({
+          bind: vi.fn((...args: unknown[]) => {
+            bindCalls.push(args);
+            return { run: vi.fn().mockResolvedValue({ success: true }) };
+          }),
+        })),
+      };
+      const env = { ...TEST_ENV, DB: mockDB2 as unknown as typeof TEST_ENV['DB'] };
+
+      const res = await app.request('/internal/rooms/mandymess/sources', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: internalAuth,
+        },
+        body: JSON.stringify({
+          enabled: { donation: true, chat: true, resub: false, manual: true },
+          chatCommand: '!fila',
+          chatTiers: [2, 3],
+          priority: ['donation', 'chat', 'resub', 'manual'],
+          sortMode: 'fifo',
+          minDonation: 5,
+          extrasConfig: { build: { enabled: true, price: 12 } },
+        }),
+      }, env);
+
+      expect(res.status).toBe(200);
+      const args = bindCalls[0] ?? [];
+      const stringified = args.find((a) => typeof a === 'string' && a.includes('"build"'));
+      expect(stringified).toBe(JSON.stringify({ build: { enabled: true, price: 12 } }));
+    });
+  });
+
   describe('PUT /internal/rooms/:roomId/requests', () => {
     const internalAuth = 'Bearer internal:test-internal-secret';
 
