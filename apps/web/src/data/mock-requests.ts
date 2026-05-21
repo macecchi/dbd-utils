@@ -1,7 +1,7 @@
 import type { Request } from '../types';
 
 const MOCK_REQUESTS: Omit<Request, 'id' | 'timestamp'>[] = [
-  { donor: "PedroGamer", amount: "R$ 50,00", amountVal: 50, message: "Quero muito ver a Nurse!", character: "Nurse", type: "killer", source: "donation" },
+  { donor: "PedroGamer", amount: "R$ 50,00", amountVal: 50, message: "Joga uma de Krasue de lethal, dissolution, bambas e bbq, cabeça de galinha e olho de porco de addon", character: "Krasue", type: "killer", source: "donation", extras: [{ type: 'build', text: 'lethal, dissolution, bambas e bbq · addons cabeça de galinha e olho de porco', matchedTerms: ['lethal, dissolution, bambas e bbq', 'cabeça de galinha e olho de porco'] }] },
   { donor: "MariaSilva", amount: "R$ 10,00", amountVal: 10, message: "joga de meg pfv", character: "Meg Thomas", type: "survivor", source: "donation" },
   { donor: "JoaoVitor2024", amount: "R$ 100,00", amountVal: 100, message: "BUBBA POR FAVOR AMO DEMAIS", character: "Cannibal", type: "killer", source: "donation" },
   { donor: "SubLeal_12meses", amount: "", amountVal: 0, message: "12 meses assistindo! Quero ver o Pyramid Head", character: "Pyramid Head", type: "killer", source: "resub" },
