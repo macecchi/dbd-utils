@@ -7,12 +7,16 @@ import { toast } from 'sonner';
 const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    // Activate new SW so assets are cached, then prompt user to reload
-    updateSW(true);
+    // Don't activate the new SW eagerly — calling updateSW(true) here races
+    // with the reload it triggers, so the waiting SW often doesn't actually
+    // take control, and the next page load sees it still waiting → this
+    // callback fires again, and the toast pops on every reload. Defer
+    // activation to the user's click: skipWaiting + reload happens in one
+    // controlled step, and the new page load has no waiting SW.
     toast(t('toast.newVersionAvailable'), {
-      description: t('toast.clickToUpdate'),
+      id: 'new-version',
       duration: Infinity,
-      action: { label: t('toast.clickToUpdate'), onClick: () => location.reload() },
+      action: { label: t('toast.updateAction'), onClick: () => updateSW(true) },
     });
   }
 });

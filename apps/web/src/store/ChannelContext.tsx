@@ -242,9 +242,10 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
             if (msg.code === 'version_mismatch') {
               disconnectParty();
               toast.warning(t('toast.newVersionAvailable'), {
+                id: 'new-version',
                 description: t('toast.newVersionUpdate'),
                 duration: Infinity,
-                action: { label: t('toast.clickToUpdate'), onClick: () => location.reload() },
+                action: { label: t('toast.updateAction'), onClick: () => location.reload() },
               });
               sendPushNotification(t('push.newVersionTitle'), t('push.newVersion'));
               return;
