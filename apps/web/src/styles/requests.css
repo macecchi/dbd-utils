@@ -424,3 +424,66 @@
     gap: var(--space-xs);
   }
 }
+
+/* ---------- Build badge (4-slot perk indicator on avatar) ---------- */
+.build-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 40%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+  z-index: 2;
+}
+
+.build-badge-slot {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  /* Diamond-shaped empty perk slot — CSS-only, no image asset required.
+     Future swap: replace background with `url('images/perk.webp')` and
+     remove the transform/background-color/border block. */
+  background-color: rgba(20, 18, 22, 0.85);
+  border: 1.5px solid rgba(240, 220, 180, 0.55);
+  transform: rotate(45deg);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.4);
+}
+
+.build-badge-top    { top: 0;    left: 25%; }
+.build-badge-left   { top: 25%;  left: 0; }
+.build-badge-right  { top: 25%;  right: 0; }
+.build-badge-bottom { bottom: 0; left: 25%; }
+
+.build-badge-sm {
+  width: 50%;
+  bottom: -2px;
+  right: -2px;
+}
+
+.build-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: rgba(20, 18, 22, 0.96);
+  color: #f3f1ef;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  max-width: 280px;
+  width: max-content;
+  pointer-events: none;
+  white-space: normal;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+  .build-tooltip {
+    max-width: 220px;
+    font-size: 0.78rem;
+  }
+}

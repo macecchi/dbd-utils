@@ -466,3 +466,47 @@
     min-width: 0;
   }
 }
+
+/* ---------- Donation extras (build requests, etc.) ---------- */
+.source-row-extras {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.extra-row {
+  padding-left: 10px;
+  border-left: 2px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.extra-row.disabled { opacity: 0.65; }
+
+.extra-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.extra-row-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.extra-row-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.extra-row-config {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
