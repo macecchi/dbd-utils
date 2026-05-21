@@ -1,16 +1,22 @@
 import { tryLocalMatch } from '../data/characters';
 import { useAuth } from '../store/auth';
-import type { Request } from '../types';
+import type { Request, RequestExtra, RequestExtraType } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
 declare const __APP_VERSION__: string;
 
-type ExtractedCharacter = { character: string; type: string; matchedTerm?: string };
+type ExtractedCharacter = {
+  character: string;
+  type: string;
+  matchedTerm?: string;
+  build?: { text: string; matchedTerms?: string[] };
+};
 
 async function callAPI(
   message: string,
   maxCount: number,
+  extras: RequestExtraType[],
   onError?: (msg: string) => void
 ): Promise<ExtractedCharacter[]> {
   const token = await useAuth.getState().getAccessToken();
@@ -24,7 +30,7 @@ async function callAPI(
         Authorization: `Bearer ${token}`,
         'X-Client-Version': __APP_VERSION__,
       },
-      body: JSON.stringify({ message, maxCount }),
+      body: JSON.stringify({ message, maxCount, extras }),
     });
 
     if (!res.ok) {
@@ -67,7 +73,7 @@ export async function identifyCharacter(
 
   if (local) {
     if (local.ambiguous && isAuthenticated && onLLMUpdate) {
-      callAPI(request.message, 1, onError).then(arr => {
+      callAPI(request.message, 1, [], onError).then(arr => {
         const llmResult = arr[0] ?? { character: '', type: 'none' };
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
@@ -87,7 +93,7 @@ export async function identifyCharacter(
 
   if (!isAuthenticated) return { character: '', type: 'unknown' };
 
-  const arr = await callAPI(request.message, 1, onError);
+  const arr = await callAPI(request.message, 1, [], onError);
   const result = arr[0] ?? { character: '', type: 'none' };
   const type = result.type || 'unknown';
   return {
@@ -109,7 +115,7 @@ export async function testExtraction(
 
   if (localResult) {
     if (localResult.ambiguous && isAuthenticated && onLLMUpdate) {
-      callAPI(input, 1, onError).then(arr => {
+      callAPI(input, 1, [], onError).then(arr => {
         const llmResult = arr[0] ?? { character: '', type: 'none' };
         if (llmResult.type !== 'none' && llmResult.character) {
           onLLMUpdate({
@@ -126,7 +132,7 @@ export async function testExtraction(
     return { character: '', type: 'unknown', isLocal: false };
   }
 
-  const arr = await callAPI(input, 1, onError);
+  const arr = await callAPI(input, 1, [], onError);
   const llm = arr[0] ?? { character: '', type: 'none' };
   return {
     character: llm.character || '',
@@ -138,14 +144,27 @@ export async function testExtraction(
 export async function identifyMultiple(
   message: string,
   maxCount: number,
+  extras: RequestExtraType[] = [],
   onError?: (msg: string) => void
-): Promise<Array<{ character: string; type: 'survivor' | 'killer' | 'unknown' | 'none'; matchedTerm?: string }>> {
+): Promise<Array<{
+  character: string;
+  type: 'survivor' | 'killer' | 'unknown' | 'none';
+  matchedTerm?: string;
+  extras?: RequestExtra[];
+}>> {
   const isAuthenticated = useAuth.getState().isAuthenticated;
   if (!isAuthenticated) return [];
-  const arr = await callAPI(message, maxCount, onError);
-  return arr.map(c => ({
-    character: c.character ?? '',
-    type: (c.type ?? 'unknown') as 'survivor' | 'killer' | 'unknown' | 'none',
-    matchedTerm: c.matchedTerm,
-  }));
+  const arr = await callAPI(message, maxCount, extras, onError);
+  return arr.map(c => {
+    const extrasOut: RequestExtra[] = [];
+    if (c.build?.text) {
+      extrasOut.push({ type: 'build', text: c.build.text, matchedTerms: c.build.matchedTerms });
+    }
+    return {
+      character: c.character ?? '',
+      type: (c.type ?? 'unknown') as 'survivor' | 'killer' | 'unknown' | 'none',
+      matchedTerm: c.matchedTerm,
+      extras: extrasOut.length > 0 ? extrasOut : undefined,
+    };
+  });
 }
