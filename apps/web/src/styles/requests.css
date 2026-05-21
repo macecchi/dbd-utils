@@ -213,7 +213,9 @@
 
 .matched-term {
   background: none;
-  color: inherit;
+  /* Card body text is --text-muted; this lifts highlighted terms to full
+     brightness so the matched span pops out of the surrounding message. */
+  color: var(--text);
   font-weight: 600;
   font-style: italic;
 }
