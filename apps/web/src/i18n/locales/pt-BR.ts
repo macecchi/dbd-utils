@@ -209,14 +209,15 @@ const ptBR = {
   'toast.vodRecoveryFailed': 'Falha ao recuperar pedidos perdidos.',
 
   // What's new
-  'whatsNew.title': 'Novidade',
+  'whatsNew.title': '✨ Novidade',
   'whatsNew.langToggle': 'Agora você pode alternar entre Português e Inglês no rodapé.',
   'whatsNew.multiDonateBots': 'StreamElements (GGPix, entre outros) agora é suportado para donates, além do LivePix.',
-  'whatsNew.multiRequestDonationsTitle': '✨ Novidade: vários pedidos por donate',
-  'whatsNew.multiRequestDonations': 'Donates acima do mínimo agora podem conter vários pedidos numa mesma mensagem — ex.: R$30 com mínimo R$10 vira até 3 personagens, incluindo quantificadores como "2 de trapper".',
-  'whatsNew.chatConfirmationsTitle': '✨ Novidade: confirmações no chat',
+  'whatsNew.multiRequestDonationsTitle': 'Vários pedidos por donate',
+  'whatsNew.multiRequestDonations': 'Donates agora podem conter vários pedidos numa mesma mensagem — ex.: R$30 com mínimo R$10 vira até 3 pedidos.',
+  'whatsNew.chatConfirmationsTitle': 'Confirmações no chat',
   'whatsNew.chatConfirmations': 'O bot @FilaDBD agora pode confirmar no chat quando um pedido entra na fila. Ative  no painel de fontes.',
-
+  'whatsNew.buildRequestsTitle': 'Pedidos com build',
+  'whatsNew.buildRequests': 'Donates acima de um valor configurável (padrão R$10) agora podem incluir uma build — perks, addons ou um tema — que aparece no card da fila com um badge de perks. Configure o valor em Donates → Pedidos com build.',
   // Push notifications
   'push.connectionLost': 'Fila DBD - Conexão perdida',
   'push.ircLost': 'Conexão com o chat da Twitch caiu. Reconecte para continuar recebendo pedidos.',

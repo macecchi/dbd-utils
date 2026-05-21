@@ -35,4 +35,9 @@ export const changelog: ChangelogEntry[] = [
     titleKey: 'whatsNew.multiRequestDonationsTitle',
     descriptionKey: 'whatsNew.multiRequestDonations',
   },
+  {
+    id: 'whats-new-build-requests',
+    titleKey: 'whatsNew.buildRequestsTitle',
+    descriptionKey: 'whatsNew.buildRequests',
+  },
 ];
