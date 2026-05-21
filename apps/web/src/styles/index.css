@@ -8,7 +8,7 @@
 
 /* Components */
 @import './control-panel.css';
-@import './sources-panel.css';
+@import './settings-panel.css';
 @import './debug-panel.css';
 @import './requests.css';
 @import './manual-entry.css';

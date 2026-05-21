@@ -8,8 +8,8 @@ import { ImportRequestsDialog } from './components/ImportRequestsDialog';
 import { VODSelectionDialog } from './components/VODSelectionDialog';
 import { RequestsReviewDialog } from './components/RequestsReviewDialog';
 import { SourcesBadges } from './components/SourcesBadges';
-import { SourcesPanel } from './components/SourcesPanel';
-import { Stats } from './components/Stats';
+import { SettingsPanel } from './components/SettingsPanel';
+import { Panel, PanelHeader } from './components/Panel';
 import { Toaster } from 'sonner';
 import { useWhatsNew } from './hooks/useWhatsNew';
 import { identifyCharacter } from './services';
@@ -123,8 +123,6 @@ function ChannelApp() {
   const requests = useRequests((s) => s.requests);
   const update = useRequests((s) => s.update);
   const setAll = useRequests((s) => s.setAll);
-  const sortMode = useSources((s) => s.sortMode);
-  const setSortMode = useSources((s) => s.setSortMode);
   const [manualOpen, setManualOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -319,67 +317,53 @@ function ChannelApp() {
   return (
     <>
       <div className="app">
-        <header className="header">
-          <a className="brand" href="/" onClick={handleLinkClick}>
-            <div className="brand-icon">
-              <img src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.webp`} alt="DBD" />
-            </div>
-            <h1>{t('app.title')}<span>{t('app.subtitle')}</span></h1>
-          </a>
-          <Stats />
-        </header>
+          <header className="header">
+            <a className="brand" href="/" onClick={handleLinkClick}>
+              <div className="brand-icon">
+                <img src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.webp`} alt="DBD" />
+              </div>
+              <h1>{t('app.title')}<span>{t('app.subtitle')}</span></h1>
+            </a>
+          </header>
 
-        <ChannelHeader />
+          <ChannelHeader />
 
         <main className="grid">
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">
-                <img src={`${import.meta.env.BASE_URL}images/IconPlayers.webp`} />
-                {t('queue.title')}
-                <SourcesBadges />
-              </div>
-              <div className={readOnly ? 'viewer-mode' : undefined} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button
-                  className="btn btn-ghost btn-small"
-                  onClick={() => !readOnly && setSortMode(sortMode === 'fifo' ? 'priority' : 'fifo')}
-                  title={sortMode === 'fifo' ? t('queue.sortFifoTooltip') : t('queue.sortPriorityTooltip')}
-                  disabled={readOnly}
-                >
-                  {sortMode === 'fifo' ? (
+          <Panel as="div" className="panel">
+            <PanelHeader
+              icon={<img src={`${import.meta.env.BASE_URL}images/IconPlayers.webp`} />}
+              actions={
+                <div className={readOnly ? 'viewer-mode' : undefined} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setManualOpen(true)} title={t('queue.addRequest')} disabled={readOnly}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 5v14M5 12l7 7 7-7" />
+                      <path d="M12 5v14M5 12h14" />
                     </svg>
-                  ) : (
+                  </button>
+                  <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setReviewOpen(true)} title={t('queue.reviewRequests')} disabled={readOnly || requests.length === 0}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 6h18M3 12h12M3 18h6" />
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="M3 9h18M9 3v18" />
                     </svg>
-                  )}
-                  {t('queue.sortLabel', { mode: sortMode === 'fifo' ? t('queue.sortFifo') : t('queue.sortPriority') })}
-                </button>
-                <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setManualOpen(true)} title={t('queue.addRequest')} disabled={readOnly}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </button>
-                <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setReviewOpen(true)} title={t('queue.reviewRequests')} disabled={readOnly || requests.length === 0}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <path d="M3 9h18M9 3v18" />
-                  </svg>
-                </button>
-                <span className="panel-count">{pendingCount}</span>
-              </div>
-            </div>
+                  </button>
+                </div>
+              }
+            >
+              {t('queue.title')}
+              <span className="panel-title-count">({pendingCount})</span>
+              <SourcesBadges />
+            </PanelHeader>
             <div className="panel-body">
               <CharacterRequestList />
             </div>
-          </div>
+          </Panel>
 
+          {(!readOnly || import.meta.env.DEV || isDebugMode()) && (
+            <aside className="sidebar">
+              {!readOnly && <SettingsPanel onRecover={() => setVodSelectOpen(true)} onReview={() => setReviewOpen(true)} />}
+              {(import.meta.env.DEV || isDebugMode()) && <DebugPanel />}
+            </aside>
+          )}
         </main>
-
-        {!readOnly && <SourcesPanel onRecover={() => setVodSelectOpen(true)} onReview={() => setReviewOpen(true)} />}
-        {(import.meta.env.DEV || isDebugMode()) && <DebugPanel />}
 
         <footer className="footer">
           <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

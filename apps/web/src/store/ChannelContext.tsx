@@ -47,6 +47,11 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
   // Derive: someone else is managing (we're room owner but don't have the lock)
   const someoneElseIsOwner = isOwnChannel && !hasLock && owner !== null;
 
+  // Last broadcast sources signature — used to skip the "queue settings updated"
+  // toast when an update-sources message carries no meaningful change (e.g. the user
+  // blurs an EditableField without editing, which still re-dispatches the value).
+  const lastSourcesSignature = useRef<string | null>(null);
+
   // Auto-claim ownership once on initial connect if no one owns the channel
   const hasTriedAutoClaim = useRef(false);
   useEffect(() => {
@@ -253,6 +258,21 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
           }
           if (msg.type === 'update-sources' && isOwnChannel) {
             const s = msg.sources;
+            const signature = JSON.stringify({
+              enabled: s.enabled,
+              minDonation: s.minDonation,
+              chatCommand: s.chatCommand,
+              chatTiers: [...s.chatTiers].sort(),
+            });
+            const isFirstSignature = lastSourcesSignature.current === null;
+            const changed = lastSourcesSignature.current !== signature;
+            lastSourcesSignature.current = signature;
+            if (!changed || isFirstSignature) {
+              handleRequestsMessage(msg);
+              handleSourcesMessage(msg);
+              handleChannelInfoMessage(msg);
+              return;
+            }
             const parts: string[] = [];
             if (s.enabled.donation) parts.push(t('toast.sourcesDonations', { amount: String(s.minDonation) }));
             if (s.enabled.chat) {
@@ -269,7 +289,7 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
               const last = parts.pop()!;
               description = t('toast.sourcesAccepting', { sources: `${parts.join(', ')} ${t('toast.sourcesAnd')} ${last}` });
             }
-            toast.info(t('toast.sourcesUpdated'), { description });
+            toast.info(t('toast.sourcesUpdated'), { id: 'sources-updated', description });
           }
           handleRequestsMessage(msg);
           handleSourcesMessage(msg);

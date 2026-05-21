@@ -5,10 +5,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-xl);
-  padding: var(--space-xl);
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  padding: var(--space-md);
 }
 
 .channel-header-profile {
@@ -20,8 +17,8 @@
 
 /* Avatar with status ring */
 .channel-header-avatar-ring {
-  width: 52px;
-  height: 52px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   padding: 2px;
   background: var(--border);
@@ -31,7 +28,7 @@
 
 .channel-header-avatar-ring.ring-connected {
   background: var(--green);
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.15);
 }
 
 .channel-header-avatar-ring.ring-partial {
@@ -75,18 +72,18 @@
 .channel-header-info {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.4rem;
   min-width: 0;
 }
 
 .channel-header-name-row {
-  display: flex;
-  align-items: center;
+  /* display: flex; */
+  /* align-items: center; */
 }
 
 .channel-header-name {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -121,7 +118,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   color: var(--text-secondary);
 }
 
@@ -190,18 +187,28 @@
   display: inline;
 }
 
+/* Right side: stats + actions */
+.channel-header-right {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-xxl);
+  flex-shrink: 0;
+}
+
 /* Actions */
 .channel-header-actions {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
+  align-items: stretch;
   flex-shrink: 0;
 }
 
-.channel-header-logout {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+.channel-header-actions .btn {
+  flex: 1;
+  min-width: 150px;
+  padding: 0 1.25rem;
+  font-size: var(--text-md);
+  font-weight: 600;
 }
 
 /* Mobile */

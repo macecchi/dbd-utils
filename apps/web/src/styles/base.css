@@ -23,12 +23,14 @@
 :root {
   /* Backgrounds */
   --bg: #0f0f0f;
-  --bg-elevated: #1a1a1a;
+  --bg-elevated: #0e0f10;
   --bg-card: #222;
+  --bg-card-hover: #111;
 
   /* Borders */
-  --border: #333;
-  --border-light: #444;
+  --border: #33333375;
+  --border-light: #44444475;
+  --border-soft: #1f1f1f75;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 12px;
@@ -41,6 +43,7 @@
   /* Colors */
   --accent: #8b5cf6;
   --accent-dim: rgba(139, 92, 246, 0.15);
+  --accent-warm: #c4a063;
   --green: #22c55e;
   --green-bright: #00e676;
   --green-bg: rgba(0, 173, 97, 0.2);
@@ -68,7 +71,8 @@
   --space-sm: 0.5rem;
   --space-md: 0.75rem;
   --space-lg: 1rem;
-  --space-xl: 1.25rem;
+  --space-xl: 1.5rem;
+  --space-xxl: 2rem;
 
   /* Button sizes */
   --btn-icon-size: 18px;
@@ -90,7 +94,14 @@
 
 body {
   font-family: 'DM Sans', 'DM Sans Fallback', -apple-system, sans-serif;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.85)),
+    url('/images/bg.jpeg');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
   line-height: 1.5;
@@ -126,6 +137,22 @@ a:hover {
 }
 
 /* Utility classes */
+
+.panel-surface {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+.elevated-surface {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 1px 0 0 rgba(255, 255, 255, 0.025),
+    inset -1px 0 0 rgba(255, 255, 255, 0.025),
+    0 1px 0 rgba(0, 0, 0, 0.5);
+}
 
 .mono {
   font-family: 'JetBrains Mono', monospace;

@@ -1,0 +1,468 @@
+/* Settings Panel — surface + header come from .panel-surface / .panel-header. */
+
+.settings-panel-body {
+  padding: 4px 0;
+}
+
+/* ─── Section ──────────────────────────────────────── */
+.settings-section {
+  padding: 1.125rem 1rem;
+}
+
+.settings-section + .settings-section {
+  border-top: 1px solid var(--border-soft);
+}
+
+.settings-section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-md);
+}
+
+/* ─── Source rows (flat) ───────────────────────────── */
+.source-row {
+  padding: 0.5rem 0;
+  transition: opacity var(--duration-fast) var(--ease-in-out);
+}
+
+.source-row.disabled {
+  opacity: 0.5;
+}
+
+.source-row-header {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.source-row-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.source-row-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.source-row[data-source="donation"] .source-row-icon { background: rgba(34, 197, 94, 0.12);  color: var(--green); }
+.source-row[data-source="chat"]     .source-row-icon { background: rgba(59, 130, 246, 0.12); color: var(--blue); }
+.source-row[data-source="resub"]    .source-row-icon { background: rgba(168, 85, 247, 0.12); color: var(--purple); }
+
+.source-row-name {
+  flex: 1;
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.source-row-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0.375rem 0 0 34px;
+}
+
+.source-row-desc code {
+  display: inline;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.source-row-config {
+  margin: 0.2rem 0 0 34px;
+  display: flex;
+  flex-direction: column;
+}
+
+.source-row.disabled .source-row-config {
+  display: none;
+}
+
+/* Toggle */
+.settings-toggle {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  background: var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) var(--ease-in-out);
+  border: none;
+  padding: 0;
+}
+
+.settings-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform var(--duration-fast) var(--ease-in-out),
+              background var(--duration-fast) var(--ease-in-out);
+}
+
+.settings-toggle.on { background: rgba(34, 197, 94, 0.22); }
+.settings-toggle.on::after { transform: translateX(12px); background: var(--green); }
+
+.source-row[data-source="chat"]  .settings-toggle.on { background: rgba(59, 130, 246, 0.22); }
+.source-row[data-source="chat"]  .settings-toggle.on::after { background: var(--blue); }
+.source-row[data-source="resub"] .settings-toggle.on { background: rgba(168, 85, 247, 0.22); }
+.source-row[data-source="resub"] .settings-toggle.on::after { background: var(--purple); }
+
+.settings-toggle:disabled { cursor: not-allowed; }
+
+/* Fields */
+.settings-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 28px;
+}
+
+.settings-field-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 64px;
+}
+
+.settings-field input[type="text"],
+.settings-field input[type="number"],
+.settings-field select {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0 0.5rem;
+  font-size: var(--text-sm);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.settings-field input:focus,
+.settings-field select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-field select {
+  appearance: none;
+  padding-right: 1.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+}
+
+.settings-field-prefix {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 1;
+}
+
+.settings-field-prefix span {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.settings-field-prefix input {
+  flex: 1;
+}
+
+.settings-field-editor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-field-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-field-value {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-field-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--duration-fast), background var(--duration-fast);
+}
+
+.settings-field-edit-btn:hover {
+  color: var(--text);
+  background: var(--border-soft);
+}
+
+.settings-field-edit-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.settings-field-edit-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+/* ─── Segmented control (Order) ────────────────────── */
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 2px;
+}
+
+.segmented-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: 0.4rem 0.5rem;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background var(--duration-fast), color var(--duration-fast);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+}
+
+.segmented-option svg { width: 12px; height: 12px; }
+
+.segmented-option.active {
+  background: var(--bg-elevated);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.segmented-option:disabled {
+  cursor: not-allowed;
+}
+
+.segmented-help {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: var(--space-md) 0;
+}
+
+/* Collapsing priority list */
+.priority-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--duration-normal) var(--ease-out);
+}
+
+.priority-wrap.collapsed {
+  grid-template-rows: 0fr;
+}
+
+.priority-wrap-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.priority-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.priority-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.45rem 0.625rem;
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  cursor: grab;
+  transition: border-color var(--duration-fast), background var(--duration-fast);
+}
+
+.priority-row:hover {
+  border-color: var(--border-light);
+}
+
+.priority-row.dragging {
+  opacity: 0.5;
+  border-color: var(--accent);
+}
+
+.priority-row-handle {
+  color: var(--text-muted);
+  opacity: 0.45;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.priority-row-num {
+  width: 20px;
+  height: 20px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+
+.priority-row-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.priority-row-icon svg { width: 11px; height: 11px; }
+
+.priority-row[data-src="donation"] .priority-row-icon { background: rgba(34, 197, 94, 0.12);  color: var(--green); }
+.priority-row[data-src="chat"]     .priority-row-icon { background: rgba(59, 130, 246, 0.12); color: var(--blue); }
+.priority-row[data-src="resub"]    .priority-row-icon { background: rgba(168, 85, 247, 0.12); color: var(--purple); }
+
+.priority-row-name {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* ─── Behavior rows ────────────────────────────────── */
+.behavior-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 0.625rem 0;
+}
+
+.behavior-row-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.behavior-row-title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.behavior-row-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.behavior-row .settings-toggle.on { background: rgba(139, 92, 246, 0.22); }
+.behavior-row .settings-toggle.on::after { background: var(--accent); }
+
+/* ─── Action buttons ───────────────────────────────── */
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.settings-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.5625rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+}
+
+.settings-action-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border-light);
+}
+
+.settings-action-btn svg {
+  flex-shrink: 0;
+  color: var(--accent-warm);
+}
+
+.settings-action-btn-arrow {
+  margin-left: auto;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* ─── Mobile ───────────────────────────────────────── */
+@media (max-width: 480px) {
+  .settings-panel {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .settings-section {
+    padding: var(--space-md);
+  }
+
+  .settings-field {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-xs);
+  }
+
+  .settings-field-label {
+    min-width: 0;
+  }
+}

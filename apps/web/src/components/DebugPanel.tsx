@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useChannel, useAuth } from '../store';
 import { DONATE_BOT_NAMES, simulateDisconnect } from '../services/twitch';
 import { useTranslation } from '../i18n';
+import { Panel, PanelHeader } from './Panel';
 
 export function DebugPanel() {
   const { useRequests, useSources, canControlConnection } = useChannel();
@@ -166,16 +167,17 @@ export function DebugPanel() {
   };
 
   return (
-    <section className="settings open">
-      <div className="settings-header">
-        <span className="settings-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <Panel className="settings">
+      <PanelHeader
+        icon={
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 20h9" />
             <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
           </svg>
-          {t('debug.title')}
-        </span>
-      </div>
+        }
+      >
+        {t('debug.title')}
+      </PanelHeader>
       <div className="settings-body">
         <form className="debug-row" onSubmit={handleTest}>
           <input
@@ -266,6 +268,6 @@ export function DebugPanel() {
           </div>
         )}
       </div>
-    </section>
+    </Panel>
   );
 }

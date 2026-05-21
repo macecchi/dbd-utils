@@ -2,8 +2,8 @@
 
 .request-card {
   padding: var(--space-lg) var(--space-xl);
-  border-bottom: 1px solid var(--border);
   transition: background var(--duration-fast), opacity var(--duration-normal);
+  border-bottom: 1px solid var(--border-soft);
   position: relative;
   cursor: grab;
 }
@@ -56,7 +56,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .request-card:hover {
-    background: var(--bg-card);
+    background: var(--bg-card-hover);
   }
 
   .request-card:hover .request-actions {
@@ -93,7 +93,7 @@
   pointer-events: none;
   transition: opacity 0.15s;
   z-index: 10;
-  background: linear-gradient(to right, transparent, var(--bg-card) 3rem);
+  background: linear-gradient(to right, transparent, var(--bg-card-hover) 3rem);
 }
 
 .request-card.collapsed .request-action-btn {

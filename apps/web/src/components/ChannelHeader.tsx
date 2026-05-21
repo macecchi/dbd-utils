@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useChannel, useAuth } from '../store';
+import { useChannel } from '../store';
 import { connect, disconnect } from '../services/twitch';
 import { claimOwnership, releaseOwnership } from '../services/party';
 import { useConnectionStatus } from '../hooks/useConnectionStatus';
 import { useTranslation } from '../i18n';
 import { formatRelativeTime } from '../utils/helpers';
+import { Stats } from './Stats';
+import { Panel } from './Panel';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
@@ -16,7 +18,6 @@ interface RoomInfo {
 
 export function ChannelHeader() {
   const { channel, canControlConnection, useChannelInfo } = useChannel();
-  const { isAuthenticated, logout } = useAuth();
   const { t } = useTranslation();
   const owner = useChannelInfo((s) => s.owner);
   const hasLock = useChannelInfo((s) => s.hasLock);
@@ -113,29 +114,20 @@ export function ChannelHeader() {
         </div>
       </div>
 
-      {canControlConnection && (
-        <div className="channel-header-actions">
-          <button
-            className={`btn ${isConnected ? 'btn-ghost' : 'btn-primary'} ${!isConnected && !isConnecting ? 'btn-pulse' : ''}`.trim()}
-            onClick={handleToggle}
-            disabled={isConnecting}
-          >
-            {isConnecting ? t('status.connecting') : isConnected ? t('header.closeQueue') : t('header.openQueue')}
-          </button>
-          {isAuthenticated && (
-            <a className="channel-header-logout" href="#" onClick={(e) => {
-              e.preventDefault();
-              if (isConnected) {
-                disconnect();
-                releaseOwnership();
-              }
-              logout();
-            }}>
-              {t('header.disconnectTwitch')}
-            </a>
-          )}
-        </div>
-      )}
+      <div className="channel-header-right">
+        <Stats />
+        {canControlConnection && (
+          <div className="channel-header-actions">
+            <button
+              className={`btn ${isConnected ? 'btn-ghost' : 'btn-primary'} ${!isConnected && !isConnecting ? 'btn-pulse' : ''}`.trim()}
+              onClick={handleToggle}
+              disabled={isConnecting}
+            >
+              {isConnecting ? t('status.connecting') : isConnected ? t('header.closeQueue') : t('header.openQueue')}
+            </button>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
