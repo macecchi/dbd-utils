@@ -35,11 +35,13 @@ interface Props {
   exiting?: boolean;
   skipping?: boolean;
   entering?: boolean;
+  group?: { index: number; total: number };
 }
 
 export const CharacterRequestCard = memo(function CharacterRequestCard({
   request, position, onToggleDone,
-  isDragging, isDragOver, onDragStart, onDragOver, onDragEnd, readOnly = false, exiting = false, skipping = false, entering = false
+  isDragging, isDragOver, onDragStart, onDragOver, onDragEnd, readOnly = false, exiting = false, skipping = false, entering = false,
+  group,
 }: Props) {
   const { show: showContextMenu } = useContextMenu();
   const { t } = useTranslation();
@@ -146,7 +148,10 @@ export const CharacterRequestCard = memo(function CharacterRequestCard({
             {isValidating && <span className="validating-dot" title={t('card.validatingAI')} />}
           </div>
           <div className="request-card-body">
-            <span className="donor-name">{r.donor}</span>
+            <span className="donor-name">
+              {r.donor}
+              {group && <span className="donation-group-chip" title="Pedidos da mesma doação">{group.index}/{group.total}</span>}
+            </span>
             {matchedTerm ? highlightTerm(r.message, matchedTerm) : r.message}
           </div>
         </div>

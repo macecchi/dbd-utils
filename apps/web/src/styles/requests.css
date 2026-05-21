@@ -199,6 +199,19 @@
   margin-right: 0.4em;
 }
 
+.donation-group-chip {
+  display: inline-block;
+  margin-left: 0.4em;
+  padding: 0 0.45em;
+  font-size: 0.75em;
+  font-weight: 600;
+  line-height: 1.5;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  vertical-align: baseline;
+}
+
 .matched-term {
   background: none;
   color: inherit;
