@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useContextMenu } from '../context/ContextMenuContext';
 import { useTranslation } from '../i18n';
 
@@ -23,7 +24,10 @@ export function ContextMenu({ onToggleDone, onRerun, onSkip }: Props) {
 
   if (!state.show) return null;
 
-  return (
+  // Portal to body so position:fixed anchors to the viewport. The request-list
+  // panel has backdrop-filter, which establishes a containing block and would
+  // otherwise pull the menu away from the cursor toward the panel's origin.
+  return createPortal(
     <div
       className="context-menu show"
       style={{ left: state.x, top: state.y }}
@@ -47,6 +51,7 @@ export function ContextMenu({ onToggleDone, onRerun, onSkip }: Props) {
         </svg>
         {t('context.skip')}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
