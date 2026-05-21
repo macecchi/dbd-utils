@@ -213,11 +213,7 @@
 
 .matched-term {
   background: none;
-  /* Card body text is --text-muted; this lifts highlighted terms to full
-     brightness so the matched span pops out of the surrounding message. */
-  color: var(--text);
-  font-weight: 600;
-  font-style: italic;
+  color: var(--text-match);
 }
 
 .amount {
@@ -442,20 +438,22 @@
  * positioning, sizing, and the drop shadow.
  */
 .build-badge {
+  --build-badge-size: 40%;
   position: absolute;
-  bottom: -6px;
-  right: -6px;
-  width: 50%;
+  width: var(--build-badge-size);
   aspect-ratio: 1;
+  /* Protrude by ~15% of the badge's own size so the corner sits visually
+     "on" the avatar edge. Derived from --build-badge-size so the offset
+     scales with the badge instead of being hardcoded pixels. */
+  bottom: calc(var(--build-badge-size) * -0.15);
+  right: calc(var(--build-badge-size) * -0.15);
   pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
   z-index: 2;
 }
 
 .build-badge-sm {
-  width: 60%;
-  bottom: -3px;
-  right: -3px;
+  --build-badge-size: 50%;
 }
 
 .build-tooltip {
