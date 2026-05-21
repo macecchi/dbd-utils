@@ -295,6 +295,7 @@ api.get("/rooms/:roomId/requests", async (c) => {
     subTier: r.sub_tier ?? undefined,
     needsIdentification: !!(r.needs_identification),
     matchedTerm: r.matched_term ?? undefined,
+    originMsgId: r.origin_msg_id ?? undefined,
   }));
 
   return c.json({ requests });
@@ -382,8 +383,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
     const position = typeof r._position === 'number' ? r._position : i;
     statements.push(
       c.env.DB.prepare(
-        `INSERT INTO requests (id, room_id, position, timestamp, donor, amount, amount_val, message, character, type, done, done_at, source, sub_tier, needs_identification, matched_term)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO requests (id, room_id, position, timestamp, donor, amount, amount_val, message, character, type, done, done_at, source, sub_tier, needs_identification, matched_term, origin_msg_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (room_id, id) DO UPDATE SET
            position = excluded.position,
            character = excluded.character,
@@ -391,7 +392,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
            done = excluded.done,
            done_at = excluded.done_at,
            needs_identification = excluded.needs_identification,
-           matched_term = excluded.matched_term`
+           matched_term = excluded.matched_term,
+           origin_msg_id = excluded.origin_msg_id`
       ).bind(
         r.id,
         roomId,
@@ -408,7 +410,8 @@ internal.put("/rooms/:roomId/requests", async (c) => {
         r.source,
         r.subTier ?? null,
         r.needsIdentification ? 1 : 0,
-        r.matchedTerm ?? null
+        r.matchedTerm ?? null,
+        r.originMsgId ?? null
       )
     );
   }
@@ -524,6 +527,7 @@ internal.get("/rooms/:roomId/requests", async (c) => {
     subTier: r.sub_tier ?? undefined,
     needsIdentification: !!(r.needs_identification),
     matchedTerm: r.matched_term ?? undefined,
+    originMsgId: r.origin_msg_id ?? undefined,
   }));
 
   return c.json({ requests });

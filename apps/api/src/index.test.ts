@@ -556,6 +556,47 @@ describe('Hono API', () => {
       expect(markDoneSql).toBeUndefined();
     });
 
+    it('persists origin_msg_id in the upsert SQL and bindings', async () => {
+      const requests = [
+        {
+          id: 1001, timestamp: '2024-01-01T00:00:00Z', donor: 'A', amount: 'R$10',
+          amountVal: 10, message: 'Trapper e Nurse', character: 'Trapper', type: 'killer',
+          source: 'donation', needsIdentification: false, originMsgId: 'twitch-msg-abc',
+        },
+      ];
+
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ requests, mode: 'partial' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const upsert = mockDB._statements.find(s => s.sql.includes('INSERT INTO requests'));
+      expect(upsert).toBeDefined();
+      expect(upsert!.sql).toContain('origin_msg_id');
+      expect(upsert!.sql).toContain('origin_msg_id = excluded.origin_msg_id');
+      expect(upsert!.bindings).toContain('twitch-msg-abc');
+    });
+
+    it('binds null origin_msg_id when not provided', async () => {
+      const requests = [
+        { id: 2001, timestamp: '2024-01-01T00:00:00Z', donor: 'B', source: 'chat' },
+      ];
+
+      const res = await app.request('/internal/rooms/testroom/requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: internalAuth },
+        body: JSON.stringify({ requests, mode: 'partial' }),
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const upsert = mockDB._statements.find(s => s.sql.includes('INSERT INTO requests'));
+      expect(upsert).toBeDefined();
+      // The last bound argument is origin_msg_id; should be null when not provided.
+      expect(upsert!.bindings[upsert!.bindings.length - 1]).toBeNull();
+    });
+
     it('uses batchInChunks for large batches', async () => {
       const requests = Array.from({ length: 85 }, (_, i) => ({
         id: `r${i}`,
@@ -692,6 +733,36 @@ describe('Hono API', () => {
       expect(res.status).toBe(200);
       const body = await res.json() as { requests: Array<Record<string, unknown>> };
       expect(body.requests).toHaveLength(0);
+    });
+
+    it('maps origin_msg_id from D1 row to originMsgId on response', async () => {
+      mockDB._mockStatement.all.mockResolvedValueOnce({
+        results: [
+          {
+            id: 'r1', timestamp: '2024-01-01T00:00:00Z', donor: 'A', amount: 'R$10',
+            amount_val: 10, message: 'Trapper e Nurse', character: 'Trapper', type: 'killer',
+            done: 0, source: 'donation', needs_identification: 0,
+            origin_msg_id: 'twitch-msg-abc',
+          },
+          {
+            id: 'r2', timestamp: '2024-01-01T00:00:00Z', donor: 'A', amount: 'R$10',
+            amount_val: 10, message: 'Trapper e Nurse', character: 'Nurse', type: 'killer',
+            done: 0, source: 'donation', needs_identification: 0,
+            origin_msg_id: 'twitch-msg-abc',
+          },
+        ],
+      });
+
+      const token = await createTestToken({ login: 'testuser' });
+      const res = await app.request('/api/rooms/testuser/requests', {
+        headers: { Authorization: `Bearer ${token}` },
+      }, TEST_ENV);
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as { requests: Array<{ id: string; originMsgId?: string }> };
+      expect(body.requests).toHaveLength(2);
+      expect(body.requests[0].originMsgId).toBe('twitch-msg-abc');
+      expect(body.requests[1].originMsgId).toBe('twitch-msg-abc');
     });
   });
 
