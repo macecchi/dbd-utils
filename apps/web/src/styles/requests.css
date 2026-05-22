@@ -460,11 +460,12 @@
 }
 
 .build-tooltip {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
+  /* Rendered in a body portal with fixed positioning (left/top set inline). The
+     request panel has `overflow: clip` and a `backdrop-filter` stacking context,
+     which would otherwise clip the tooltip on the last card and trap its z-index
+     below the footer. See CharacterAvatar.tsx. */
+  position: fixed;
+  z-index: 900;
   background: rgba(20, 18, 22, 0.96);
   color: #f3f1ef;
   border: 1px solid rgba(255, 255, 255, 0.08);
