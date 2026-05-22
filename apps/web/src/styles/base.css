@@ -219,6 +219,7 @@ a:hover {
   width: 380px;
   max-width: calc(100vw - 32px);
   padding: 18px 18px 18px 20px !important;
+  background: #1a1a1a !important;
 }
 
 [data-sonner-toast].whats-new-toast [data-title] {

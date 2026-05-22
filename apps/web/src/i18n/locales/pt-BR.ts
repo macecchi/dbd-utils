@@ -178,6 +178,13 @@ const ptBR = {
   'header.closeQueue': 'Fechar fila',
   'header.disconnectTwitch': 'Desconectar Twitch',
 
+  // App header menu
+  'menu.label': 'Menu',
+  'menu.home': 'Início',
+  'menu.startQueue': 'Começar minha fila',
+  'menu.goToQueue': 'Ir para minha fila',
+  'menu.helpFaq': 'Ajuda / FAQ',
+
   // Manual entry
   'manual.title': 'Adicionar Pedido Manual',
   'manual.placeholder': 'Digite o nome do personagem...',

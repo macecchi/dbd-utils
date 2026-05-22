@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChannelHeader } from './components/ChannelHeader';
+import { HeaderMenu } from './components/HeaderMenu';
 import { DebugDevTools } from './components/DebugDevTools';
 import { CharacterRequestList } from './components/CharacterRequestList';
 import { LandingPage } from './components/LandingPage';
@@ -332,6 +333,7 @@ function ChannelApp() {
               </div>
               <h1>{t('app.title')}<span>{t('app.subtitle')}</span></h1>
             </a>
+            <HeaderMenu />
           </header>
 
           <ChannelHeader />

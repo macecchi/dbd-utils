@@ -58,6 +58,61 @@ a.brand {
   font-weight: 400;
 }
 
+/* App header menu */
+.header-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* The shared .btn-icon rotates its svg on hover (gear/plus affordance); a
+   hamburger should stay put. Match .btn-icon's specificity to win. */
+.btn-icon.header-menu-trigger:hover svg {
+  transform: none;
+}
+
+.header-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 220px;
+  padding: 0.4rem 0;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  animation: header-menu-in var(--duration-fast) ease;
+}
+
+@keyframes header-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Items reuse .context-menu-item visuals; reset the native button/anchor
+   chrome so both element types render identically inside the dropdown. */
+.header-menu-dropdown .context-menu-item {
+  width: 100%;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.header-menu-dropdown .context-menu-item.danger {
+  color: var(--red);
+}
+
 .stats {
   display: flex;
   gap: 2rem;
@@ -113,8 +168,9 @@ a.brand {
   }
 
   .header {
-    flex-direction: column;
-    gap: var(--space-lg);
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-md);
   }
 
   .stats {

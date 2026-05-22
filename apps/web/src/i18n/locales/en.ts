@@ -180,6 +180,13 @@ const en: TranslationKeys = {
   'header.closeQueue': 'Close queue',
   'header.disconnectTwitch': 'Disconnect Twitch',
 
+  // App header menu
+  'menu.label': 'Menu',
+  'menu.home': 'Home',
+  'menu.startQueue': 'Start my queue',
+  'menu.goToQueue': 'Go to my queue',
+  'menu.helpFaq': 'Help / FAQ',
+
   // Manual entry
   'manual.title': 'Add Manual Request',
   'manual.placeholder': 'Type the character name...',
