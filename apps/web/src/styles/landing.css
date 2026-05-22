@@ -1,7 +1,7 @@
 /* Landing Page */
 
 .landing {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding:
     env(safe-area-inset-top, 0px)
@@ -97,50 +97,30 @@
   color: var(--text-muted);
 }
 
-/* Features */
-.landing-features {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-}
-
-.landing-feature {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  animation: landingFadeUp 0.5s var(--ease-out) both;
-}
-
-.landing-feature-icon {
-  color: var(--accent);
-  margin-bottom: 0.75rem;
-}
-
-.landing-feature h3 {
-  font-size: var(--text-base);
-  font-weight: 600;
-  margin-bottom: 0.35rem;
-}
-
-.landing-feature p {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
 /* Donations highlight band */
 .landing-donations-band {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 45fr 55fr;
   gap: 2rem;
-  align-items: center;
+  align-items: stretch;
 }
 
 .landing-donations-copy {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.landing-donations-point {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.landing-donations-point-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
 }
 
 .landing-donations-point h3 {
@@ -155,41 +135,51 @@
   line-height: 1.5;
 }
 
-.landing-mock-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+/* Interactive queue mockup — reuses the real .request-card styles (requests.css).
+   The column wrapper is a grid item; the queue inside is absolutely positioned
+   so it contributes no height to the grid row. The row height is therefore
+   driven by the copy column, and the queue stretches to match it. More cards
+   than fit are rendered: the overflow is clipped and faded out at the bottom
+   with a mask gradient (no border / hard end). */
+.landing-mock-col {
+  position: relative;
+  min-height: 0;
+}
+
+.landing-mock-queue {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
   animation: landingFadeUp 0.5s var(--ease-out) both;
 }
 
-.landing-mock-card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg) var(--space-xl);
+.landing-mock-queue .request-card {
+  cursor: pointer;
 }
 
-/* The card content classes are shared with the real queue card (requests.css);
-   the mockup only needs its own frame. Pin the body so it never wraps the
-   donor line onto the build text awkwardly in this constrained layout. */
-.landing-mock-card .request-card-body {
-  font-style: italic;
-}
-
-/* Steps */
+/* Steps — columns connected by arrows */
 .landing-steps {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
   gap: 0.75rem;
-  max-width: 480px;
-  margin: 0 auto;
 }
 
 .landing-step {
+  flex: 1 1 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1.25rem;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -371,10 +361,106 @@
 }
 
 .landing-channels-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
   text-align: center;
-  color: var(--text-muted);
+  padding: 2.5rem 1rem;
+  background: var(--bg-elevated);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.landing-channels-empty-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.landing-channels-empty-cta {
   font-size: var(--text-sm);
-  padding: 3rem 0;
+  color: var(--text-secondary);
+}
+
+/* FAQ */
+.landing-faq {
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.landing-faq-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.landing-faq-item:first-child {
+  border-top: 1px solid var(--border);
+}
+
+.landing-faq-q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.landing-faq-q:hover {
+  color: var(--accent);
+}
+
+.landing-faq-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.landing-faq-item.open .landing-faq-chevron {
+  transform: rotate(180deg);
+}
+
+.landing-faq-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease;
+}
+
+.landing-faq-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.landing-faq-a {
+  padding: 0 0 1rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.landing-faq-a a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.landing-faq-a a:hover {
+  text-decoration: underline;
+}
+
+.landing-faq-a strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 /* Footer */
@@ -455,13 +541,29 @@
     font-size: var(--text-base);
   }
 
-  .landing-features {
-    grid-template-columns: 1fr;
-  }
-
   .landing-donations-band {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+
+  /* Steps stack vertically on mobile. */
+  .landing-steps {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  /* Stacked layout: the queue flows normally below the copy — no height cap,
+     no fade (the absolute fill + mask only make sense in the 2-column layout). */
+  .landing-mock-col {
+    position: static;
+  }
+
+  .landing-mock-queue {
+    position: static;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .landing-footer {

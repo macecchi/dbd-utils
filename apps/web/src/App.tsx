@@ -387,6 +387,8 @@ function ChannelApp() {
           <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span>{t('app.version', { version: __APP_VERSION__ })}</span>
             <span className="footer-separator">•</span>
+            <a href={`${basePath}/#faq`}>{t('landing.faq.link')}</a>
+            <span className="footer-separator">•</span>
             <a href="https://github.com/macecchi/dbd-utils" target="_blank">GitHub</a>
             <span className="footer-separator">•</span>
             <a href="https://discord.gg/6pY7Efhxd" target="_blank">Discord</a>

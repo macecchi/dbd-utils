@@ -11,6 +11,9 @@ export function CharacterRequestList() {
   const { useRequests, useSources, useChannelInfo, isOwnChannel, canControlConnection } = useChannel();
   const { requests, toggleDone, update, reorder } = useRequests();
   const hideNonRequests = useSources((s) => s.hideNonRequests);
+  const sourcesEnabled = useSources((s) => s.enabled);
+  const chatCommand = useSources((s) => s.chatCommand);
+  const minDonation = useSources((s) => s.minDonation);
   const channelStatus = useChannelInfo((s) => s.status);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
@@ -181,10 +184,37 @@ export function CharacterRequestList() {
         </div>
       );
     }
-    const emptyMessage = !isOwnChannel && channelStatus !== 'live'
-      ? t('list.streamerOffline')
-      : t('list.waitingRequests');
-    return <div className="empty">{emptyMessage}</div>;
+    if (!isOwnChannel && channelStatus !== 'live') {
+      return (
+        <div className="empty queue-empty">
+          <h3 className="queue-empty-title">{t('empty.offline.title')}</h3>
+          <p className="queue-empty-desc">{t('empty.offline.desc')}</p>
+        </div>
+      );
+    }
+    if (isOwnChannel) {
+      return (
+        <div className="empty queue-empty">
+          <h3 className="queue-empty-title">{t('empty.owner.title')}</h3>
+          <p className="queue-empty-desc">{t('empty.owner.desc')}</p>
+        </div>
+      );
+    }
+    const ways: string[] = [];
+    if (sourcesEnabled.donation) ways.push(t('empty.viewer.donation', { amount: minDonation }));
+    if (sourcesEnabled.chat) ways.push(t('empty.viewer.chat', { command: chatCommand }));
+    if (sourcesEnabled.resub) ways.push(t('empty.viewer.resub'));
+    return (
+      <div className="empty queue-empty">
+        <h3 className="queue-empty-title">{t('empty.viewer.title')}</h3>
+        <p className="queue-empty-desc">{t('empty.viewer.desc')}</p>
+        {ways.length > 0 && (
+          <ul className="queue-empty-ways">
+            {ways.map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
+        )}
+      </div>
+    );
   }
 
   return (
