@@ -5,6 +5,7 @@ import type { RoomExtras } from '@dbd-utils/shared';
 import type { ConnectionState, Request, SourcesEnabled, PartyMessage, ChannelStatus } from '../types';
 import { deserializeRequest, deserializeRequests } from '../types';
 import { loadCachedQueue, saveCachedQueue } from './queueCache';
+import { insertRequest, moveRequest, setRequestDone } from '../utils/requests';
 import { toast } from 'sonner';
 import { t } from '../i18n';
 import {
@@ -44,6 +45,14 @@ export function createRequestsStore(
   getSourcesState: () => SourcesStore,
   getContext: () => { partyConnected: boolean }
 ) {
+  // Reorders we applied optimistically and are still awaiting the server echo for.
+  // The server rebroadcasts reorder to *every* client including the sender, and a
+  // positional move isn't idempotent — re-applying our own echo would double-move.
+  // So we record each optimistic reorder and skip the matching echo (FIFO: one
+  // socket preserves send/echo order). Cleared on sync-full/set-all, which reset
+  // ordering wholesale.
+  const pendingReorders: { fromId: number; toId: number }[] = [];
+
   const useRequests = create<RequestsStore>()(
       (set, get) => ({
         // Hydrate from the local cache so the queue paints instantly on reload,
@@ -52,6 +61,10 @@ export function createRequestsStore(
 
         add: (req) => {
           if (!requireParty(getContext)) return;
+          // Optimistic: insert locally now, broadcast next. The server echoes
+          // add-request back, but the echo dedupes by id (no-op for us).
+          const { sortMode, priority } = getSourcesState();
+          set((s) => ({ requests: insertRequest(s.requests, req, sortMode, priority) }));
           broadcastAdd(req);
         },
 
@@ -64,7 +77,10 @@ export function createRequestsStore(
           if (!requireParty(getContext)) return;
           const req = get().requests.find(r => r.id === id);
           if (!req) return;
-          broadcastToggleDone(id, !req.done);
+          const done = !req.done;
+          // Optimistic: flip locally now; the toggle-done echo is idempotent.
+          set((s) => ({ requests: setRequestDone(s.requests, id, done) }));
+          broadcastToggleDone(id, done);
         },
 
         setAll: (requests) => {
@@ -74,6 +90,14 @@ export function createRequestsStore(
 
         reorder: (fromId, toId) => {
           if (!requireParty(getContext)) return;
+          // Optimistic: move locally now and remember it so the server echo of
+          // this same reorder is skipped (it would otherwise double-move).
+          const current = get().requests;
+          const next = moveRequest(current, fromId, toId);
+          if (next !== current) {
+            set({ requests: next });
+            pendingReorders.push({ fromId, toId });
+          }
           broadcastReorder(fromId, toId);
         },
 
@@ -85,30 +109,20 @@ export function createRequestsStore(
         handlePartyMessage: (msg) => {
           switch (msg.type) {
             case 'sync-full': {
+              // Authoritative full replace — ordering is reset, so drop any
+              // pending optimistic reorders awaiting an echo.
+              pendingReorders.length = 0;
               set({ requests: deserializeRequests(msg.requests) });
               break;
             }
             case 'add-request': {
               const req = deserializeRequest(msg.request);
+              const { sortMode, priority } = getSourcesState();
+              // insertRequest dedupes by id, so our own optimistic add is a no-op
+              // here (returns the same array → no re-render).
               set((s) => {
-                if (s.requests.some(r => r.id === req.id)) return s;
-                const { sortMode, priority } = getSourcesState();
-                if (sortMode === 'fifo') {
-                  return { requests: [...s.requests, req] };
-                }
-                const requests = [...s.requests];
-                const reqPri = priority.indexOf(req.source);
-                let insertIdx = requests.length;
-                for (let i = 0; i < requests.length; i++) {
-                  if (requests[i].done) continue;
-                  const iPri = priority.indexOf(requests[i].source);
-                  if (iPri > reqPri || (iPri === reqPri && requests[i].timestamp > req.timestamp)) {
-                    insertIdx = i;
-                    break;
-                  }
-                }
-                requests.splice(insertIdx, 0, req);
-                return { requests };
+                const requests = insertRequest(s.requests, req, sortMode, priority);
+                return requests === s.requests ? s : { requests };
               });
               break;
             }
@@ -135,29 +149,37 @@ export function createRequestsStore(
             case 'ownership-denied':
               break;
             case 'toggle-done':
-              set((s) => ({
-                requests: s.requests.map((r) => (r.id === msg.id
-                  ? { ...r, done: msg.done, doneAt: msg.done ? (msg.doneAt ? new Date(msg.doneAt) : new Date()) : undefined }
-                  : r)),
-              }));
-              break;
-            case 'reorder':
               set((s) => {
-                const requests = [...s.requests];
-                const fromIdx = requests.findIndex(r => r.id === msg.fromId);
-                const toIdx = requests.findIndex(r => r.id === msg.toId);
-                if (fromIdx === -1 || toIdx === -1) return s;
-                const [moved] = requests.splice(fromIdx, 1);
-                requests.splice(toIdx, 0, moved);
-                return { requests };
+                // Idempotent: if already in the target state (our own optimistic
+                // toggle, echoed back), do nothing. Others' toggles still apply.
+                const existing = s.requests.find((r) => r.id === msg.id);
+                if (!existing || existing.done === msg.done) return s;
+                return {
+                  requests: setRequestDone(s.requests, msg.id, msg.done, msg.doneAt ? new Date(msg.doneAt) : undefined),
+                };
               });
               break;
+            case 'reorder': {
+              // Skip the echo of a reorder we already applied optimistically
+              // (would otherwise double-move); apply reorders from other clients.
+              const pending = pendingReorders[0];
+              if (pending && pending.fromId === msg.fromId && pending.toId === msg.toId) {
+                pendingReorders.shift();
+                break;
+              }
+              set((s) => {
+                const requests = moveRequest(s.requests, msg.fromId, msg.toId);
+                return requests === s.requests ? s : { requests };
+              });
+              break;
+            }
             case 'delete-request':
               set((s) => ({
                 requests: s.requests.filter((r) => r.id !== msg.id),
               }));
               break;
             case 'set-all':
+              pendingReorders.length = 0;
               set({ requests: deserializeRequests(msg.requests) });
               break;
           }
