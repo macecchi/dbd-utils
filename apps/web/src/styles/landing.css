@@ -97,6 +97,44 @@
   color: var(--text-muted);
 }
 
+/* Channels heading: title stacked over a thin indeterminate sweep that surfaces
+   the background revalidation (stale-while-revalidate). The bar's slot is always
+   reserved so toggling it never shifts the channel list below. */
+.landing-channels-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.landing-channels-heading h2 {
+  margin-bottom: 0;
+}
+
+.landing-channels-refresh {
+  width: 2.5rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.landing-channels-refresh.is-active {
+  opacity: 0.85;
+  animation: channelsRefreshSweep 1.1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-channels-refresh.is-active {
+    animation: none;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+}
+
 /* Donations highlight band */
 .landing-donations-band {
   display: grid;
@@ -506,6 +544,11 @@
 @keyframes skeletonPulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.7; }
+}
+
+@keyframes channelsRefreshSweep {
+  from { background-position: 150% 0; }
+  to { background-position: -150% 0; }
 }
 
 /* Mobile */
