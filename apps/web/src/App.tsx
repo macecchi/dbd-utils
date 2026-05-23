@@ -1,13 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { ChannelHeader } from './components/ChannelHeader';
 import { HeaderMenu } from './components/HeaderMenu';
-import { DebugDevTools } from './components/DebugDevTools';
 import { CharacterRequestList } from './components/CharacterRequestList';
-import { LandingPage } from './components/LandingPage';
-import { ManualEntry } from './components/ManualEntry';
-import { ImportRequestsDialog } from './components/ImportRequestsDialog';
-import { VODSelectionDialog } from './components/VODSelectionDialog';
-import { RequestsReviewDialog } from './components/RequestsReviewDialog';
 import { SourcesBadges } from './components/SourcesBadges';
 import { SettingsPanel } from './components/SettingsPanel';
 import { Panel, PanelHeader } from './components/Panel';
@@ -16,8 +10,28 @@ import { useWhatsNew } from './hooks/useWhatsNew';
 import { identifyCharacter } from './services';
 import { eligibleExtras } from './services/extras';
 import { tryLocalMatch } from './data/characters';
-import { recoverMissedRequests, scanVODForRequests, type VODInfo } from './services/vod';
+import type { VODInfo } from './services/vod';
 import { DONATE_BOT_NAMES } from './services/twitch';
+
+// Off the first-paint path — each becomes its own async chunk, loaded only when
+// reached: the landing page (logged-out visitors), the debug panel (#debug),
+// and the dialogs (on first open). services/vod is dynamically imported at its
+// call sites below so the VOD-replay code stays out of the main bundle too.
+const LandingPage = lazy(() => import('./components/LandingPage').then((m) => ({ default: m.LandingPage })));
+const DebugDevTools = lazy(() => import('./components/DebugDevTools').then((m) => ({ default: m.DebugDevTools })));
+const ManualEntry = lazy(() => import('./components/ManualEntry').then((m) => ({ default: m.ManualEntry })));
+const ImportRequestsDialog = lazy(() => import('./components/ImportRequestsDialog').then((m) => ({ default: m.ImportRequestsDialog })));
+const VODSelectionDialog = lazy(() => import('./components/VODSelectionDialog').then((m) => ({ default: m.VODSelectionDialog })));
+const RequestsReviewDialog = lazy(() => import('./components/RequestsReviewDialog').then((m) => ({ default: m.RequestsReviewDialog })));
+
+// True on this render if `value` has ever been true. Lets us defer mounting a
+// lazy dialog until its first open (so its chunk isn't fetched up front) while
+// keeping it mounted afterwards so close/exit transitions still play.
+function useEverTrue(value: boolean): boolean {
+  const ref = useRef(false);
+  if (value) ref.current = true;
+  return ref.current;
+}
 import { toast } from 'sonner';
 import { useAuth, ChannelProvider, useChannel, useLastChannel } from './store';
 import { navigate, handleLinkClick } from './utils/helpers';
@@ -177,14 +191,15 @@ function ChannelApp() {
     const controller = new AbortController();
     const currentRequests = useRequests.getState().requests;
     console.log('[recovery] starting scan', { channel, config, existingCount: currentRequests.length });
-    recoverMissedRequests(channel, config, currentRequests, {
-      onProgress: (s) => { console.log('[recovery] progress:', s); setRecoveryStatus(s); },
-      onRequest: (req) => {
-        console.log('[recovery] found request:', req);
-        setRecoveryOpen(true);
-        setRecoveredRequests(prev => [...prev, req]);
-      },
-    }, controller.signal)
+    import('./services/vod')
+      .then(({ recoverMissedRequests }) => recoverMissedRequests(channel, config, currentRequests, {
+        onProgress: (s) => { console.log('[recovery] progress:', s); setRecoveryStatus(s); },
+        onRequest: (req) => {
+          console.log('[recovery] found request:', req);
+          setRecoveryOpen(true);
+          setRecoveredRequests(prev => [...prev, req]);
+        },
+      }, controller.signal))
       .then((result) => {
         if (controller.signal.aborted) return;
         console.log('[recovery] done', result);
@@ -261,6 +276,8 @@ function ChannelApp() {
     const controller = new AbortController();
     vodRecoveryAbort.current = controller;
 
+    const { scanVODForRequests } = await import('./services/vod');
+
     try {
       for (const vod of vods) {
         if (controller.signal.aborted) break;
@@ -322,6 +339,14 @@ function ChannelApp() {
   useWhatsNew(canControlConnection);
 
   const pendingCount = requests.filter(d => !d.done && (!hideNonRequests || d.type !== 'none')).length;
+
+  // Gate each lazy dialog on having been opened at least once, so its chunk is
+  // fetched on first open rather than at app start.
+  const showManual = useEverTrue(manualOpen);
+  const showReview = useEverTrue(reviewOpen);
+  const showRecovery = useEverTrue(recoveryOpen);
+  const showVodSelect = useEverTrue(vodSelectOpen);
+  const showVodRecovery = useEverTrue(vodRecoveryOpen);
 
   return (
     <>
@@ -398,41 +423,51 @@ function ChannelApp() {
         </footer>
       </div>
 
-      <ManualEntry isOpen={manualOpen} onClose={() => setManualOpen(false)} />
-      <RequestsReviewDialog
-        isOpen={reviewOpen}
-        requests={requests}
-        channel={channel}
-        onApply={(edited) => { setAll(edited); setReviewOpen(false); }}
-        onClose={() => setReviewOpen(false)}
-      />
-      <ImportRequestsDialog
-        isOpen={recoveryOpen}
-        requests={recoveredRequests}
-        isLoading={recoveryLoading}
-        loadingStatus={recoveryStatus}
-        onConfirm={handleRecoveryConfirm}
-        onClose={handleRecoveryClose}
-      />
-      <VODSelectionDialog
-        isOpen={vodSelectOpen}
-        channel={channel}
-        onConfirm={handleVodSelect}
-        onClose={() => setVodSelectOpen(false)}
-      />
-      <ImportRequestsDialog
-        isOpen={vodRecoveryOpen}
-        requests={vodRecoveredRequests}
-        isLoading={vodRecoveryLoading}
-        loadingStatus={vodRecoveryStatus}
-        onConfirm={handleVodRecoveryConfirm}
-        onClose={handleVodRecoveryClose}
-        onBack={() => { handleVodRecoveryClose(); setVodSelectOpen(true); }}
-        emptyText={t('import.emptyVod')}
-        loadingText={t('import.analyzingVods')}
-        doneText={t('import.found')}
-      />
-      {(import.meta.env.DEV || isDebugMode()) && <DebugDevTools />}
+      <Suspense fallback={null}>
+        {showManual && <ManualEntry isOpen={manualOpen} onClose={() => setManualOpen(false)} />}
+        {showReview && (
+          <RequestsReviewDialog
+            isOpen={reviewOpen}
+            requests={requests}
+            channel={channel}
+            onApply={(edited) => { setAll(edited); setReviewOpen(false); }}
+            onClose={() => setReviewOpen(false)}
+          />
+        )}
+        {showRecovery && (
+          <ImportRequestsDialog
+            isOpen={recoveryOpen}
+            requests={recoveredRequests}
+            isLoading={recoveryLoading}
+            loadingStatus={recoveryStatus}
+            onConfirm={handleRecoveryConfirm}
+            onClose={handleRecoveryClose}
+          />
+        )}
+        {showVodSelect && (
+          <VODSelectionDialog
+            isOpen={vodSelectOpen}
+            channel={channel}
+            onConfirm={handleVodSelect}
+            onClose={() => setVodSelectOpen(false)}
+          />
+        )}
+        {showVodRecovery && (
+          <ImportRequestsDialog
+            isOpen={vodRecoveryOpen}
+            requests={vodRecoveredRequests}
+            isLoading={vodRecoveryLoading}
+            loadingStatus={vodRecoveryStatus}
+            onConfirm={handleVodRecoveryConfirm}
+            onClose={handleVodRecoveryClose}
+            onBack={() => { handleVodRecoveryClose(); setVodSelectOpen(true); }}
+            emptyText={t('import.emptyVod')}
+            loadingText={t('import.analyzingVods')}
+            doneText={t('import.found')}
+          />
+        )}
+        {(import.meta.env.DEV || isDebugMode()) && <DebugDevTools />}
+      </Suspense>
       <Toaster
         theme="dark"
         position="bottom-center"
@@ -515,7 +550,7 @@ export function App() {
   }, []);
 
   if (authPending) return null;
-  if (!channel) return <LandingPage />;
+  if (!channel) return <Suspense fallback={null}><LandingPage /></Suspense>;
 
   return (
     <ChannelProvider channel={channel}>
