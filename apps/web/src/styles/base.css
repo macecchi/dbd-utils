@@ -1,3 +1,24 @@
+/* Self-hosted variable fonts (latin subset — covers Portuguese accents and the
+   •/…/– punctuation the UI uses). Sourced from @fontsource-variable v5.2.8
+   (Google Fonts), committed under public/fonts/ so the service worker precaches
+   them and no render-blocking third-party CDN hop sits on the first-paint path.
+   Absolute /fonts/ paths (like the existing /images/ refs) stay correct on every
+   SPA route on the production host. */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('/fonts/dm-sans.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono.woff2') format('woff2');
+}
+
 /* Fallback font with adjusted metrics to match DM Sans and reduce CLS on font swap */
 @font-face {
   font-family: 'DM Sans Fallback';
