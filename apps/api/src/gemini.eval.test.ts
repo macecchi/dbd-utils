@@ -177,6 +177,40 @@ const noneCases: EvalCase[] = [
     maxCount: 1,
     expected: [],
   },
+  // Regression watch (real prod false positives on @mandymess): the extractor
+  // fabricated characters for donations that contained no character request.
+  // These guard against the model's bias toward always producing a character.
+  {
+    // Asking the streamer to play the KILLER SIDE generically ("we want you as
+    // killer") — no specific killer named. Used to fabricate "Pig".
+    name: 'none / false positive: generic "de killer" role, no character named',
+    message: 'queremos a {{streamer}} de killer! DEGLADIA',
+    maxCount: 1,
+    expected: [],
+  },
+  {
+    // Vague affectionate donation, zero character reference. Used to fabricate
+    // "Mastermind".
+    name: 'none / false positive: vague non-request donation (number + nickname)',
+    message: 'Quase 30 {{streamer}}',
+    maxCount: 1,
+    expected: [],
+  },
+  {
+    // Short question to the streamer, no character. Used to fabricate "Hag".
+    name: 'none / false positive: short question, no character',
+    message: 'Quanto tempo madre',
+    maxCount: 1,
+    expected: [],
+  },
+  {
+    // Wishlist for a FUTURE DBD chapter/DLC (a non-DBD character, Dimitrescu,
+    // "as killer"). Not a request to play now. Used to emit an unknown entry.
+    name: 'none / false positive: wish for future DLC chapter, not a play request',
+    message: '{{streamer}} avisa que queremos mais um cap de resident evil, com a dimetreCu e suas filhas como killer',
+    maxCount: 1,
+    expected: [],
+  },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────────
