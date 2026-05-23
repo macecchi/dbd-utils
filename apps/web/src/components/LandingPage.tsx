@@ -5,22 +5,9 @@ import type { TranslationKeys } from '../i18n/locales/pt-BR';
 import { formatRelativeTime, handleLinkClick } from '../utils/helpers';
 import { getKillerPortrait } from '../data/characters';
 import { CharacterAvatar } from './CharacterAvatar';
+import { loadCachedChannels, saveCachedChannels, type ActiveRoom } from '../store/channelsCache';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
-
-interface ActiveRoom {
-  id: string;
-  channel_login: string;
-  request_count: number;
-  pending_count: number;
-  updated_at: string;
-  avatar_url: string | null;
-  banner_url: string | null;
-  status: 'offline' | 'online' | 'live';
-  is_live: boolean;
-  thumbnail_url: string | null;
-  viewer_count: number | null;
-}
 
 function ConnectButton() {
   const { isAuthenticated, user, login } = useAuth();
@@ -49,13 +36,19 @@ function ConnectButton() {
 
 function LiveChannels() {
   const { t } = useTranslation();
-  const [rooms, setRooms] = useState<ActiveRoom[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Hydrate from the local cache so the list paints immediately, then revalidate
+  // in the background and let the response win. Skeletons show only on a cold cache.
+  const [rooms, setRooms] = useState<ActiveRoom[]>(loadCachedChannels);
+  const [loading, setLoading] = useState(rooms.length === 0);
 
   useEffect(() => {
     fetch(`${API_URL}/rooms/active`)
       .then(r => r.json())
-      .then((data: { rooms: ActiveRoom[] }) => setRooms(data.rooms.filter(r => r.channel_login !== 'meriw_')))
+      .then((data: { rooms: ActiveRoom[] }) => {
+        const next = data.rooms.filter(r => r.channel_login !== 'meriw_');
+        setRooms(next);
+        saveCachedChannels(next);
+      })
       .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
