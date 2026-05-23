@@ -87,3 +87,7 @@ bun run deploy:party # Deploy PartyKit
 **localStorage (seeding only):**
 - `dbd_chat` - Recent chat messages
 - `dbd-auth` - Twitch auth tokens and user info
+- `fila-dbd-queue-v{N}-{slug}` - per-room queue cache (stale-while-revalidate). Hydrated into
+  the requests store on boot so the queue paints before PartyKit `sync-full`, which then
+  replaces it (authoritative). Versioned + defensively parsed (`store/queueCache.ts`); bump the
+  version to invalidate on a shape change. Never authoritative — DO remains source of truth.

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createRoomStores, createSourcesStore } from './channel';
 import type { Request } from '../types';
 import type { SourcesSettings } from '../types';
@@ -33,9 +33,40 @@ function createTestRequest(overrides: Partial<Request> = {}): Request {
   };
 }
 
+function serialized(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    donor: 'A',
+    message: 'm',
+    character: 'Meg Thomas',
+    type: 'survivor' as const,
+    amount: '10',
+    amountVal: 10,
+    source: 'manual' as const,
+    done: false,
+    timestamp: new Date('2024-01-01T00:00:00.000Z').toISOString(),
+    ...overrides,
+  };
+}
+
 describe('channel stores', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Bun's runtime injects a partial localStorage that shadows jsdom's (it lacks
+    // .clear), so install a clean in-memory store for deterministic, isolated tests.
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => { store.set(k, String(v)); },
+      removeItem: (k: string) => { store.delete(k); },
+      clear: () => store.clear(),
+      key: (i: number) => [...store.keys()][i] ?? null,
+      get length() { return store.size; },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('createRoomStores', () => {
@@ -266,6 +297,59 @@ describe('channel stores', () => {
       stores.useChannelInfo.getState().setIrcConnectionState('connected');
 
       expect(party.broadcastIrcStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('queue cache (persist + hydrate)', () => {
+    const cacheKey = 'fila-dbd-queue-v1-testchannel';
+
+    it('hydrates requests from localStorage on store creation', () => {
+      localStorage.setItem(cacheKey, JSON.stringify({ v: 1, requests: [serialized({ id: 7 })] }));
+      const reqs = createRoomStores('testchannel').useRequests.getState().requests;
+      expect(reqs).toHaveLength(1);
+      expect(reqs[0].id).toBe(7);
+      expect(reqs[0].timestamp).toBeInstanceOf(Date);
+    });
+
+    it('starts empty when no cache is present', () => {
+      expect(createRoomStores('testchannel').useRequests.getState().requests).toEqual([]);
+    });
+
+    it('persists requests to localStorage after a sync-full', () => {
+      const stores = createRoomStores('testchannel');
+      stores.useRequests.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: [serialized({ id: 3 }), serialized({ id: 4 })],
+        sources: {} as any,
+        channel: {} as any,
+      });
+      const stored = JSON.parse(localStorage.getItem(cacheKey)!);
+      expect(stored.v).toBe(1);
+      expect(stored.requests.map((r: any) => r.id)).toEqual([3, 4]);
+    });
+
+    it('sync-full replaces the cached queue (authoritative, not merged)', () => {
+      localStorage.setItem(cacheKey, JSON.stringify({ v: 1, requests: [serialized({ id: 1 }), serialized({ id: 2 })] }));
+      const stores = createRoomStores('testchannel');
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([1, 2]);
+      stores.useRequests.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: [serialized({ id: 9 })],
+        sources: {} as any,
+        channel: {} as any,
+      });
+      // Server wins entirely — cached 1 & 2 are gone, not merged in.
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([9]);
+    });
+
+    it('ignores a cache with a mismatched version', () => {
+      localStorage.setItem(cacheKey, JSON.stringify({ v: 99, requests: [serialized({ id: 1 })] }));
+      expect(createRoomStores('testchannel').useRequests.getState().requests).toEqual([]);
+    });
+
+    it('ignores a corrupt cache entry', () => {
+      localStorage.setItem(cacheKey, '{not valid json');
+      expect(createRoomStores('testchannel').useRequests.getState().requests).toEqual([]);
     });
   });
 
