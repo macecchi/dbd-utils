@@ -180,7 +180,7 @@ describe('channel stores', () => {
   });
 
   describe('RequestsStore operations', () => {
-    it('add() broadcasts without updating local state', () => {
+    it('add() optimistically inserts locally and broadcasts', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
 
@@ -188,7 +188,8 @@ describe('channel stores', () => {
       stores.useRequests.getState().add(request);
 
       expect(party.broadcastAdd).toHaveBeenCalledWith(request);
-      expect(stores.useRequests.getState().requests).toHaveLength(0);
+      expect(stores.useRequests.getState().requests).toHaveLength(1);
+      expect(stores.useRequests.getState().requests[0].id).toBe(request.id);
     });
 
     it('update() broadcasts without updating local state', () => {
@@ -215,6 +216,8 @@ describe('channel stores', () => {
       stores.useRequests.getState().toggleDone(456);
 
       expect(party.broadcastToggleDone).toHaveBeenCalledWith(456, true);
+      // Optimistic: flipped locally before any server echo.
+      expect(stores.useRequests.getState().requests.find(r => r.id === 456)?.done).toBe(true);
     });
 
     it('deleteRequest() broadcasts without updating local state', () => {
@@ -226,13 +229,21 @@ describe('channel stores', () => {
       expect(party.broadcastDelete).toHaveBeenCalledWith(789);
     });
 
-    it('reorder() broadcasts without updating local state', () => {
+    it('reorder() optimistically moves locally and broadcasts', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
+      stores.useRequests.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: [serialized({ id: 1 }), serialized({ id: 2 }), serialized({ id: 3 })],
+        sources: {} as any,
+        channel: {} as any,
+      });
 
-      stores.useRequests.getState().reorder(2, 1);
+      // Move #3 to the position of #1 → [3, 1, 2].
+      stores.useRequests.getState().reorder(3, 1);
 
-      expect(party.broadcastReorder).toHaveBeenCalledWith(2, 1);
+      expect(party.broadcastReorder).toHaveBeenCalledWith(3, 1);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([3, 1, 2]);
     });
 
     it('setAll() broadcasts without updating local state', () => {
@@ -277,6 +288,81 @@ describe('channel stores', () => {
       stores.useSources.getState().toggleSource('chat');
 
       expect(party.broadcastSources).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('optimistic mutation reconciliation', () => {
+    function connectedStore() {
+      const stores = createRoomStores('testchannel');
+      stores.useChannelInfo.getState().setPartyConnectionState('connected');
+      return stores;
+    }
+
+    function seed(stores: ReturnType<typeof createRoomStores>, ids: number[]) {
+      stores.useRequests.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: ids.map(id => serialized({ id })),
+        sources: {} as any,
+        channel: {} as any,
+      });
+    }
+
+    it('add echo does not duplicate an optimistically-added request', () => {
+      const stores = connectedStore();
+      stores.useRequests.getState().add(createTestRequest({ id: 55 }));
+      expect(stores.useRequests.getState().requests).toHaveLength(1);
+      // Server echoes the same add back.
+      stores.useRequests.getState().handlePartyMessage({ type: 'add-request', request: serialized({ id: 55 }) } as any);
+      expect(stores.useRequests.getState().requests).toHaveLength(1);
+    });
+
+    it('toggle-done echo is idempotent for our own optimistic toggle', () => {
+      const stores = connectedStore();
+      seed(stores, [7]);
+      stores.useRequests.getState().toggleDone(7); // optimistic → done true
+      const after = stores.useRequests.getState().requests.find(r => r.id === 7)!;
+      // Server echoes toggle-done done:true — must be a no-op (same object ref).
+      stores.useRequests.getState().handlePartyMessage({ type: 'toggle-done', id: 7, done: true, doneAt: new Date().toISOString() } as any);
+      const echoed = stores.useRequests.getState().requests.find(r => r.id === 7)!;
+      expect(echoed.done).toBe(true);
+      expect(echoed).toBe(after);
+    });
+
+    it("toggle-done echo from another client still applies", () => {
+      const stores = connectedStore();
+      seed(stores, [8]);
+      // No local optimistic toggle; an echo flips it done.
+      stores.useRequests.getState().handlePartyMessage({ type: 'toggle-done', id: 8, done: true } as any);
+      expect(stores.useRequests.getState().requests.find(r => r.id === 8)?.done).toBe(true);
+    });
+
+    it('reorder echo of our own optimistic move is suppressed (no double-move)', () => {
+      const stores = connectedStore();
+      seed(stores, [1, 2, 3]);
+      stores.useRequests.getState().reorder(3, 1); // optimistic → [3,1,2]
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([3, 1, 2]);
+      // Server echoes the same reorder — must NOT move again.
+      stores.useRequests.getState().handlePartyMessage({ type: 'reorder', fromId: 3, toId: 1 } as any);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([3, 1, 2]);
+    });
+
+    it('reorder from another client (no pending) is applied', () => {
+      const stores = connectedStore();
+      seed(stores, [1, 2, 3]);
+      stores.useRequests.getState().handlePartyMessage({ type: 'reorder', fromId: 1, toId: 3 } as any);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([2, 3, 1]);
+    });
+
+    it('sync-full clears pending reorders so a later identical echo applies', () => {
+      const stores = connectedStore();
+      seed(stores, [1, 2, 3]);
+      stores.useRequests.getState().reorder(3, 1); // pending {3,1}
+      // A fresh sync-full resets order and must clear the pending suppression.
+      seed(stores, [1, 2, 3]);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([1, 2, 3]);
+      // This echo is now NOT ours → should apply.
+      stores.useRequests.getState().handlePartyMessage({ type: 'reorder', fromId: 3, toId: 1 } as any);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([3, 1, 2]);
     });
   });
 
