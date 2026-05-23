@@ -6,7 +6,7 @@ import { useTranslation } from '../i18n';
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 export function HeaderMenu() {
-  const { t } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
   const { channel } = useChannel();
   const { isAuthenticated, user, login, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -84,6 +84,19 @@ export function HeaderMenu() {
             </svg>
             <span>{t('menu.helpFaq')}</span>
           </a>
+
+          <button
+            className="context-menu-item"
+            role="menuitem"
+            onClick={() => { setLocale(locale === 'en' ? 'pt-BR' : 'en'); setOpen(false); }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18" />
+              <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18" />
+            </svg>
+            <span>{locale === 'en' ? 'Português' : 'English'}</span>
+          </button>
 
           {isAuthenticated && (
             <button className="context-menu-item danger" role="menuitem" onClick={() => { logout(); setOpen(false); }}>
