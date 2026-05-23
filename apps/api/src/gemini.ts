@@ -75,11 +75,11 @@ Return ONLY JSON with a "characters" array. Each entry has character name, type,
 - The character name MUST be the official name (the first name in the slash-separated list above). e.g. "Myers" → "Shape".
 - Extract ONLY the characters the user is COMMANDING the streamer to play (the user's request/order). A numeric quantifier attached to a name multiplies that specific name: "2 de trapper" → ["Trapper","Trapper"]; "3 trickster" → ["Trickster","Trickster","Trickster"]. The count never splits across other character names.
 - Character names mentioned only as CONTEXT (the streamer's current/past killer, comparisons, complaints, memories, e.g. "tapete da X", "chega de X", "depois da X") are not part of the user's command — exclude them. Example: "joga 3 trickster pra despedir da krasue" → ["Trickster","Trickster","Trickster"] (krasue = what's currently being played, not requested).
-- No command present (small talk, greetings, personal stories, off-topic donations) → empty array.
+- No command present (small talk, greetings, questions, personal stories, off-topic donations, wishes for future DBD content/chapters, or merely asking the streamer to play the killer side generically without naming a killer) → empty array. A word that merely resembles or evokes a character but is ordinary language in context (an everyday word, a number, an affectionate nickname for the streamer) is NOT a request — match a character only when the donor is clearly telling the streamer to play that character.
 - Cap the total returned at max_count. If the user requests more, return the first max_count in message order. If the user requests fewer, return only what they asked for — do NOT pad to max_count.
 - If the user requests a generic survivor ("joga de surv", "uma de survivor"), return one entry with character "Survivor" and type "survivor".
 - Recognize creative spellings, slang, and affectionate variations (e.g. "Drakuluxuuu" = Dracula, "demogogo" = Demogorgon, "pigzinha" = Pig).
-- If a character is referenced but the exact identity is unknown, use empty string for character with the best-guess type.
+- Only emit an entry when a specific character is unmistakably being requested to play. If such a character is requested but you cannot map it to the list, use empty string for character with the best-guess type. Never fabricate, guess, or pad: when no specific character is clearly commanded, return an empty array rather than an uncertain or placeholder entry.
 - In "matchedTerm", return the EXACT substring referring to that specific instance, preserving the original casing and spelling. If the same character is requested twice with the same wording, both entries may share the same matchedTerm.${buildBlock}`;
 
   const res = await fetch(
