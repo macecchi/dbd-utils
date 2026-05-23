@@ -12,6 +12,18 @@ Before and after each feature or refactoring, evaluate how changes impact existi
 - Do users need to take any action (clear cache, re-auth, re-deploy)?
 - Will the PartyKit server and Cloudflare Worker stay compatible during rolling deploys?
 
+## Performance
+
+The web app is tuned for fast initial load. When modifying it, preserve these invariants and apply the same patterns to new code:
+
+- **Bundle** (`vite.config.ts` `manualChunks`): each major dep gets its own chunk (react, react-dom, zustand, partysocket, sonner), build target `esnext`. Keep the channel view (`ChannelApp` + its components) eager in the main entry; `LandingPage`, dialogs, debug panel, and `services/vod` stay lazy. New heavy off-first-paint feature → lazy-load it. New major dep → add a `manualChunks` entry.
+- **Fonts**: self-hosted woff2, preloaded in `index.html`. Do NOT reintroduce Google Fonts (render-blocking).
+- **Critical CSS**: inlined in `index.html` `<head>` to paint the dark shell pre-bundle; keep in sync with the bg/text tokens in `base.css` to avoid reflow.
+- **Instant paint**: the queue hydrates from the `fila-dbd-queue` localStorage cache and mutations (add/toggleDone/reorder) are optimistic. New persisted client state → version the key + defensive reads (`store/queueCache.ts`).
+- **Scroll**: `navigate()` does `scrollTo(0,0)` for new routes; back/forward restoration is left to the browser (`history.scrollRestoration` stays `'auto'`). No manual scroll-restoration hacks — and remember cache-hydrated full-height content makes SPA navigation inherit the previous scroll offset.
+- ⚠️ **PWA service worker**: `index.html` + all assets are precached (`registerType: 'prompt'`), so returning users get shell/asset changes only **after the SW updates** (the "new version" toast → reload). Include this in the Release Impact Check.
+- **Verify prod behavior with the production build**, not the dev server (which serves unbundled ESM and skips the SW): `bun run --filter @dbd-utils/web preview` (the `preview` launch config serves `dist` on :4173). Clear the SW (unregister + delete caches) to see fresh changes.
+
 ## Structure
 
 ```
