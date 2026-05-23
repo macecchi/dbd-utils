@@ -45,12 +45,9 @@ export function createRequestsStore(
   getSourcesState: () => SourcesStore,
   getContext: () => { partyConnected: boolean }
 ) {
-  // Reorders we applied optimistically and are still awaiting the server echo for.
-  // The server rebroadcasts reorder to *every* client including the sender, and a
-  // positional move isn't idempotent — re-applying our own echo would double-move.
-  // So we record each optimistic reorder and skip the matching echo (FIFO: one
-  // socket preserves send/echo order). Cleared on sync-full/set-all, which reset
-  // ordering wholesale.
+  // Optimistic reorders awaiting their server echo. The server echoes a reorder to
+  // every client and a positional move isn't idempotent, so we skip the matching
+  // echo (FIFO order) to avoid double-moving. Cleared on sync-full/set-all.
   const pendingReorders: { fromId: number; toId: number }[] = [];
 
   const useRequests = create<RequestsStore>()(
@@ -188,8 +185,7 @@ export function createRequestsStore(
   );
 
   // Persist on every change so the next reload restores the latest queue. The
-  // authoritative sync-full / set-all replacements are what end up cached, so
-  // stale or server-deleted rows never survive a reconcile.
+  // authoritative sync-full/set-all replacements get cached, so stale rows don't survive.
   useRequests.subscribe((state) => saveCachedQueue(channel, state.requests));
 
   return useRequests;

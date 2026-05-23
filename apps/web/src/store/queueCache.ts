@@ -1,12 +1,7 @@
-// Per-room queue cache (localStorage). Lets a reload render the last-known queue
-// instantly instead of waiting on the PartyKit `sync-full` round-trip. This is a
-// stale-while-revalidate *cache*, never authoritative: the PartyKit Durable
-// Object remains the source of truth and `sync-full` replaces whatever is here.
-//
-// Release-impact: this is new client-only persisted state. The key is versioned
-// (`v1`) and reads are fully defensive (bad/old shapes are ignored, never thrown),
-// so an old cache can never break a newer client and no server migration is
-// needed — bump VERSION to invalidate cleanly on a future shape change.
+// Per-room queue cache (localStorage): paints the last-known queue on reload
+// before PartyKit's sync-full arrives. Stale-while-revalidate only — the Durable
+// Object stays authoritative and sync-full replaces this. Versioned + defensive
+// reads, so an old cache can't break a newer client (bump VERSION to invalidate).
 import { serializeRequest, deserializeRequest } from '../types';
 import type { Request, SerializedRequest } from '../types';
 

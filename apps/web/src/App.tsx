@@ -13,10 +13,9 @@ import { tryLocalMatch } from './data/characters';
 import type { VODInfo } from './services/vod';
 import { DONATE_BOT_NAMES } from './services/twitch';
 
-// Off the first-paint path — each becomes its own async chunk, loaded only when
-// reached: the landing page (logged-out visitors), the debug panel (#debug),
-// and the dialogs (on first open). services/vod is dynamically imported at its
-// call sites below so the VOD-replay code stays out of the main bundle too.
+// Off the first-paint path — each is its own async chunk loaded on demand: the
+// landing page, the debug panel (#debug), and the dialogs (on first open).
+// services/vod is dynamically imported at its call sites below.
 const LandingPage = lazy(() => import('./components/LandingPage').then((m) => ({ default: m.LandingPage })));
 const DebugDevTools = lazy(() => import('./components/DebugDevTools').then((m) => ({ default: m.DebugDevTools })));
 const ManualEntry = lazy(() => import('./components/ManualEntry').then((m) => ({ default: m.ManualEntry })));
@@ -24,9 +23,8 @@ const ImportRequestsDialog = lazy(() => import('./components/ImportRequestsDialo
 const VODSelectionDialog = lazy(() => import('./components/VODSelectionDialog').then((m) => ({ default: m.VODSelectionDialog })));
 const RequestsReviewDialog = lazy(() => import('./components/RequestsReviewDialog').then((m) => ({ default: m.RequestsReviewDialog })));
 
-// True on this render if `value` has ever been true. Lets us defer mounting a
-// lazy dialog until its first open (so its chunk isn't fetched up front) while
-// keeping it mounted afterwards so close/exit transitions still play.
+// True once `value` has ever been true. Defers mounting a lazy dialog until its
+// first open, then keeps it mounted so close/exit transitions still play.
 function useEverTrue(value: boolean): boolean {
   const ref = useRef(false);
   if (value) ref.current = true;
@@ -340,8 +338,7 @@ function ChannelApp() {
 
   const pendingCount = requests.filter(d => !d.done && (!hideNonRequests || d.type !== 'none')).length;
 
-  // Gate each lazy dialog on having been opened at least once, so its chunk is
-  // fetched on first open rather than at app start.
+  // Gate each lazy dialog on first-open so its chunk loads then, not at app start.
   const showManual = useEverTrue(manualOpen);
   const showReview = useEverTrue(reviewOpen);
   const showRecovery = useEverTrue(recoveryOpen);
