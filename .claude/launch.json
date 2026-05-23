@@ -28,6 +28,13 @@
       "runtimeArgs": ["run", "--filter", "@dbd-utils/api", "dev:party"],
       "cwd": ".",
       "port": 1999
+    },
+    {
+      "name": "preview",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--filter", "@dbd-utils/web", "preview", "--", "--port", "4173", "--strictPort"],
+      "cwd": ".",
+      "port": 4173
     }
   ]
 }
