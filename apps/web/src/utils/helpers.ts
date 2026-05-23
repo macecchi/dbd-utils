@@ -38,6 +38,9 @@ export interface ParsedDonationMessage {
 export function navigate(path: string) {
   if (path === window.location.pathname) return;
   window.history.pushState(null, '', path);
+  // New navigation starts at the top; back/forward restoration is left to the
+  // browser (history.scrollRestoration is 'auto').
+  window.scrollTo(0, 0);
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
