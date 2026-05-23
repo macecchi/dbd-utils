@@ -21,9 +21,30 @@ export default defineConfig({
     })
   ],
   build: {
+    // Modern target: the audience is up-to-date Twitch/streamer browsers, and no
+    // @vitejs/plugin-legacy is installed, so down-leveling to es2022 buys nothing.
+    target: 'esnext',
     rollupOptions: {
       input: {
         main: 'index.html'
+      },
+      output: {
+        // Split each major dependency into its own hashed chunk so a single app
+        // change (or a dependency bump) only invalidates the affected chunk for
+        // returning users, instead of busting the whole bundle. Vite then auto-
+        // emits <link rel="modulepreload"> for the eagerly-imported chunks.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('node_modules/react-dom')) return 'react-dom';
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/scheduler')
+          ) return 'react';
+          if (id.includes('node_modules/zustand')) return 'zustand';
+          if (id.includes('node_modules/partysocket')) return 'partysocket';
+          if (id.includes('node_modules/sonner')) return 'sonner';
+          return 'vendor';
+        }
       }
     }
   }
