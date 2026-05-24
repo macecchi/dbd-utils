@@ -27,22 +27,37 @@
   text-align: right;
 }
 
+/* Exit = fade + slide (first ~40%), then collapse the card's box to 0 so the rows
+   below glide up smoothly instead of snapping shut when the card is removed at the
+   end of the timer. border-box keeps padding/border in the height, so they collapse
+   too; overflow:hidden clips the content during the collapse. The animation length
+   matches the removal timer (500ms done / 400ms skip) so the card is already fully
+   collapsed by the time it unmounts. */
 .request-card.deleting {
-  animation: deleteSlide 0.5s var(--ease-in) forwards;
+  /* Shorter than the 500ms removal timer so the collapse fully finishes (height 0)
+     before the card unmounts — otherwise the row snaps the remaining height shut. */
+  animation: deleteSlide 0.4s var(--ease-out) forwards;
   pointer-events: none;
+  overflow: hidden;
 }
 
 @keyframes deleteSlide {
-  to { opacity: 0; transform: translateX(-100%); }
+  0%   { opacity: 1; transform: translateX(0);     max-height: 300px; padding-top: var(--space-lg); padding-bottom: var(--space-lg); border-bottom-width: 1px; }
+  40%  { opacity: 0; transform: translateX(-100%); max-height: 300px; padding-top: var(--space-lg); padding-bottom: var(--space-lg); border-bottom-width: 1px; }
+  100% { opacity: 0; transform: translateX(-100%); max-height: 0;     padding-top: 0; padding-bottom: 0; border-bottom-width: 0; }
 }
 
 .request-card.skipping {
-  animation: skipSlide 0.4s var(--ease-in) forwards;
+  /* Shorter than the 400ms removal timer (see deleting above). */
+  animation: skipSlide 0.3s var(--ease-out) forwards;
   pointer-events: none;
+  overflow: hidden;
 }
 
 @keyframes skipSlide {
-  to { opacity: 0; transform: translateX(30px); }
+  0%   { opacity: 1; transform: translateX(0);    max-height: 300px; padding-top: var(--space-lg); padding-bottom: var(--space-lg); border-bottom-width: 1px; }
+  40%  { opacity: 0; transform: translateX(30px); max-height: 300px; padding-top: var(--space-lg); padding-bottom: var(--space-lg); border-bottom-width: 1px; }
+  100% { opacity: 0; transform: translateX(30px); max-height: 0;     padding-top: 0; padding-bottom: 0; border-bottom-width: 0; }
 }
 
 @keyframes requestEnter {
