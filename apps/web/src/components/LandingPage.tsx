@@ -5,6 +5,7 @@ import type { TranslationKeys } from '../i18n/locales/pt-BR';
 import { formatRelativeTime, handleLinkClick } from '../utils/helpers';
 import { getKillerPortrait } from '../data/characters';
 import { CharacterAvatar } from './CharacterAvatar';
+import { SyncSweep } from './SyncSweep';
 import { loadCachedChannels, saveCachedChannels, type ActiveRoom } from '../store/channelsCache';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
@@ -122,9 +123,9 @@ function LiveChannels() {
     <>
       <div className="landing-channels-heading">
         <h2>{t('landing.activeChannels')}</h2>
-        {/* Indeterminate sweep shown only while revalidating; space is always
-            reserved so toggling it never shifts the list below. */}
-        <span className={`landing-channels-refresh${refreshing ? ' is-active' : ''}`} aria-hidden="true" />
+        {/* Shown only while revalidating; its slot is always reserved so toggling
+            it never shifts the list below. */}
+        <SyncSweep active={refreshing} />
       </div>
       {content}
     </>

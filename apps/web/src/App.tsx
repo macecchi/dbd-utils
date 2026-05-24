@@ -5,6 +5,7 @@ import { CharacterRequestList } from './components/CharacterRequestList';
 import { SourcesBadges } from './components/SourcesBadges';
 import { SettingsPanel } from './components/SettingsPanel';
 import { Panel, PanelHeader } from './components/Panel';
+import { SyncSweep } from './components/SyncSweep';
 import { Toaster } from 'sonner';
 import { useWhatsNew } from './hooks/useWhatsNew';
 import { identifyCharacter } from './services';
@@ -366,6 +367,7 @@ function ChannelApp() {
           <Panel as="div" className="panel">
             <PanelHeader
               icon={<img src={`${import.meta.env.BASE_URL}images/IconPlayers.webp`} />}
+              indicator={<SyncSweep active={!partySynced} className="panel-header-sync" />}
               actions={
                 <div className={readOnly ? 'viewer-mode' : undefined} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button className="btn btn-ghost btn-small btn-small-icon" onClick={() => setManualOpen(true)} title={t('queue.addRequest')} disabled={readOnly}>

@@ -28,13 +28,15 @@ interface PanelHeaderProps {
   children: ReactNode;
   /** Optional right-side cluster (action buttons, counts, etc.). */
   actions?: ReactNode;
+  /** Optional absolutely-positioned overlay (e.g. a sync sweep on the bottom edge). */
+  indicator?: ReactNode;
 }
 
 /**
  * Standard panel header — used by the queue, settings, and debug panels for a
  * consistent title row (icon + title on the left, optional actions on the right).
  */
-export function PanelHeader({ icon, children, actions }: PanelHeaderProps) {
+export function PanelHeader({ icon, children, actions, indicator }: PanelHeaderProps) {
   return (
     <div className="panel-header">
       <div className="panel-title">
@@ -42,6 +44,7 @@ export function PanelHeader({ icon, children, actions }: PanelHeaderProps) {
         {children}
       </div>
       {actions && <div className="panel-actions">{actions}</div>}
+      {indicator}
     </div>
   );
 }
