@@ -213,6 +213,38 @@ a:hover {
     0 1px 0 rgba(0, 0, 0, 0.5);
 }
 
+/* Indeterminate sync sweep — surfaces background syncing/revalidation (landing
+   channels list + channel queue header). Decorative; the host reserves or
+   absolutely positions its slot so toggling never shifts layout. */
+.sync-sweep {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.sync-sweep.is-active {
+  opacity: 0.85;
+  animation: syncSweep 1.1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-sweep.is-active {
+    animation: none;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+}
+
+@keyframes syncSweep {
+  from { background-position: 150% 0; }
+  to { background-position: -150% 0; }
+}
+
 .mono {
   font-family: 'JetBrains Mono', monospace;
   font-size: var(--text-xs);

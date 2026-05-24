@@ -197,6 +197,17 @@ a.brand {
   justify-content: space-between;
   align-items: center;
   min-height: 62px;
+  position: relative;
+}
+
+/* Sync sweep pinned to the queue header's bottom edge (over the 1px border), so
+   it stays visible with the sticky header while the queue is syncing. */
+.panel-header-sync {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  width: auto;
 }
 
 .grid > .panel-surface > .panel-header {
