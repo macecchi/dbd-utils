@@ -229,6 +229,8 @@ export function CharacterRequestList() {
           let activeIndex = 0;
           return filtered.map((r) => {
             const position = r.done ? undefined : ++activeIndex;
+            const exiting = exitingIds.has(r.id);
+            const skipping = skippingIds.has(r.id);
             return (
               <CharacterRequestCard
                 key={r.id}
@@ -241,9 +243,11 @@ export function CharacterRequestList() {
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
                 readOnly={readOnly}
-                exiting={exitingIds.has(r.id)}
-                skipping={skippingIds.has(r.id)}
-                entering={enteringIds.has(r.id)}
+                exiting={exiting}
+                skipping={skipping}
+                // Never let a just-arrived card play the enter animation while it's
+                // also exiting/skipping — the two animations fight and ghost.
+                entering={enteringIds.has(r.id) && !exiting && !skipping}
                 group={groupMap.get(r.id)}
               />
             );
