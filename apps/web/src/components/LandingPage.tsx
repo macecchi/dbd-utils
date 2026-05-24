@@ -10,6 +10,15 @@ import { loadCachedChannels, saveCachedChannels, type ActiveRoom } from '../stor
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
+// Twitch live-preview thumbnails share a stable URL whose image updates over time,
+// so the browser keeps serving its cached copy (stale until a hard refresh). Bust
+// the cache once a minute. The profile banner is static, so it's used as-is.
+function channelThumbSrc(room: ActiveRoom): string | null {
+  if (!room.thumbnail_url) return room.banner_url;
+  const sep = room.thumbnail_url.includes('?') ? '&' : '?';
+  return `${room.thumbnail_url}${sep}t=${Math.floor(Date.now() / 60000)}`;
+}
+
 function ConnectButton() {
   const { isAuthenticated, user, login } = useAuth();
   const { t } = useTranslation();
@@ -90,8 +99,8 @@ function LiveChannels() {
         {rooms.map(room => (
           <a key={room.id} className="landing-channel-card" href={`/${room.channel_login}`} onClick={handleLinkClick}>
             <div className="landing-channel-thumb">
-              {(room.thumbnail_url || room.banner_url) ? (
-                <img src={(room.thumbnail_url || room.banner_url)!} alt={room.channel_login} />
+              {channelThumbSrc(room) ? (
+                <img src={channelThumbSrc(room)!} alt={room.channel_login} />
               ) : (
                 <img className="landing-channel-thumb-placeholder" src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.webp`} alt="" />
               )}
