@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { parseDonationMessage, parseAmount, isDonateBot, highlightTerms } from './helpers';
+import { parseDonationMessage, parseAmount, isDonateBot, highlightTerms, navigate, scrollToTop } from './helpers';
 
 describe('parseDonationMessage', () => {
   describe('LivePix format', () => {
@@ -216,5 +216,46 @@ describe('highlightTerms', () => {
   it('skips the wrap when the term covers the whole trimmed message', () => {
     const result = highlightTerms('  Trapper  ', ['Trapper']);
     expect(result).toEqual(['  Trapper  ']);
+  });
+});
+
+describe('scrollToTop', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('scrolls the window to the top and resets the element scrollTops', () => {
+    const spy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    // On mobile the body is the scroll container, not the window.
+    document.documentElement.scrollTop = 200;
+    document.body.scrollTop = 200;
+    scrollToTop();
+    expect(spy).toHaveBeenCalledWith(0, 0);
+    expect(document.documentElement.scrollTop).toBe(0);
+    expect(document.body.scrollTop).toBe(0);
+  });
+});
+
+describe('navigate', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('pushes the path, scrolls to top, and fires popstate', () => {
+    window.history.pushState(null, '', '/start');
+    const scrollSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    const onPop = vi.fn();
+    window.addEventListener('popstate', onPop);
+    navigate('/somechannel');
+    expect(pushSpy).toHaveBeenCalledWith(null, '', '/somechannel');
+    expect(scrollSpy).toHaveBeenCalledWith(0, 0);
+    expect(onPop).toHaveBeenCalledTimes(1);
+    window.removeEventListener('popstate', onPop);
+  });
+
+  it('is a no-op when the path is already current', () => {
+    window.history.pushState(null, '', '/same');
+    const scrollSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    navigate('/same');
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(scrollSpy).not.toHaveBeenCalled();
   });
 });

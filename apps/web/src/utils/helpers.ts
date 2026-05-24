@@ -35,12 +35,20 @@ export interface ParsedDonationMessage {
   message: string;
 }
 
+// Reset every scroll container to the top. On desktop the window/document is the
+// scroller; on mobile (≤480px) the body is the scroll container (html is
+// overflow:hidden, body is overflow:auto/height:100dvh), so window.scrollTo alone
+// is a no-op there — reset the element scrollTops too.
+export function scrollToTop() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
 export function navigate(path: string) {
   if (path === window.location.pathname) return;
   window.history.pushState(null, '', path);
-  // New navigation starts at the top; back/forward restoration is left to the
-  // browser (history.scrollRestoration is 'auto').
-  window.scrollTo(0, 0);
+  scrollToTop();
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
