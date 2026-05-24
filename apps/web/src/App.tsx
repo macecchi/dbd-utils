@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { ChannelHeader } from './components/ChannelHeader';
 import { HeaderMenu } from './components/HeaderMenu';
 import { CharacterRequestList } from './components/CharacterRequestList';
@@ -32,7 +32,7 @@ function useEverTrue(value: boolean): boolean {
 }
 import { toast } from 'sonner';
 import { useAuth, ChannelProvider, useChannel, useLastChannel } from './store';
-import { navigate, handleLinkClick } from './utils/helpers';
+import { navigate, handleLinkClick, scrollToTop } from './utils/helpers';
 import { sortRequests, mergeRequests } from './utils/requests';
 import { useTranslation, t } from './i18n';
 import type { Request } from './types';
@@ -545,6 +545,15 @@ export function App() {
       window.removeEventListener('popstate', syncChannel);
     };
   }, []);
+
+  // Start at the top on initial load/reload and whenever the channel changes
+  // (including back/forward, which doesn't go through navigate()). Runs before
+  // paint so there's no jump, and skips when a hash anchor (#faq, #debug) should
+  // position the page itself.
+  useLayoutEffect(() => {
+    if (window.location.hash) return;
+    scrollToTop();
+  }, [channel]);
 
   if (authPending) return null;
   if (!channel) return <Suspense fallback={null}><LandingPage /></Suspense>;

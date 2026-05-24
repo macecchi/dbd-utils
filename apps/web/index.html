@@ -4,6 +4,11 @@
 <head>
   <meta charset="UTF-8">
   <script>
+    // The app manages its own scroll position (it resets to the top on load and on
+    // channel navigation), so disable the browser's automatic scroll restoration —
+    // otherwise it re-applies the prior offset on reload/back-forward, dropping you
+    // mid-queue. Set pre-bundle so it beats any restoration attempt.
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     if (location.hostname === 'macecchi.github.io')
       location.replace('https://filadbd.pages.dev' + location.pathname.replace('/dbd-utils', '') + (location.hash ? location.hash.slice(1) : ''));
   </script>
