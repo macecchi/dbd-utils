@@ -1,4 +1,4 @@
-import { tryLocalMatch } from '../data/characters';
+import { tryLocalMatch, isWholeMessageMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage, isDonateBot } from '../utils/helpers';
 import { useSettings } from '../store/settings';
 import { useAuth } from '../store/auth';
@@ -286,6 +286,24 @@ export function handleMessage(raw: string) {
       originMsgId: twitchMsgId || `synthetic:${parsed.donor}:${parsed.amount}:${timestampMs}`,
     };
     addRequest(request);
+    return;
+  }
+
+  // Above-min donation whose whole message is a single unambiguous character
+  // (e.g. donated R$50 and just wrote "Trapper"). Nothing to split or extract —
+  // build one local request and skip the LLM.
+  const wholeMatch = tryLocalMatch(parsed.message);
+  if (isWholeMessageMatch(wholeMatch, parsed.message)) {
+    const built = buildDonationRequests({
+      donor: parsed.donor,
+      amount: parsed.amount,
+      amountVal,
+      message: parsed.message,
+      twitchMsgId,
+      timestampMs,
+      identified: [{ character: wholeMatch!.character, type: wholeMatch!.type, matchedTerm: wholeMatch!.matchedTerm }],
+    });
+    for (const r of built) addRequest(r);
     return;
   }
 

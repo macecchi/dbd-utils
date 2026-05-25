@@ -1,4 +1,4 @@
-import { tryLocalMatch } from '../data/characters';
+import { tryLocalMatch, isWholeMessageMatch } from '../data/characters';
 import { useAuth } from '../store/auth';
 import type { Request, RequestExtra, RequestExtraType } from '../types';
 
@@ -77,9 +77,15 @@ export async function identifyCharacter(
   const local = tryLocalMatch(request.message);
   const isAuthenticated = useAuth.getState().isAuthenticated;
 
+  // When the matched term is the entire message (e.g. just "Trapper"), there's no
+  // surrounding text for the LLM to parse — no build, no ambiguity — so the local
+  // match is final and we skip the call even when extras were requested.
+  const matchIsWholeMessage = isWholeMessageMatch(local, request.message);
+
   // Local match alone never carries extras. If the caller asked for extras AND the
   // donation is eligible, we must hit the LLM even when the character matched locally.
-  const needsLLMForExtras = !!local && extras.length > 0 && isAuthenticated && !!onLLMUpdate;
+  const needsLLMForExtras =
+    !!local && extras.length > 0 && isAuthenticated && !!onLLMUpdate && !matchIsWholeMessage;
 
   if (local && !needsLLMForExtras) {
     if (local.ambiguous && isAuthenticated && onLLMUpdate) {

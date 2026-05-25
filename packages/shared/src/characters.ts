@@ -171,3 +171,11 @@ export function tryLocalMatch(message: string): LocalMatchResult | null {
         matchedTerm: lastMatch.matchedTerm
     };
 }
+
+// True when the local match is a single unambiguous character whose matched term
+// is the entire message (e.g. "Trapper"). In that case there's nothing else for the
+// LLM to parse — no build text, no extra characters — so the local result is final.
+export function isWholeMessageMatch(local: LocalMatchResult | null, message: string): boolean {
+    return !!local && !local.ambiguous && !!local.matchedTerm &&
+        local.matchedTerm.trim().toLowerCase() === message.trim().toLowerCase();
+}
