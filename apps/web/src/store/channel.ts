@@ -4,6 +4,7 @@ import { MAX_PENDING_REQUESTS, DEFAULT_EXTRAS_CONFIG } from '@dbd-utils/shared';
 import type { RoomExtras } from '@dbd-utils/shared';
 import type { ConnectionState, Request, SourcesEnabled, PartyMessage, ChannelStatus } from '../types';
 import { deserializeRequest, deserializeRequests } from '../types';
+import { loadCachedQueue, saveCachedQueue } from './queueCache';
 import { toast } from 'sonner';
 import { t } from '../i18n';
 import {
@@ -43,9 +44,11 @@ export function createRequestsStore(
   getSourcesState: () => SourcesStore,
   getContext: () => { partyConnected: boolean }
 ) {
-  return create<RequestsStore>()(
+  const useRequests = create<RequestsStore>()(
       (set, get) => ({
-        requests: [],
+        // Hydrate from the local cache so the queue paints instantly on reload,
+        // before the PartyKit WebSocket delivers sync-full (which then replaces it).
+        requests: loadCachedQueue(channel),
 
         add: (req) => {
           if (!requireParty(getContext)) return;
@@ -161,6 +164,13 @@ export function createRequestsStore(
         },
       }),
   );
+
+  // Persist on every change so the next reload restores the latest queue. The
+  // authoritative sync-full / set-all replacements are what end up cached, so
+  // stale or server-deleted rows never survive a reconcile.
+  useRequests.subscribe((state) => saveCachedQueue(channel, state.requests));
+
+  return useRequests;
 }
 
 // ============ SOURCES STORE ============

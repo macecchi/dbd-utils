@@ -5,21 +5,18 @@ import type { TranslationKeys } from '../i18n/locales/pt-BR';
 import { formatRelativeTime, handleLinkClick } from '../utils/helpers';
 import { getKillerPortrait } from '../data/characters';
 import { CharacterAvatar } from './CharacterAvatar';
+import { SyncSweep } from './SyncSweep';
+import { loadCachedChannels, saveCachedChannels, type ActiveRoom } from '../store/channelsCache';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
-interface ActiveRoom {
-  id: string;
-  channel_login: string;
-  request_count: number;
-  pending_count: number;
-  updated_at: string;
-  avatar_url: string | null;
-  banner_url: string | null;
-  status: 'offline' | 'online' | 'live';
-  is_live: boolean;
-  thumbnail_url: string | null;
-  viewer_count: number | null;
+// Twitch live-preview thumbnails share a stable URL whose image updates over time,
+// so the browser keeps serving its cached copy (stale until a hard refresh). Bust
+// the cache once a minute. The profile banner is static, so it's used as-is.
+function channelThumbSrc(room: ActiveRoom): string | null {
+  if (!room.thumbnail_url) return room.banner_url;
+  const sep = room.thumbnail_url.includes('?') ? '&' : '?';
+  return `${room.thumbnail_url}${sep}t=${Math.floor(Date.now() / 60000)}`;
 }
 
 function ConnectButton() {
@@ -49,19 +46,30 @@ function ConnectButton() {
 
 function LiveChannels() {
   const { t } = useTranslation();
-  const [rooms, setRooms] = useState<ActiveRoom[]>([]);
+  // Read the cache once (stale-while-revalidate): null = cold cache, so show
+  // skeletons; otherwise paint the cached list — even an empty one is a real hit,
+  // so a genuinely empty response shows the empty state, not skeletons. `loading`
+  // is the single in-flight flag: while it's set we show skeletons on a cold cache
+  // or the refresh indicator on a warm one, then the response wins.
+  const [cache] = useState(loadCachedChannels);
+  const [rooms, setRooms] = useState<ActiveRoom[]>(cache ?? []);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${API_URL}/rooms/active`)
       .then(r => r.json())
-      .then((data: { rooms: ActiveRoom[] }) => setRooms(data.rooms.filter(r => r.channel_login !== 'meriw_')))
+      .then((data: { rooms: ActiveRoom[] }) => {
+        const next = data.rooms.filter(r => r.channel_login !== 'meriw_');
+        setRooms(next);
+        saveCachedChannels(next);
+      })
       .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
+  let content;
+  if (loading && cache === null) {
+    content = (
       <div className="landing-channels-grid">
         {[1, 2].map(i => (
           <div key={i} className="landing-channel-card skeleton">
@@ -79,48 +87,58 @@ function LiveChannels() {
         ))}
       </div>
     );
-  }
-
-  if (rooms.length === 0) {
-    return (
+  } else if (rooms.length === 0) {
+    content = (
       <div className="landing-channels-empty">
         <p className="landing-channels-empty-title">{t('landing.noActiveChannels')}</p>
         <p className="landing-channels-empty-cta">{t('landing.noActiveChannelsCta')}</p>
       </div>
     );
+  } else {
+    content = (
+      <div className={`landing-channels-grid${rooms.length === 1 ? ' single' : ''}`}>
+        {rooms.map(room => (
+          <a key={room.id} className="landing-channel-card" href={`/${room.channel_login}`} onClick={handleLinkClick}>
+            <div className="landing-channel-thumb">
+              {channelThumbSrc(room) ? (
+                <img src={channelThumbSrc(room)!} alt={room.channel_login} />
+              ) : (
+                <img className="landing-channel-thumb-placeholder" src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.webp`} alt="" />
+              )}
+              {room.is_live && <span className="landing-channel-live">{t('landing.live')}</span>}
+            </div>
+            <div className="landing-channel-info">
+              <div className="landing-channel-card-header">
+                {room.avatar_url && <img className="landing-channel-avatar" src={room.avatar_url} alt="" />}
+                <span className="landing-channel-name">{room.channel_login}</span>
+                {room.status !== 'offline' && <span className="landing-channel-status">{t('landing.queueOpen')}</span>}
+              </div>
+              <div className="landing-channel-stats">
+                <span className="landing-channel-pending">
+                  {t('landing.requestCount', { count: room.pending_count })}
+                </span>
+                <span className="landing-channel-meta">
+                  {room.viewer_count != null && <span>{room.viewer_count} viewers</span>}
+                  <span>{formatRelativeTime(new Date(room.updated_at + 'Z'))}</span>
+                </span>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    );
   }
 
   return (
-    <div className={`landing-channels-grid${rooms.length === 1 ? ' single' : ''}`}>
-      {rooms.map(room => (
-        <a key={room.id} className="landing-channel-card" href={`/${room.channel_login}`} onClick={handleLinkClick}>
-          <div className="landing-channel-thumb">
-            {(room.thumbnail_url || room.banner_url) ? (
-              <img src={(room.thumbnail_url || room.banner_url)!} alt={room.channel_login} />
-            ) : (
-              <img className="landing-channel-thumb-placeholder" src={`${import.meta.env.BASE_URL}images/Dead-by-Daylight-Emblem.webp`} alt="" />
-            )}
-            {room.is_live && <span className="landing-channel-live">{t('landing.live')}</span>}
-          </div>
-          <div className="landing-channel-info">
-            <div className="landing-channel-card-header">
-              {room.avatar_url && <img className="landing-channel-avatar" src={room.avatar_url} alt="" />}
-              <span className="landing-channel-name">{room.channel_login}</span>
-              {room.status !== 'offline' && <span className="landing-channel-status">{t('landing.queueOpen')}</span>}
-            </div>
-            <div className="landing-channel-stats">
-              <span className="landing-channel-pending">
-                {t('landing.requestCount', { count: room.pending_count })}
-              </span>
-              <span className="landing-channel-meta">
-                {room.viewer_count != null && <span>{room.viewer_count} viewers</span>}
-                <span>{formatRelativeTime(new Date(room.updated_at + 'Z'))}</span>
-              </span>
-            </div>
-          </div>
-        </a>
-      ))}
-    </div>
+    <>
+      <div className="landing-channels-heading">
+        <h2>{t('landing.activeChannels')}</h2>
+        {/* Shown while revalidating a warm cache; its slot is always reserved so
+            toggling it never shifts the list below. */}
+        <SyncSweep active={loading && cache !== null} />
+      </div>
+      {content}
+    </>
   );
 }
 
@@ -394,7 +412,6 @@ export function LandingPage() {
       </section>
 
       <section className="landing-section landing-section-channels">
-        <h2>{t('landing.activeChannels')}</h2>
         <LiveChannels />
       </section>
 

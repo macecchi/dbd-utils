@@ -97,6 +97,27 @@
   color: var(--text-muted);
 }
 
+/* Channels heading: title stacked over a thin indeterminate sweep that surfaces
+   the background revalidation (stale-while-revalidate). The bar's slot is always
+   reserved so toggling it never shifts the channel list below. */
+.landing-channels-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.landing-channels-heading h2 {
+  margin-bottom: 0;
+}
+
+/* The shared .sync-sweep (base.css) spans full width; constrain it under the
+   centered heading. */
+.landing-channels-heading .sync-sweep {
+  width: 2.5rem;
+}
+
 /* Donations highlight band */
 .landing-donations-band {
   display: grid;
