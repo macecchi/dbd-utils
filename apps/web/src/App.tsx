@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { ChannelHeader } from './components/ChannelHeader';
 import { HeaderMenu } from './components/HeaderMenu';
 import { CharacterRequestList } from './components/CharacterRequestList';
@@ -12,16 +12,18 @@ import { eligibleExtras } from './services/extras';
 import { tryLocalMatch } from './data/characters';
 import type { VODInfo } from './services/vod';
 import { DONATE_BOT_NAMES } from './services/twitch';
+import { lazyWithReload } from './utils/lazyWithReload';
 
 // Off the first-paint path — each is its own async chunk loaded on demand: the
 // landing page, the debug panel (#debug), and the dialogs (on first open).
+// lazyWithReload recovers from a stale-deploy chunk 404 by reloading once.
 // services/vod is dynamically imported at its call sites below.
-const LandingPage = lazy(() => import('./components/LandingPage').then((m) => ({ default: m.LandingPage })));
-const DebugDevTools = lazy(() => import('./components/DebugDevTools').then((m) => ({ default: m.DebugDevTools })));
-const ManualEntry = lazy(() => import('./components/ManualEntry').then((m) => ({ default: m.ManualEntry })));
-const ImportRequestsDialog = lazy(() => import('./components/ImportRequestsDialog').then((m) => ({ default: m.ImportRequestsDialog })));
-const VODSelectionDialog = lazy(() => import('./components/VODSelectionDialog').then((m) => ({ default: m.VODSelectionDialog })));
-const RequestsReviewDialog = lazy(() => import('./components/RequestsReviewDialog').then((m) => ({ default: m.RequestsReviewDialog })));
+const LandingPage = lazyWithReload(() => import('./components/LandingPage').then((m) => ({ default: m.LandingPage })));
+const DebugDevTools = lazyWithReload(() => import('./components/DebugDevTools').then((m) => ({ default: m.DebugDevTools })));
+const ManualEntry = lazyWithReload(() => import('./components/ManualEntry').then((m) => ({ default: m.ManualEntry })));
+const ImportRequestsDialog = lazyWithReload(() => import('./components/ImportRequestsDialog').then((m) => ({ default: m.ImportRequestsDialog })));
+const VODSelectionDialog = lazyWithReload(() => import('./components/VODSelectionDialog').then((m) => ({ default: m.VODSelectionDialog })));
+const RequestsReviewDialog = lazyWithReload(() => import('./components/RequestsReviewDialog').then((m) => ({ default: m.RequestsReviewDialog })));
 
 // True once `value` has ever been true. Defers mounting a lazy dialog until its
 // first open, then keeps it mounted so close/exit transitions still play.
