@@ -77,44 +77,24 @@ export async function identifyCharacter(
   const local = tryLocalMatch(request.message);
   const isAuthenticated = useAuth.getState().isAuthenticated;
 
-  // When the matched term is the entire message (e.g. just "Trapper"), there's no
-  // surrounding text for the LLM to parse — no build, no ambiguity — so the local
-  // match is final and we skip the call even when extras were requested.
-  const matchIsWholeMessage = isWholeMessageMatch(local, request.message);
+  // Local match is authoritative ONLY when it spans the entire message (e.g. the
+  // donor just wrote "Trapper"): there's nothing else to parse — no build, no
+  // ambiguity, no surrounding intent — so we skip the LLM. When the matched name
+  // is embedded in prose, the word may be context, a negation, a comparison, or
+  // coincidental ("yoga on the bed" is not a request), so the LLM must judge the
+  // donor's intent and its answer replaces the local guess wholesale.
+  if (isWholeMessageMatch(local, request.message)) return local!;
 
-  // Local match alone never carries extras. If the caller asked for extras AND the
-  // donation is eligible, we must hit the LLM even when the character matched locally.
-  const needsLLMForExtras =
-    !!local && extras.length > 0 && isAuthenticated && !!onLLMUpdate && !matchIsWholeMessage;
+  // Without auth we can't reach the LLM; fall back to the local guess (best effort).
+  if (!isAuthenticated) return local ?? { character: '', type: 'unknown' };
 
-  if (local && !needsLLMForExtras) {
-    if (local.ambiguous && isAuthenticated && onLLMUpdate) {
-      callAPI(request.message, 1, [], onError).then(arr => {
-        const llmResult = arr[0] ?? { character: '', type: 'none' };
-        if (llmResult.type !== 'none' && llmResult.character) {
-          onLLMUpdate({
-            character: llmResult.character,
-            type: llmResult.type as 'survivor' | 'killer' | 'unknown',
-            matchedTerm: llmResult.matchedTerm,
-            validating: false
-          });
-        } else {
-          onLLMUpdate({ ...local, validating: false });
-        }
-      });
-      return { ...local, validating: true };
-    }
-    return local;
-  }
-
-  // Local match + extras requested: show the local character immediately, then let
-  // the LLM result replace it wholesale when the call resolves. The LLM is the
-  // source of truth for both character identification and build extraction once
-  // it answers; the local match is only a placeholder during the request.
-  if (local && needsLLMForExtras) {
+  // Authenticated, with a local placeholder and a streaming callback: show the
+  // local character immediately, then let the LLM result replace it wholesale.
+  // The LLM is the source of truth for both identification and build extraction.
+  if (local && onLLMUpdate) {
     callAPI(request.message, 1, extras, onError).then(arr => {
       const llmResult = arr[0] ?? { character: '', type: 'none' };
-      onLLMUpdate?.({
+      onLLMUpdate({
         character: llmResult.character || '',
         type: (llmResult.type || 'unknown') as 'survivor' | 'killer' | 'unknown' | 'none',
         matchedTerm: llmResult.matchedTerm,
@@ -124,8 +104,6 @@ export async function identifyCharacter(
     });
     return { ...local, validating: true };
   }
-
-  if (!isAuthenticated) return { character: '', type: 'unknown' };
 
   const arr = await callAPI(request.message, 1, extras, onError);
   const result = arr[0] ?? { character: '', type: 'none' };

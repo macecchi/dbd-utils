@@ -1,4 +1,4 @@
-import { tryLocalMatch } from '../data/characters';
+import { tryLocalMatch, isWholeMessageMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage } from '../utils/helpers';
 import type { Request, RoomExtras } from '../types';
 
@@ -97,7 +97,7 @@ export async function loadAndReplayVOD(
               character: local?.character || 'Identificando...',
               type: local?.type || 'unknown',
               source: 'donation',
-              needsIdentification: !local || qualifiesForExtras(amountVal, config.extrasConfig),
+              needsIdentification: !isWholeMessageMatch(local, parsed.message) || qualifiesForExtras(amountVal, config.extrasConfig),
             };
             callbacks.onRequest(request);
           }
@@ -258,7 +258,7 @@ export async function scanVODForRequests(
               character: local?.character || '',
               type: local?.type || 'unknown',
               source: 'donation',
-              needsIdentification: !local || qualifiesForExtras(amountVal, config.extrasConfig),
+              needsIdentification: !isWholeMessageMatch(local, parsed.message) || qualifiesForExtras(amountVal, config.extrasConfig),
             };
             requests.push(req);
             callbacks?.onRequest?.(req);
@@ -281,7 +281,7 @@ export async function scanVODForRequests(
             character: local?.character || '',
             type: local?.type || 'unknown',
             source: 'chat',
-            needsIdentification: !local
+            needsIdentification: !isWholeMessageMatch(local, requestText)
           };
           requests.push(req);
           callbacks?.onRequest?.(req);
@@ -368,7 +368,7 @@ export async function recoverMissedRequests(
                 character: local?.character || 'Identificando...',
                 type: local?.type || 'unknown',
                 source: 'donation',
-                needsIdentification: !local || qualifiesForExtras(amountVal, config.extrasConfig),
+                needsIdentification: !isWholeMessageMatch(local, parsed.message) || qualifiesForExtras(amountVal, config.extrasConfig),
               };
               requests.push(req);
               callbacks?.onRequest?.(req);
@@ -395,7 +395,7 @@ export async function recoverMissedRequests(
               character: local?.character || 'Identificando...',
               type: local?.type || 'unknown',
               source: 'chat',
-              needsIdentification: !local
+              needsIdentification: !isWholeMessageMatch(local, requestText)
             };
             requests.push(req);
             callbacks?.onRequest?.(req);

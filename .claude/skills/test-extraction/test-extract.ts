@@ -14,9 +14,9 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { tryLocalMatch } from '../../../packages/shared/src/characters';
-import { extractCharacter } from '../../../apps/api/src/gemini';
+import { extractCharacters } from '../../../apps/api/src/gemini';
 
-const ALL_MODELS = ['gemini-3.1-flash-lite-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+const ALL_MODELS = ['gemini-3.1-flash-lite'];
 
 const envPath = resolve(import.meta.dir, '../../../apps/api/.env');
 const envContent = readFileSync(envPath, 'utf-8');
@@ -115,12 +115,11 @@ async function runCase(tc: TestCase, model: string): Promise<CaseResult> {
   const label = tc.pos != null ? `pos=${tc.pos}` : tc.message.slice(0, 30);
   const expected = normalize(tc.expected);
   const dbChar = tc.dbChar ? normalize(tc.dbChar) : undefined;
-  const modelIdx = ALL_MODELS.indexOf(model);
 
   const results = await Promise.all(
     Array.from({ length: runs }, () =>
-      extractCharacter(tc.message, apiKey!, 0, modelIdx, modelIdx)
-        .then(r => normalize(r.character))
+      extractCharacters(tc.message, apiKey!, 1)
+        .then(r => normalize(r[0]?.character ?? ''))
         .catch(() => 'ERROR')
     )
   );

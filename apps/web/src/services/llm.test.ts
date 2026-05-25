@@ -71,4 +71,32 @@ describe('identifyCharacter — skip LLM when local match is the whole message',
     expect(result.validating).toBe(true);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
   });
+
+  it('routes a prose message with an embedded local match to the LLM (no extras)', async () => {
+    // "Trapper" matches locally but it is context ("a dull Trapper two"), not a
+    // request. The local match must NOT short-circuit the LLM anymore.
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ characters: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const onLLMUpdate = vi.fn();
+    const result = await identifyCharacter(
+      makeRequest('se for o Jason vai ser um Trapper dois sem graça'),
+      [],
+      undefined,
+      onLLMUpdate
+    );
+
+    expect(result.validating).toBe(true);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    // LLM is authoritative: it returned no character, so the local guess is dropped.
+    await vi.waitFor(() =>
+      expect(onLLMUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ character: '', validating: false })
+      )
+    );
+  });
 });

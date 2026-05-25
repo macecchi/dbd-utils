@@ -52,7 +52,7 @@ export const CHARACTERS: CharacterData = {
         { name: "Michonne Grimes", aliases: [] },
         { name: "Vee Boonyasak", aliases: [] },
         { name: "Dustin Henderson", aliases: [] },
-        { name: "Eleven", aliases: ["Jane Hopper", "Onze", "On", "El"] },
+        { name: "Eleven", aliases: ["Jane Hopper", "Onze"] },
         { name: "Kwon Tae-young", aliases: [] },
     ],
     killers: [

@@ -185,7 +185,7 @@ export function handleUserNotice(raw: string) {
     character: local?.character || 'Identificando...',
     type: local?.type || 'unknown',
     source: 'resub',
-    needsIdentification: !local,
+    needsIdentification: !isWholeMessageMatch(local, message),
     matchedTerm: local?.matchedTerm
   };
   addRequest(request);
@@ -222,7 +222,7 @@ function handleChatCommand(tags: Record<string, string>, displayName: string, _u
     type: local?.type || 'unknown',
     source: 'chat',
     subTier,
-    needsIdentification: !local,
+    needsIdentification: !isWholeMessageMatch(local, requestText),
     matchedTerm: local?.matchedTerm
   };
   addRequest(request);
@@ -281,7 +281,7 @@ export function handleMessage(raw: string) {
       character: local?.character || 'Identificando...',
       type: local?.type || 'unknown',
       source: 'donation',
-      needsIdentification: !local,
+      needsIdentification: !isWholeMessageMatch(local, parsed.message),
       matchedTerm: local?.matchedTerm,
       originMsgId: twitchMsgId || `synthetic:${parsed.donor}:${parsed.amount}:${timestampMs}`,
     };
