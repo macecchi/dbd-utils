@@ -1,6 +1,7 @@
 import { tryLocalMatch } from '../data/characters';
 import { parseAmount, parseDonationMessage, isDonateBot } from '../utils/helpers';
-import { useSettings, useAuth } from '../store';
+import { useSettings } from '../store/settings';
+import { useAuth } from '../store/auth';
 import type { Request } from '../types';
 import type { ChannelStores } from '../store/channel';
 import { computeEntitlement, buildDonationRequests } from './donation';
