@@ -294,7 +294,9 @@ export default class PartyServer implements Party.Server {
         }
         const pendingCount = this.requests.filter(r => !r.done).length;
         if (pendingCount >= MAX_PENDING_REQUESTS) {
-          this.sendError('pending_cap', `Fila cheia (${MAX_PENDING_REQUESTS}). Marque pedidos como feitos para liberar espaço.`);
+          // Include the rejected id so the client can roll back its optimistic insert
+          // (the reject path intentionally does not echo the add back).
+          this.sendError('pending_cap', `Fila cheia (${MAX_PENDING_REQUESTS}). Marque pedidos como feitos para liberar espaço.`, msg.request.id);
           console.warn(`${this.tag} ${user}: add-request #${msg.request.id} rejected (pending cap ${MAX_PENDING_REQUESTS})`);
           break;
         }
@@ -553,8 +555,8 @@ export default class PartyServer implements Party.Server {
     }
   }
 
-  private sendError(code: string, message: string) {
-    this.sendToOwner({ type: 'server-error', code, message });
+  private sendError(code: string, message: string, id?: number) {
+    this.sendToOwner({ type: 'server-error', code, message, id });
     console.error(`${this.tag} Error sent to owner: [${code}] ${message}`);
   }
 

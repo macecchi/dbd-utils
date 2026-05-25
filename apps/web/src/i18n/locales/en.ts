@@ -248,6 +248,8 @@ const en: TranslationKeys = {
   'toast.reactivated': '{count} reactivated',
   'toast.reactivated_plural': '{count} reactivated',
   'toast.noConnection': 'No server connection. Try again.',
+  'toast.queueFull': 'Queue full ({max})',
+  'toast.queueFullDesc': 'Mark requests as done to free up space.',
   'toast.error': 'Error',
   'toast.linkCopied': 'Link copied to clipboard',
   'toast.sourcesUpdated': 'Queue settings updated',

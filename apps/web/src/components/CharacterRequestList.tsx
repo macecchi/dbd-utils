@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { identifyCharacter } from '../services';
 import { eligibleExtras } from '../services/extras';
 import { CharacterRequestCard } from './CharacterRequestCard';
@@ -42,7 +42,10 @@ export function CharacterRequestList() {
   const prevDoneIds = useRef<Set<number>>(new Set());
   const prevNoneIds = useRef<Set<number>>(new Set());
   const prevRequestIds = useRef<Set<number>>(new Set());
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so the exiting id is registered before paint.
+  // Otherwise the done item — already excluded from `filtered` — gets dropped from
+  // the DOM for one painted frame, then re-added to animate out (a visible shake).
+  useLayoutEffect(() => {
     const currentDone = new Set(requests.filter(r => r.done).map(r => r.id));
     // Only animate items that transitioned to done, not items that arrived as done from sync
     const newlyDone = [...currentDone].filter(id => !prevDoneIds.current.has(id) && prevRequestIds.current.has(id));
@@ -59,7 +62,9 @@ export function CharacterRequestList() {
     return () => clearTimeout(timer);
   }, [requests]);
 
-  useEffect(() => {
+  // useLayoutEffect for the same reason as the done effect above: register the
+  // skipping id before paint so the item never blinks out of the DOM.
+  useLayoutEffect(() => {
     const currentNone = new Set(requests.filter(r => r.type === 'none').map(r => r.id));
     // Only animate items that transitioned to 'none', not items that arrived as 'none' from sync
     const newlyNone = [...currentNone].filter(id => !prevNoneIds.current.has(id) && prevRequestIds.current.has(id));
@@ -224,6 +229,8 @@ export function CharacterRequestList() {
           let activeIndex = 0;
           return filtered.map((r) => {
             const position = r.done ? undefined : ++activeIndex;
+            const exiting = exitingIds.has(r.id);
+            const skipping = skippingIds.has(r.id);
             return (
               <CharacterRequestCard
                 key={r.id}
@@ -236,9 +243,11 @@ export function CharacterRequestList() {
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
                 readOnly={readOnly}
-                exiting={exitingIds.has(r.id)}
-                skipping={skippingIds.has(r.id)}
-                entering={enteringIds.has(r.id)}
+                exiting={exiting}
+                skipping={skipping}
+                // Never let a just-arrived card play the enter animation while it's
+                // also exiting/skipping — the two animations fight and ghost.
+                entering={enteringIds.has(r.id) && !exiting && !skipping}
                 group={groupMap.get(r.id)}
               />
             );

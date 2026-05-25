@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createRoomStores, createSourcesStore } from './channel';
+import { MAX_PENDING_REQUESTS } from '@dbd-utils/shared';
 import type { Request } from '../types';
 import type { SourcesSettings } from '../types';
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn(), message: vi.fn(), info: vi.fn() },
+}));
 
 // Mock the party service broadcasts
 vi.mock('../services/party', () => ({
@@ -180,7 +185,7 @@ describe('channel stores', () => {
   });
 
   describe('RequestsStore operations', () => {
-    it('add() broadcasts without updating local state', () => {
+    it('add() optimistically inserts locally and broadcasts', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
 
@@ -188,7 +193,8 @@ describe('channel stores', () => {
       stores.useRequests.getState().add(request);
 
       expect(party.broadcastAdd).toHaveBeenCalledWith(request);
-      expect(stores.useRequests.getState().requests).toHaveLength(0);
+      expect(stores.useRequests.getState().requests).toHaveLength(1);
+      expect(stores.useRequests.getState().requests[0].id).toBe(request.id);
     });
 
     it('update() broadcasts without updating local state', () => {
@@ -215,6 +221,8 @@ describe('channel stores', () => {
       stores.useRequests.getState().toggleDone(456);
 
       expect(party.broadcastToggleDone).toHaveBeenCalledWith(456, true);
+      // Optimistic: flipped locally before any server echo.
+      expect(stores.useRequests.getState().requests.find(r => r.id === 456)?.done).toBe(true);
     });
 
     it('deleteRequest() broadcasts without updating local state', () => {
@@ -226,13 +234,21 @@ describe('channel stores', () => {
       expect(party.broadcastDelete).toHaveBeenCalledWith(789);
     });
 
-    it('reorder() broadcasts without updating local state', () => {
+    it('reorder() optimistically moves locally and broadcasts', () => {
       const stores = createRoomStores('testchannel');
       stores.useChannelInfo.getState().setPartyConnectionState('connected');
+      stores.useRequests.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: [serialized({ id: 1 }), serialized({ id: 2 }), serialized({ id: 3 })],
+        sources: {} as any,
+        channel: {} as any,
+      });
 
-      stores.useRequests.getState().reorder(2, 1);
+      // Move #3 to the position of #1 → [3, 1, 2].
+      stores.useRequests.getState().reorder(3, 1);
 
-      expect(party.broadcastReorder).toHaveBeenCalledWith(2, 1);
+      expect(party.broadcastReorder).toHaveBeenCalledWith(3, 1, expect.any(String));
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([3, 1, 2]);
     });
 
     it('setAll() broadcasts without updating local state', () => {
@@ -277,6 +293,153 @@ describe('channel stores', () => {
       stores.useSources.getState().toggleSource('chat');
 
       expect(party.broadcastSources).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('optimistic mutation reconciliation', () => {
+    function connectedStore() {
+      const stores = createRoomStores('testchannel');
+      stores.useChannelInfo.getState().setPartyConnectionState('connected');
+      return stores;
+    }
+
+    function seed(stores: ReturnType<typeof createRoomStores>, ids: number[]) {
+      stores.useRequests.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: ids.map(id => serialized({ id })),
+        sources: {} as any,
+        channel: {} as any,
+      });
+    }
+
+    it('add echo does not duplicate an optimistically-added request', () => {
+      const stores = connectedStore();
+      stores.useRequests.getState().add(createTestRequest({ id: 55 }));
+      expect(stores.useRequests.getState().requests).toHaveLength(1);
+      // Server echoes the same add back.
+      stores.useRequests.getState().handlePartyMessage({ type: 'add-request', request: serialized({ id: 55 }) } as any);
+      expect(stores.useRequests.getState().requests).toHaveLength(1);
+    });
+
+    it('toggle-done echo is idempotent for our own optimistic toggle', () => {
+      const stores = connectedStore();
+      seed(stores, [7]);
+      stores.useRequests.getState().toggleDone(7); // optimistic → done true
+      const after = stores.useRequests.getState().requests.find(r => r.id === 7)!;
+      // Server echoes toggle-done done:true — must be a no-op (same object ref).
+      stores.useRequests.getState().handlePartyMessage({ type: 'toggle-done', id: 7, done: true, doneAt: new Date().toISOString() } as any);
+      const echoed = stores.useRequests.getState().requests.find(r => r.id === 7)!;
+      expect(echoed.done).toBe(true);
+      expect(echoed).toBe(after);
+    });
+
+    it("toggle-done echo from another client still applies", () => {
+      const stores = connectedStore();
+      seed(stores, [8]);
+      // No local optimistic toggle; an echo flips it done.
+      stores.useRequests.getState().handlePartyMessage({ type: 'toggle-done', id: 8, done: true } as any);
+      expect(stores.useRequests.getState().requests.find(r => r.id === 8)?.done).toBe(true);
+    });
+
+    it('reorder echo of our own optimistic move is suppressed (no double-move)', () => {
+      const stores = connectedStore();
+      seed(stores, [1, 2, 3]);
+      stores.useRequests.getState().reorder(3, 1); // optimistic → [3,1,2]
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([3, 1, 2]);
+      // The server echoes our reorder verbatim, including the opId we tagged it with.
+      const opId = vi.mocked(party.broadcastReorder).mock.calls[0][2];
+      expect(opId).toBeTruthy();
+      stores.useRequests.getState().handlePartyMessage({ type: 'reorder', fromId: 3, toId: 1, opId } as any);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([3, 1, 2]);
+    });
+
+    it('a foreign reorder with the same coords as a pending one still applies (operation identity)', () => {
+      const stores = connectedStore();
+      seed(stores, [1, 2, 3]);
+      stores.useRequests.getState().reorder(3, 1); // optimistic → [3,1,2], tagged with our opId
+      // Another client independently performs the SAME move (3→pos of 1). It carries a
+      // DIFFERENT opId, so it must NOT be swallowed by our pending suppression.
+      stores.useRequests.getState().handlePartyMessage({ type: 'reorder', fromId: 3, toId: 1, opId: 'someone-else' } as any);
+      // Applied on top of [3,1,2]: move id 3 to position of id 1 → [1,3,2].
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([1, 3, 2]);
+    });
+
+    it('reorder from another client (no pending) is applied', () => {
+      const stores = connectedStore();
+      seed(stores, [1, 2, 3]);
+      stores.useRequests.getState().handlePartyMessage({ type: 'reorder', fromId: 1, toId: 3 } as any);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([2, 3, 1]);
+    });
+
+    it('sync-full clears pending reorders so a later identical echo applies', () => {
+      const stores = connectedStore();
+      seed(stores, [1, 2, 3]);
+      stores.useRequests.getState().reorder(3, 1); // pending {3,1}
+      // A fresh sync-full resets order and must clear the pending suppression.
+      seed(stores, [1, 2, 3]);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([1, 2, 3]);
+      // This echo is now NOT ours → should apply.
+      stores.useRequests.getState().handlePartyMessage({ type: 'reorder', fromId: 3, toId: 1 } as any);
+      expect(stores.useRequests.getState().requests.map(r => r.id)).toEqual([3, 1, 2]);
+    });
+  });
+
+  describe('optimistic add rejection (pending cap)', () => {
+    function connectedStore() {
+      const stores = createRoomStores('testchannel');
+      stores.useChannelInfo.getState().setPartyConnectionState('connected');
+      return stores;
+    }
+
+    it('add() does not insert or broadcast when the queue is at the pending cap', () => {
+      const stores = connectedStore();
+      // Fill the queue to the server-enforced pending cap.
+      stores.useRequests.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: Array.from({ length: MAX_PENDING_REQUESTS }, (_, i) => serialized({ id: i + 1 })),
+        sources: {} as any,
+        channel: {} as any,
+      });
+
+      stores.useRequests.getState().add(createTestRequest({ id: 9999 }));
+
+      expect(stores.useRequests.getState().requests).toHaveLength(MAX_PENDING_REQUESTS);
+      expect(stores.useRequests.getState().requests.some(r => r.id === 9999)).toBe(false);
+      expect(party.broadcastAdd).not.toHaveBeenCalled();
+    });
+
+    it('done requests do not count toward the pending cap', () => {
+      const stores = connectedStore();
+      stores.useRequests.getState().handlePartyMessage({
+        type: 'sync-full',
+        requests: Array.from({ length: MAX_PENDING_REQUESTS }, (_, i) => serialized({ id: i + 1, done: true })),
+        sources: {} as any,
+        channel: {} as any,
+      });
+
+      stores.useRequests.getState().add(createTestRequest({ id: 9999 }));
+
+      expect(stores.useRequests.getState().requests.some(r => r.id === 9999)).toBe(true);
+      expect(party.broadcastAdd).toHaveBeenCalledTimes(1);
+    });
+
+    it('a pending_cap server-error rolls back the matching optimistic add', () => {
+      const stores = connectedStore();
+      // Optimistic add succeeds locally (under cap), but the server rejects it
+      // (e.g. another tab filled the last slot first) and does NOT echo it back.
+      stores.useRequests.getState().add(createTestRequest({ id: 500 }));
+      expect(stores.useRequests.getState().requests.some(r => r.id === 500)).toBe(true);
+
+      stores.useRequests.getState().handlePartyMessage({ type: 'server-error', code: 'pending_cap', id: 500 } as any);
+
+      expect(stores.useRequests.getState().requests.some(r => r.id === 500)).toBe(false);
+    });
+
+    it('a server-error without an id leaves the queue untouched', () => {
+      const stores = connectedStore();
+      stores.useRequests.getState().add(createTestRequest({ id: 501 }));
+      stores.useRequests.getState().handlePartyMessage({ type: 'server-error', code: 'not_room_owner', message: 'x' } as any);
+      expect(stores.useRequests.getState().requests.some(r => r.id === 501)).toBe(true);
     });
   });
 

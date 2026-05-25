@@ -49,7 +49,7 @@ export type PartyMessage =
   | { type: 'add-request'; request: SerializedRequest }
   | { type: 'update-request'; id: number; updates: Partial<SerializedRequest> }
   | { type: 'toggle-done'; id: number; done: boolean; doneAt?: string }
-  | { type: 'reorder'; fromId: number; toId: number }
+  | { type: 'reorder'; fromId: number; toId: number; opId?: string }
   | { type: 'delete-request'; id: number }
   | { type: 'set-all'; requests: SerializedRequest[] }
   | { type: 'update-sources'; sources: SourcesSettings }
@@ -59,7 +59,7 @@ export type PartyMessage =
   | { type: 'release-ownership' }
   | { type: 'ownership-granted' }
   | { type: 'ownership-denied'; currentOwner: string }
-  | { type: 'server-error'; code: string; message: string };
+  | { type: 'server-error'; code: string; message: string; id?: number };
 
 export function serializeRequest(req: Request): SerializedRequest {
   return {

@@ -83,8 +83,8 @@ export function broadcastToggleDone(id: number, done: boolean): void {
   send({ type: 'toggle-done', id, done });
 }
 
-export function broadcastReorder(fromId: number, toId: number): void {
-  send({ type: 'reorder', fromId, toId });
+export function broadcastReorder(fromId: number, toId: number, opId?: string): void {
+  send({ type: 'reorder', fromId, toId, opId });
 }
 
 export function broadcastDelete(id: number): void {

@@ -5,6 +5,7 @@ import type { RoomExtras } from '@dbd-utils/shared';
 import type { ConnectionState, Request, SourcesEnabled, PartyMessage, ChannelStatus } from '../types';
 import { deserializeRequest, deserializeRequests } from '../types';
 import { loadCachedQueue, saveCachedQueue } from './queueCache';
+import { insertRequest, moveRequest, setRequestDone } from '../utils/requests';
 import { toast } from 'sonner';
 import { t } from '../i18n';
 import {
@@ -44,6 +45,16 @@ export function createRequestsStore(
   getSourcesState: () => SourcesStore,
   getContext: () => { partyConnected: boolean }
 ) {
+  // Optimistic reorders awaiting their server echo. The server echoes a reorder to
+  // every client and a positional move isn't idempotent, so we must skip the echo of
+  // our OWN move (it would double-move). Each optimistic reorder is tagged with a
+  // unique opId that the server forwards verbatim, so we match echoes by identity
+  // rather than by {fromId,toId} value — which can't tell our move apart from another
+  // client's identical move. Cleared on the authoritative sync-full/set-all.
+  const pendingReorderOpIds = new Set<string>();
+  const newOpId = (): string =>
+    globalThis.crypto?.randomUUID?.() ?? `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
   const useRequests = create<RequestsStore>()(
       (set, get) => ({
         // Hydrate from the local cache so the queue paints instantly on reload,
@@ -52,6 +63,20 @@ export function createRequestsStore(
 
         add: (req) => {
           if (!requireParty(getContext)) return;
+          // Mirror the server's pending cap so we don't optimistically insert a request
+          // the server will reject (it rejects without echoing, which would otherwise
+          // leave a phantom row locally). The pending_cap server-error rolls back the
+          // rarer race where two clients fill the last slot at once.
+          if (get().requests.filter((r) => !r.done).length >= MAX_PENDING_REQUESTS) {
+            toast.error(t('toast.queueFull', { max: String(MAX_PENDING_REQUESTS) }), {
+              description: t('toast.queueFullDesc'),
+            });
+            return;
+          }
+          // Optimistic: insert locally now, broadcast next. The server echoes
+          // add-request back, but the echo dedupes by id (no-op for us).
+          const { sortMode, priority } = getSourcesState();
+          set((s) => ({ requests: insertRequest(s.requests, req, sortMode, priority) }));
           broadcastAdd(req);
         },
 
@@ -64,7 +89,10 @@ export function createRequestsStore(
           if (!requireParty(getContext)) return;
           const req = get().requests.find(r => r.id === id);
           if (!req) return;
-          broadcastToggleDone(id, !req.done);
+          const done = !req.done;
+          // Optimistic: flip locally now; the toggle-done echo is idempotent.
+          set((s) => ({ requests: setRequestDone(s.requests, id, done) }));
+          broadcastToggleDone(id, done);
         },
 
         setAll: (requests) => {
@@ -74,7 +102,16 @@ export function createRequestsStore(
 
         reorder: (fromId, toId) => {
           if (!requireParty(getContext)) return;
-          broadcastReorder(fromId, toId);
+          // Optimistic: move locally now and remember its opId so the server echo of
+          // this same reorder is skipped (it would otherwise double-move).
+          const current = get().requests;
+          const next = moveRequest(current, fromId, toId);
+          const opId = newOpId();
+          if (next !== current) {
+            set({ requests: next });
+            pendingReorderOpIds.add(opId);
+          }
+          broadcastReorder(fromId, toId, opId);
         },
 
         deleteRequest: (id) => {
@@ -85,30 +122,20 @@ export function createRequestsStore(
         handlePartyMessage: (msg) => {
           switch (msg.type) {
             case 'sync-full': {
+              // Authoritative full replace — ordering is reset, so drop any
+              // pending optimistic reorders awaiting an echo.
+              pendingReorderOpIds.clear();
               set({ requests: deserializeRequests(msg.requests) });
               break;
             }
             case 'add-request': {
               const req = deserializeRequest(msg.request);
+              const { sortMode, priority } = getSourcesState();
+              // insertRequest dedupes by id, so our own optimistic add is a no-op
+              // here (returns the same array → no re-render).
               set((s) => {
-                if (s.requests.some(r => r.id === req.id)) return s;
-                const { sortMode, priority } = getSourcesState();
-                if (sortMode === 'fifo') {
-                  return { requests: [...s.requests, req] };
-                }
-                const requests = [...s.requests];
-                const reqPri = priority.indexOf(req.source);
-                let insertIdx = requests.length;
-                for (let i = 0; i < requests.length; i++) {
-                  if (requests[i].done) continue;
-                  const iPri = priority.indexOf(requests[i].source);
-                  if (iPri > reqPri || (iPri === reqPri && requests[i].timestamp > req.timestamp)) {
-                    insertIdx = i;
-                    break;
-                  }
-                }
-                requests.splice(insertIdx, 0, req);
-                return { requests };
+                const requests = insertRequest(s.requests, req, sortMode, priority);
+                return requests === s.requests ? s : { requests };
               });
               break;
             }
@@ -135,30 +162,47 @@ export function createRequestsStore(
             case 'ownership-denied':
               break;
             case 'toggle-done':
-              set((s) => ({
-                requests: s.requests.map((r) => (r.id === msg.id
-                  ? { ...r, done: msg.done, doneAt: msg.done ? (msg.doneAt ? new Date(msg.doneAt) : new Date()) : undefined }
-                  : r)),
-              }));
-              break;
-            case 'reorder':
               set((s) => {
-                const requests = [...s.requests];
-                const fromIdx = requests.findIndex(r => r.id === msg.fromId);
-                const toIdx = requests.findIndex(r => r.id === msg.toId);
-                if (fromIdx === -1 || toIdx === -1) return s;
-                const [moved] = requests.splice(fromIdx, 1);
-                requests.splice(toIdx, 0, moved);
-                return { requests };
+                // Idempotent: if already in the target state (our own optimistic
+                // toggle, echoed back), do nothing. Others' toggles still apply.
+                const existing = s.requests.find((r) => r.id === msg.id);
+                if (!existing || existing.done === msg.done) return s;
+                return {
+                  requests: setRequestDone(s.requests, msg.id, msg.done, msg.doneAt ? new Date(msg.doneAt) : undefined),
+                };
               });
               break;
+            case 'reorder': {
+              // Skip the echo of a reorder we already applied optimistically (matched by
+              // our own opId — would otherwise double-move); apply everyone else's.
+              if (msg.opId && pendingReorderOpIds.has(msg.opId)) {
+                pendingReorderOpIds.delete(msg.opId);
+                break;
+              }
+              set((s) => {
+                const requests = moveRequest(s.requests, msg.fromId, msg.toId);
+                return requests === s.requests ? s : { requests };
+              });
+              break;
+            }
             case 'delete-request':
               set((s) => ({
                 requests: s.requests.filter((r) => r.id !== msg.id),
               }));
               break;
             case 'set-all':
+              pendingReorderOpIds.clear();
               set({ requests: deserializeRequests(msg.requests) });
+              break;
+            case 'server-error':
+              // The server rejects an over-cap add without echoing it, so roll back the
+              // optimistic insert it points at. Other errors carry no id and are no-ops here.
+              if (msg.code === 'pending_cap' && typeof msg.id === 'number') {
+                set((s) => {
+                  const requests = s.requests.filter((r) => r.id !== msg.id);
+                  return requests.length === s.requests.length ? s : { requests };
+                });
+              }
               break;
           }
         },
@@ -166,8 +210,7 @@ export function createRequestsStore(
   );
 
   // Persist on every change so the next reload restores the latest queue. The
-  // authoritative sync-full / set-all replacements are what end up cached, so
-  // stale or server-deleted rows never survive a reconcile.
+  // authoritative sync-full/set-all replacements get cached, so stale rows don't survive.
   useRequests.subscribe((state) => saveCachedQueue(channel, state.requests));
 
   return useRequests;
