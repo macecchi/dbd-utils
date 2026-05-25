@@ -26,16 +26,19 @@ interface ChannelsCacheEnvelope {
   rooms: ActiveRoom[];
 }
 
-export function loadCachedChannels(): ActiveRoom[] {
-  if (typeof localStorage === 'undefined') return [];
+// Returns null on a cache miss (nothing stored, corrupt, or stale version) so a
+// caller can tell "never cached" from a cached-but-empty list — a real response
+// can legitimately be empty, and that's still a hit worth painting.
+export function loadCachedChannels(): ActiveRoom[] | null {
+  if (typeof localStorage === 'undefined') return null;
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return [];
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as ChannelsCacheEnvelope | null;
-    if (!parsed || parsed.v !== VERSION || !Array.isArray(parsed.rooms)) return [];
+    if (!parsed || parsed.v !== VERSION || !Array.isArray(parsed.rooms)) return null;
     return parsed.rooms;
   } catch {
-    return [];
+    return null;
   }
 }
 

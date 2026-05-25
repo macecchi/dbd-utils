@@ -46,13 +46,14 @@ function ConnectButton() {
 
 function LiveChannels() {
   const { t } = useTranslation();
-  // Hydrate from the local cache so the list paints immediately, then revalidate
-  // in the background and let the response win. Skeletons show only on a cold cache.
-  const [rooms, setRooms] = useState<ActiveRoom[]>(loadCachedChannels);
-  const [loading, setLoading] = useState(rooms.length === 0);
-  // When we paint from cache there's still a background revalidation in flight —
-  // surface it with a subtle indicator until the fresh data lands.
-  const [refreshing, setRefreshing] = useState(rooms.length > 0);
+  // Read the cache once (stale-while-revalidate): null = cold cache, so show
+  // skeletons; otherwise paint the cached list — even an empty one is a real hit,
+  // so a genuinely empty response shows the empty state, not skeletons. `loading`
+  // is the single in-flight flag: while it's set we show skeletons on a cold cache
+  // or the refresh indicator on a warm one, then the response wins.
+  const [cache] = useState(loadCachedChannels);
+  const [rooms, setRooms] = useState<ActiveRoom[]>(cache ?? []);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${API_URL}/rooms/active`)
@@ -63,11 +64,11 @@ function LiveChannels() {
         saveCachedChannels(next);
       })
       .catch(() => { })
-      .finally(() => { setLoading(false); setRefreshing(false); });
+      .finally(() => setLoading(false));
   }, []);
 
   let content;
-  if (loading) {
+  if (loading && cache === null) {
     content = (
       <div className="landing-channels-grid">
         {[1, 2].map(i => (
@@ -132,9 +133,9 @@ function LiveChannels() {
     <>
       <div className="landing-channels-heading">
         <h2>{t('landing.activeChannels')}</h2>
-        {/* Shown only while revalidating; its slot is always reserved so toggling
-            it never shifts the list below. */}
-        <SyncSweep active={refreshing} />
+        {/* Shown while revalidating a warm cache; its slot is always reserved so
+            toggling it never shifts the list below. */}
+        <SyncSweep active={loading && cache !== null} />
       </div>
       {content}
     </>

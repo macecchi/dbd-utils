@@ -45,28 +45,28 @@ describe('channelsCache', () => {
     expect(loadCachedChannels()).toEqual(rooms);
   });
 
-  it('returns [] when nothing is cached', () => {
-    expect(loadCachedChannels()).toEqual([]);
+  it('returns null when nothing is cached', () => {
+    expect(loadCachedChannels()).toBeNull();
   });
 
-  it('returns [] on corrupt JSON', () => {
+  it('returns null on corrupt JSON', () => {
     localStorage.setItem(KEY, '{not valid json');
-    expect(loadCachedChannels()).toEqual([]);
+    expect(loadCachedChannels()).toBeNull();
   });
 
-  it('returns [] when the envelope is null', () => {
+  it('returns null when the envelope is null', () => {
     localStorage.setItem(KEY, 'null');
-    expect(loadCachedChannels()).toEqual([]);
+    expect(loadCachedChannels()).toBeNull();
   });
 
-  it('returns [] on a version mismatch', () => {
+  it('returns null on a version mismatch', () => {
     localStorage.setItem(KEY, JSON.stringify({ v: 0, rooms: [sampleRoom()] }));
-    expect(loadCachedChannels()).toEqual([]);
+    expect(loadCachedChannels()).toBeNull();
   });
 
-  it('returns [] when rooms is not an array', () => {
+  it('returns null when rooms is not an array', () => {
     localStorage.setItem(KEY, JSON.stringify({ v: 1, rooms: 'nope' }));
-    expect(loadCachedChannels()).toEqual([]);
+    expect(loadCachedChannels()).toBeNull();
   });
 
   it('overwrites the previous cache on save', () => {
@@ -74,10 +74,10 @@ describe('channelsCache', () => {
     saveCachedChannels([sampleRoom({ id: 'new' })]);
     const loaded = loadCachedChannels();
     expect(loaded).toHaveLength(1);
-    expect(loaded[0].id).toBe('new');
+    expect(loaded?.[0].id).toBe('new');
   });
 
-  it('persists an empty list so a revalidate can clear stale channels', () => {
+  it('returns an empty array (not null) for a cached-but-empty list, so a real empty response is distinguishable from a cold cache', () => {
     saveCachedChannels([sampleRoom()]);
     saveCachedChannels([]);
     expect(loadCachedChannels()).toEqual([]);
