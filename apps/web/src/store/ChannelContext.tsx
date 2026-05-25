@@ -239,6 +239,8 @@ export function ChannelProvider({ channel, children }: ChannelProviderProps) {
         (msg) => {
           if (msg.type === 'server-error') {
             console.error(`[server-error] ${msg.code}: ${msg.message}`);
+            // Let the requests store roll back an optimistic add the server rejected.
+            handleRequestsMessage(msg);
             if (msg.code === 'version_mismatch') {
               disconnectParty();
               toast.warning(t('toast.newVersionAvailable'), {

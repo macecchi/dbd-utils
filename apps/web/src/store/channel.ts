@@ -46,9 +46,14 @@ export function createRequestsStore(
   getContext: () => { partyConnected: boolean }
 ) {
   // Optimistic reorders awaiting their server echo. The server echoes a reorder to
-  // every client and a positional move isn't idempotent, so we skip the matching
-  // echo (FIFO order) to avoid double-moving. Cleared on sync-full/set-all.
-  const pendingReorders: { fromId: number; toId: number }[] = [];
+  // every client and a positional move isn't idempotent, so we must skip the echo of
+  // our OWN move (it would double-move). Each optimistic reorder is tagged with a
+  // unique opId that the server forwards verbatim, so we match echoes by identity
+  // rather than by {fromId,toId} value — which can't tell our move apart from another
+  // client's identical move. Cleared on the authoritative sync-full/set-all.
+  const pendingReorderOpIds = new Set<string>();
+  const newOpId = (): string =>
+    globalThis.crypto?.randomUUID?.() ?? `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
   const useRequests = create<RequestsStore>()(
       (set, get) => ({
@@ -58,6 +63,16 @@ export function createRequestsStore(
 
         add: (req) => {
           if (!requireParty(getContext)) return;
+          // Mirror the server's pending cap so we don't optimistically insert a request
+          // the server will reject (it rejects without echoing, which would otherwise
+          // leave a phantom row locally). The pending_cap server-error rolls back the
+          // rarer race where two clients fill the last slot at once.
+          if (get().requests.filter((r) => !r.done).length >= MAX_PENDING_REQUESTS) {
+            toast.error(t('toast.queueFull', { max: String(MAX_PENDING_REQUESTS) }), {
+              description: t('toast.queueFullDesc'),
+            });
+            return;
+          }
           // Optimistic: insert locally now, broadcast next. The server echoes
           // add-request back, but the echo dedupes by id (no-op for us).
           const { sortMode, priority } = getSourcesState();
@@ -87,15 +102,16 @@ export function createRequestsStore(
 
         reorder: (fromId, toId) => {
           if (!requireParty(getContext)) return;
-          // Optimistic: move locally now and remember it so the server echo of
+          // Optimistic: move locally now and remember its opId so the server echo of
           // this same reorder is skipped (it would otherwise double-move).
           const current = get().requests;
           const next = moveRequest(current, fromId, toId);
+          const opId = newOpId();
           if (next !== current) {
             set({ requests: next });
-            pendingReorders.push({ fromId, toId });
+            pendingReorderOpIds.add(opId);
           }
-          broadcastReorder(fromId, toId);
+          broadcastReorder(fromId, toId, opId);
         },
 
         deleteRequest: (id) => {
@@ -108,7 +124,7 @@ export function createRequestsStore(
             case 'sync-full': {
               // Authoritative full replace — ordering is reset, so drop any
               // pending optimistic reorders awaiting an echo.
-              pendingReorders.length = 0;
+              pendingReorderOpIds.clear();
               set({ requests: deserializeRequests(msg.requests) });
               break;
             }
@@ -157,11 +173,10 @@ export function createRequestsStore(
               });
               break;
             case 'reorder': {
-              // Skip the echo of a reorder we already applied optimistically
-              // (would otherwise double-move); apply reorders from other clients.
-              const pending = pendingReorders[0];
-              if (pending && pending.fromId === msg.fromId && pending.toId === msg.toId) {
-                pendingReorders.shift();
+              // Skip the echo of a reorder we already applied optimistically (matched by
+              // our own opId — would otherwise double-move); apply everyone else's.
+              if (msg.opId && pendingReorderOpIds.has(msg.opId)) {
+                pendingReorderOpIds.delete(msg.opId);
                 break;
               }
               set((s) => {
@@ -176,8 +191,18 @@ export function createRequestsStore(
               }));
               break;
             case 'set-all':
-              pendingReorders.length = 0;
+              pendingReorderOpIds.clear();
               set({ requests: deserializeRequests(msg.requests) });
+              break;
+            case 'server-error':
+              // The server rejects an over-cap add without echoing it, so roll back the
+              // optimistic insert it points at. Other errors carry no id and are no-ops here.
+              if (msg.code === 'pending_cap' && typeof msg.id === 'number') {
+                set((s) => {
+                  const requests = s.requests.filter((r) => r.id !== msg.id);
+                  return requests.length === s.requests.length ? s : { requests };
+                });
+              }
               break;
           }
         },
