@@ -1,12 +1,10 @@
 import { DEFAULT_CHARACTERS } from '@dbd-utils/shared';
 import type { RequestExtraType } from '@dbd-utils/shared';
 
-const MODELS = ['gemini-3.1-flash-lite-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+const MODEL = 'gemini-3.1-flash-lite';
 const RETRIABLE_CODES = [429, 500, 502, 503, 504];
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [2000, 4000, 8000];
-
-let currentModelIndex = 0;
 
 export type ExtractionResult = {
   character: string;
@@ -20,13 +18,9 @@ export async function extractCharacters(
   apiKey: string,
   maxCount: number,
   extras: RequestExtraType[] = [],
-  attempt = 0,
-  modelIdx = currentModelIndex,
-  startIdx = currentModelIndex
+  attempt = 0
 ): Promise<ExtractionResult[]> {
-  const model = MODELS[modelIdx];
-
-  console.log(`[extract] Starting extraction using model: ${model} (attempt ${attempt + 1}/${MAX_RETRIES + 1}, maxCount=${maxCount}, extras=${extras.join(',') || 'none'})`);
+  console.log(`[extract] Starting extraction using model: ${MODEL} (attempt ${attempt + 1}/${MAX_RETRIES + 1}, maxCount=${maxCount}, extras=${extras.join(',') || 'none'})`);
 
   const withBuild = extras.includes('build');
 
@@ -83,7 +77,7 @@ Return ONLY JSON with a "characters" array. Each entry has character name, type,
 - In "matchedTerm", return the EXACT substring referring to that specific instance, preserving the original casing and spelling. If the same character is requested twice with the same wording, both entries may share the same matchedTerm.${buildBlock}`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
     {
       method: 'POST',
       headers: {
@@ -135,16 +129,10 @@ Return ONLY JSON with a "characters" array. Each entry has character name, type,
     console.warn(`[extract] Request failed with status ${res.status}: ${msg}`);
 
     if (RETRIABLE_CODES.includes(res.status)) {
-      const nextIdx = (modelIdx + 1) % MODELS.length;
-      if (nextIdx !== startIdx) {
-        console.log(`[extract] Switching from ${model} to ${MODELS[nextIdx]}`);
-        currentModelIndex = nextIdx;
-        return extractCharacters(message, apiKey, maxCount, extras, 0, nextIdx, startIdx);
-      }
       if (attempt < MAX_RETRIES) {
         console.log(`[extract] Retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
         await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
-        return extractCharacters(message, apiKey, maxCount, extras, attempt + 1, modelIdx, startIdx);
+        return extractCharacters(message, apiKey, maxCount, extras, attempt + 1);
       }
       console.error(`[extract] All retries exhausted after ${MAX_RETRIES + 1} attempts`);
     }
@@ -153,26 +141,19 @@ Return ONLY JSON with a "characters" array. Each entry has character name, type,
     throw new Error(msg);
   }
 
-  currentModelIndex = modelIdx;
   const data = await res.json() as any;
-  console.log(`[extract] Response from ${model}:`, JSON.stringify(data).slice(0, 500));
+  console.log(`[extract] Response from ${MODEL}:`, JSON.stringify(data).slice(0, 500));
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!text) {
     const blockReason = data.promptFeedback?.blockReason
       || data.candidates?.[0]?.finishReason;
-    console.warn(`[extract] Empty response from ${model}: ${blockReason || 'no candidates'}`);
+    console.warn(`[extract] Empty response from ${MODEL}: ${blockReason || 'no candidates'}`);
 
-    const nextIdx = (modelIdx + 1) % MODELS.length;
-    if (nextIdx !== startIdx) {
-      console.log(`[extract] Switching from ${model} to ${MODELS[nextIdx]}`);
-      currentModelIndex = nextIdx;
-      return extractCharacters(message, apiKey, maxCount, extras, 0, nextIdx, startIdx);
-    }
     if (attempt < MAX_RETRIES) {
       console.log(`[extract] Retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
       await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
-      return extractCharacters(message, apiKey, maxCount, extras, attempt + 1, modelIdx, startIdx);
+      return extractCharacters(message, apiKey, maxCount, extras, attempt + 1);
     }
 
     console.error(`[extract] All retries exhausted, returning empty`);
