@@ -27,25 +27,37 @@
   text-align: right;
 }
 
-/* Exit: done fades in place (first ~40%) then collapses; skip fades + slides then
-   collapses. Collapsing the card's box to 0 lets the rows below glide up smoothly
-   instead of snapping shut when the card is removed at the end of the timer.
-   border-box keeps padding/border in the height, so they collapse too;
-   overflow:hidden clips the content during the collapse. The animation length is
-   shorter than the removal timer (500ms done / 400ms skip) so the card is already
-   fully collapsed by the time it unmounts. */
+/* Exit: the inner content blurs, scales down and fades while the card's box
+   collapses to 0 in lockstep, so the row implodes as one motion and the rows
+   below glide up. The collapse animates the real row height via grid-template-rows
+   1fr→0fr (the card becomes a grid with the content as its only in-flow row —
+   .request-actions is absolutely positioned, so it doesn't size a track). This
+   has no fixed max-height to "use up" first, so the row starts shrinking at t=0
+   instead of after the content has already vanished. The animation is shorter than
+   the removal timer (500ms done / 400ms skip) so the card is fully collapsed
+   before it unmounts. */
 .request-card.deleting {
+  display: grid;
+  grid-template-rows: 0fr;
   /* Shorter than the 500ms removal timer so the collapse fully finishes (height 0)
      before the card unmounts — otherwise the row snaps the remaining height shut. */
-  animation: deleteCollapse 0.4s var(--ease-out) forwards;
+  animation: deleteCollapse 0.32s var(--ease-out) forwards;
   pointer-events: none;
   overflow: hidden;
 }
 
+.request-card.deleting .request-card-content {
+  min-height: 0;
+  overflow: hidden;
+  filter: blur(8px);
+  opacity: 0;
+  transform: scale(0.92);
+  transition: filter 280ms ease-in, opacity 200ms ease-in, transform 280ms ease-in;
+}
+
 @keyframes deleteCollapse {
-  0%   { opacity: 1; max-height: 300px; padding-top: var(--space-lg); padding-bottom: var(--space-lg); border-bottom-width: 1px; }
-  40%  { opacity: 0; max-height: 300px; padding-top: var(--space-lg); padding-bottom: var(--space-lg); border-bottom-width: 1px; }
-  100% { opacity: 0; max-height: 0;     padding-top: 0; padding-bottom: 0; border-bottom-width: 0; }
+  from { grid-template-rows: 1fr; padding-top: var(--space-lg); padding-bottom: var(--space-lg); border-bottom-width: 1px; }
+  to   { grid-template-rows: 0fr; padding-top: 0;               padding-bottom: 0;                border-bottom-width: 0; }
 }
 
 .request-card.skipping {
