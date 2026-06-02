@@ -98,6 +98,7 @@ export const CHARACTERS: CharacterData = {
         { name: "Animatronic", aliases: ["Freddy Fazbear", "FNAF", "Animatrônico", "Springtrap"], portrait: "/images/portraits/K40_TheAnimatronic.webp" },
         { name: "Krasue", aliases: ["Senhora Linguiça"], portrait: "/images/portraits/K41_TheKrasue.webp" },
         { name: "The First", aliases: ["First", "Vecna", "Vecna Stranger Things", "Vecna Novo", "One", "Número Um", "Henry Creel"], portrait: "/images/portraits/K42_TheFirst.webp" },
+        { name: "Slasher", aliases: ["Jason", "Jason Voorhees", "Voorhees", "Sexta-feira 13", "Friday the 13th"], portrait: "/images/portraits/K43_TheSlasher.webp" },
     ]
 };
 
